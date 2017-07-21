@@ -240,7 +240,7 @@ Docker specific (not related to syslog/bypass, use kafka directly)
 
 ## Configuration file templates inside of a container
 
-Using a configuration template system might be unnecessary given RSyslog has a `getenv` function in recent versions. Nonetheless, template   configuration via tools that support micro-service friendly configuration APIs beyond just environment variables is a step in the right direction.
+Using a configuration template system might not necessary given RSyslog has a `getenv` function in recent versions. However, note that RSyslog's `getenv` is limited as per the KB article: [Set config values from env var](http://kb.monitorware.com/set-config-values-from-env-var-t12978.html#p27197). Limitations aside, nonetheless, template configuration via tools that support other configuration APIs like etcd, etc, allow for more flexibility in future.
 
 As per [Environment Variable Templating](http://steveadams.io/2016/08/18/Environment-Variable-Templates.html), it's a good idea to help legacy apps become container and micro-service friendlier by 'templating' configuration files. Some tools (in order of github popularity) to help with this are:
 

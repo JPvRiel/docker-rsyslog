@@ -28,21 +28,9 @@ RUN yum --setopt=timeout=120 -y --enablerepo=epel install rsyslog rsyslog-relp r
   rm -r /etc/rsyslog.d/ && \
   rm /etc/rsyslog.conf
 
-# Install confd
-ENV CONFD_VER='0.11.0'
-#ADD https://github.com/kelseyhightower/confd/releases/download/v${CONFD_VER}/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
-COPY usr/local/bin/confd-0.11.0-linux-amd64 /usr/local/bin/confd
-  # Use bundled file to avoid downloading all the time
-RUN chmod +x /usr/local/bin/confd && \
-  mkdir -p /etc/confd/conf.d && \
-  mkdir -p /etc/confd/templates
-
 # Embed custom org CA
 COPY etc/pki/ca-trust/source/anchors /etc/pki/ca-trust/source/anchors
 RUN update-ca-trust
-
-# Copy rsyslog config templates (for confd)
-COPY etc/confd /etc/confd
 
 # Copy rsyslog config files
 COPY etc/rsyslog.conf /etc/rsyslog.conf
@@ -54,7 +42,6 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt'
 # input
 ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon'
   # 'anon' or 'x509/certvalid' or 'x509/name'
-ENV rsyslog_module_imtcp_permitted_peer='["*"]'
 ENV rsyslog_module_impstats_interval='300'
 
 # output flags
