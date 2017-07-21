@@ -1,0 +1,123 @@
+## Note:
+# - Rule sets called must be defined in other files /etc/rsyslog.d
+
+## NB:
+# - RELP and librelp seems to support it's own TLS settings per input. Therefore, there can be varied TLS security requirements (e.g. needing client auth) per RELP input and port.
+# - RSyslog TCP relies on a stream driver, and the stream driver settings are global because they are set when the module is imtcp module is loaded. Therefore, there cannot be varied TLS security requirements for multiple TCP TLS inputs.
+# - There don't seem to be any documented settings for TLS client auth as optional (it's either required or not).
+
+# Global directives
+global(
+  workDirectory="/var/spool/rsyslog"
+  #TCP TLS (does not apply to RELP)
+  defaultNetstreamDriverCAFile="{{ getenv "rsyslog_global_ca_file" }}"
+  defaultNetstreamDriverCertFile="/etc/pki/tls/rsyslog/cert.pem"
+  defaultNetstreamDriverKeyFile="/etc/pki/tls/rsyslog/key.pem"
+  defaultNetstreamDriver="ptcp"
+  #defaultNetstreamDriver="gtls"
+)
+
+# load input modules
+module(load="imudp")
+# For plain TCP without TLS
+module(load="imptcp")
+# For TCP with TLS
+module(
+  load="imtcp"
+  streamDriver.name="gtls"
+  streamDriver.mode="1"
+    #This indicates TLS is enabled. 0 indicated disabled.
+  streamDriver.authMode="{{ getenv "rsyslog_module_imtcp_stream_driver_auth_mode" }}"
+  permittedPeer={{ getenv "rsyslog_module_imtcp_permitted_peer" }}
+)
+module(load="imrelp")
+
+# if we want to manipulate RFC 5424 structured data
+#mmpstrucdata(load="mmpstrucdata")
+
+# load moudule to collect stats
+module(load="impstats" interval="{{ getenv "rsyslog_module_impstats_interval" }}" log.syslog="on")
+
+# provides UDP syslog resception
+input(type="imudp" port="514" ruleset="remote_udp")
+
+# provides TCP syslog reception
+input(type="imptcp" port="514" ruleset="remote_tcp")
+
+# provides secure TCP syslog reception
+input(
+  type="imtcp"
+  name="tcp_secure"
+  port="6514"
+  ruleset="remote_tcp_secure"
+)
+
+# proivdes RELP reception
+input(type="imrelp" name="imrepl" port="2514" ruleset="remote_relp" tls="off")
+
+# provides secure RELP reception (with client not needing to provide a CA signed cert)
+input(
+  type="imrelp"
+  name="imrelp_secure"
+  port="7514"
+  ruleset="remote_relp_secure"
+  tls="on"
+  tls.dhbits="2048"
+  tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
+  tls.myCert="/etc/pki/tls/rsyslog/cert.pem"
+  tls.myPrivKey="/etc/pki/tls/rsyslog/key.pem"
+)
+
+# provides secure RELP reception (with client needing to provide a CA signed cert)
+input(
+  type="imrelp"
+  name="imrelp_secure_client_auth"
+  port="8514"
+  ruleset="remote_relp_secure_client_auth"
+  tls="on"
+  tls.dhbits="2048"
+  tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
+  tls.myCert="/etc/pki/tls/rsyslog/cert.pem"
+  tls.myPrivKey="/etc/pki/tls/rsyslog/key.pem"
+  tls.authMode="name"
+    # Require client authentication with a valid CA signed cert (strong authentication)
+  tls.permittedPeer=["*"]
+)
+
+set omfile_enabled = {{ "rsyslog_omfile_enabled" }}
+
+# rules and actions to apply when a specific kind of input is received
+RuleSet (name="remote_udp")
+{ if ( omfile_enabled ) then { call out_file_udp }
+  call metadata
+}
+
+RuleSet (name="remote_tcp")
+{ if ( omfile_enabled ) then { call out_file_tcp }
+  call metadata
+}
+
+RuleSet (name="remote_tcp_secure")
+{ call out_file_tcp_secure
+  call metadata
+}
+
+RuleSet (name="remote_relp")
+{ if ( omfile_enabled ) then { call out_file_relp }
+  call metadata
+}
+
+RuleSet (name="remote_relp_secure")
+{ if ( omfile_enabled ) then { call out_file_relp_secure }
+  call metadata
+}
+
+RuleSet (name="remote_relp_secure_client_auth")
+{ if ( omfile_enabled ) then { call out_file_relp_secure_client_auth }
+  call metadata
+}
+
+RuleSet(name="metadata")
+{
+  call forward
+}
