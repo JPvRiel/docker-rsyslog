@@ -1,6 +1,8 @@
 #!/bin/bash
 set -e
 
+# Apply config templates
+
 # Do a config sanity check
 if ! rsyslogd -N1; then
   echo "ERROR: Rsyslog configuration corrupt. Aborting." >&2
@@ -29,8 +31,8 @@ fi
 # Note, rsyslog command is to run in the forgroung, so hopefully no orphined defunct / 'zombie' processes should result. We don't wrap SIGHUP given rsyslog docs say a service restrart is better
 
 # trap SIGINT or TERM signals and TERM children
-#trap "echo 'Terminating child processes'; kill -HUP $(cat /var/run/rsyslogd.pid) && sleep 1; [[ -z "$(jobs -p)" ]] || kill $(jobs -p)" 2 3 15
+trap "echo 'Terminating child processes'; kill -HUP $(cat /var/run/rsyslogd.pid) && sleep 1; [[ -z "$(jobs -p)" ]] || kill $(jobs -p)" 2 3 15
 
 # wait on all children to exit gracefully
-#wait
+wait
 echo "Exited gracefully"
