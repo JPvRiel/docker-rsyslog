@@ -1,0 +1,3 @@
+[template]
+src = "42-tcp_in.conf.tmpl"
+dest = "/etc/rsyslog.d/input/42-tcp_in.conf"

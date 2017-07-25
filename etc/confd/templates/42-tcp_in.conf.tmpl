@@ -1,0 +1,39 @@
+# Note:
+# - RSyslog TCP relies on a stream driver, and the stream driver settings are global because they are set when the module is imtcp module is loaded.
+# - Therefore, there cannot be varied TLS security requirements for multiple TCP TLS inputs.
+# - There don't seem to be any documented settings for TLS client auth as optional (it's either required or not).
+
+# Global directives
+global(
+  #TCP TLS (does not apply to RELP)
+  defaultNetstreamDriverCAFile="{{ getenv "rsyslog_global_ca_file" }}"
+  defaultNetstreamDriverCertFile="{{ getenv "rsyslog_server_cert_file" }}"
+  defaultNetstreamDriverKeyFile="{{ getenv "rsyslog_server_key_file" }}"
+  defaultNetstreamDriver="ptcp"
+  #defaultNetstreamDriver="gtls"
+)
+
+# For plain TCP without TLS
+module(load="imptcp")
+# For TCP with TLS
+module(
+  load="imtcp"
+  streamDriver.name="gtls"
+  streamDriver.mode="1"
+    #This indicates TLS is enabled. 0 indicated disabled.
+  streamDriver.authMode="{{ getenv "rsyslog_module_imtcp_stream_driver_auth_mode" }}"
+  {{ if getenv "rsyslog_module_imtcp_stream_driver_auth_mode" | ne "anon" }}
+  permittedPeer={{ getenv "rsyslog_tls_permitted_peer" }}
+  {{ end }}
+)
+
+# provides plain TCP syslog reception
+input(type="imptcp" port="514" ruleset="remote_tcp")
+
+# provides secure TCP syslog reception
+input(
+  type="imtcp"
+  name="tcp_secure"
+  port="6514"
+  ruleset="remote_tcp_secure"
+)

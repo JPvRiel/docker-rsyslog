@@ -15,16 +15,97 @@ An RSyslog container able to:
 
 ## Runtime
 
+## TL;DR
+
+### yolo way
+
+The 'yolo' way (volumes left dangling between container runs, data loss likely, and client problems validating self-signed certs)
+
+```bash
+docker container run --rm -it --name syslog jpvriel/rsyslog:latest
+```
+
+### Minimally sane way
+
+The minimally sane way
+
+Generate the required certificate data via your own CA.
+
+Create named volumes beforehand
+
+```bash
+docker volume create syslog_log
+docker volume create syslog_spool
+docker volume create syslog_tls
+```
+
+Run docker mounting volumes
+```bash
+docker container run --rm -it \
+ -v syslog_log:/var/log/remote \
+ -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_tls:/etc/pki/tls/rsyslog \
+ --name syslog jpvriel/rsyslog:latest
+```
+
+### Compose way
+
+TODO:
+
+```
+TODO
+```
+
+### Debug
+
+Set debug flag for rsyslogd:
+
+```
+TODO
+```
+
+Sometimes you may need to debug within the container, e.g. when it doesn't even make it past configuration.
+
+Override the entrypoint:
+
+```
+docker container run --rm -it \
+ -v syslog_log:/var/log/remote \
+ -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
+ --name syslog --entrypoing jpvriel/rsyslog:latest
+```
+
+Run the init script manually:
+
+```
+/usr/local/bin/rsyslog.sh
+```
+
+
 ## Managing Rsyslog Configuration Options Dynamically
 
-`rsyslog` is a traditional UNIX-like application not written with micro-services and container architecture in mind. It has many complex configuration options and syntax not easily managed as environment variables or command switches.
+See the `ENV` options in the Dockerfile defined with `rsyslog_*` which need to be set according to your own use case.
+
+Note, `rsyslog` is a traditional UNIX-like application not written with micro-services and container architecture in mind. It has many complex configuration options and syntax not easily managed as environment variables or command switches.
+
+For more advanced custom configuration, template config via env vars would be too tedious, so dedicated configuration file volumes can be instead.
 
 ## Volumes and files the container requires
 
 The container expects the following in order to use TLS/SSL:
 
-- `/etc/pki/tls/certs/cert.pem`
-- `/etc/pki/tls/certs/key.pem`
+- `/etc/pki/rsyslog/cert.pem`
+- `/etc/pki/rsyslog/key.pem`
+
+If not provided with valid files in those volumes, a default signed cert is used, but this will obviously work poorly for clients validating the server cert.
+
+The container will use the following for RSyslog to operate gracefully (recreate a container without losing data)
+- ``
+
+## Optional volumes
+
+TODO
 
 ## Build
 
@@ -50,7 +131,7 @@ For `imrelp`:
 
 [RHEL-CentOS RSyslog RPMs](http://www.rsyslog.com/rhelcentos-rpms/)
 
-## Forwarding formats
+## Forwarding formats and RSyslog templates
 
 When forwarding via syslog, RFC5424 is obviously the most sensible format to relay in. RFC3164 is not a proper standard and made poor choices with regard to the time-stamp convention. While "Mmm dd hh:mm:ss" is human readable, it lacks the year, sub-second accuracy and timezone info.
 
@@ -59,10 +140,12 @@ When forwarding to kafka, format choices are more complex:
 - Forward in RFC5424 format and assume downstream system will parse and transform?
 - Forward in JSON format?
 
-  - Use RSyslog's own `template_StdJSONFmt`?
-  - Try replicate lumberjack/logstash default output JSON format based on the syslog input plug-ins for logstash?
+  - Use RSyslog's own `template_StdJSONFmt` or the `jsonmesg` property?
+  - Try replicate lumberjack/logstash default output JSON format based on the syslog input plug-ins for logstash? See:
+    - [How to ship JSON logs via Rsyslog](https://techpunch.co.uk/development/how-to-shop-json-logs-via-rsyslog)
+    - [Using rsyslog to send pre-formatted JSON to logstash](https://untergeek.com/2012/10/11/using-rsyslog-to-send-pre-formatted-json-to-logstash/)
 
-The current choice is leaving the message in RFC5424 text format as the payload. Future work could consider more efficient encoded binary formats like [AVRO](http://avro.apache.org/).
+The current choice is leaving the message in RFC5424 text format as the payload. TODO: If mapped to JSON, a full `raw` payload type field could be preserved in case downstream systems already expect raw syslog. Future work could consider more efficient encoded binary formats like [AVRO](http://avro.apache.org/).
 
 ## Rsyslog omkafka
 
@@ -109,7 +192,7 @@ Given no appropriate standard, a custom structured data element 'received@16543 
   <dt>src_ip</dt>
   <dd>Always source IP (fromhost-ip rsyslog property)</dd>
   <dt>dest</dt>
-  <dd>Server processing the message ($myhostname rsyslog property)</dd>
+  <dd>Server processing the message (myhostname rsyslog property)</dd>
   <dt>app</dt>
   <dd>Always rsyslog and the input module used, e.g. imudp, imptcp, imtcp, imrelp, etc (inputname rsyslog property)</dd>
   <dt>ssl</dt>
@@ -152,6 +235,11 @@ Note further, templates are not affected by if-statements or config nesting.
 
 #### RFC3164 (legacy) converted to RFC5424 with meta-data pre-pended to structured data
 
+RSyslog template string (see [Rsyslog examples](http://www.rsyslog.com/doc/rsyslog_conf_examples.html))
+```
+"<%PRI%>%TIMESTAMP% %HOSTNAME% %syslogtag%%msg%"
+```
+
 Example source RFC3164 message (obviously without meta-data) via UDP
 
 ```
@@ -173,7 +261,7 @@ RFC5424 message with an existing structured data element, but no meta-data added
 <177>1 2015-07-14T12:52:12.916345047+02:00 05766jpvanriel-vm test - - - [testsd@16543 test_msg="RELP client with TLS"] FINDME using RELP from 127.0.0.1 to 127.0.0.1:514
 ```
 
-After, RFC5424 message with meta-data appended to the structured elements
+After, RFC5424 message with meta-data prepended to the structured elements
 
 ```
 <177>1 2015-07-14T12:52:12 test - - - [received@16543 message_received_time="2017-07-18 12:52:13.116658983+02:00" src="experience.standardbank.co.za"

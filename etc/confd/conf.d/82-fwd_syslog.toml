@@ -1,0 +1,3 @@
+[template]
+src = "82-fwd_syslog.conf.tmpl"
+dest = "/etc/rsyslog.d/output/81-fwd_syslog.conf"

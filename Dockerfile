@@ -23,7 +23,7 @@ RUN yum --setopt=timeout=120 -y update && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-RUN yum --setopt=timeout=120 -y --enablerepo=epel install rsyslog rsyslog-relp rsyslog-kafka && \
+RUN yum --setopt=timeout=120 -y --enablerepo=epel install rsyslog rsyslog-gnutls rsyslog-relp rsyslog-kafka && \
   yum clean all && \
   rm -r /etc/rsyslog.d/ && \
   rm /etc/rsyslog.conf
@@ -37,40 +37,64 @@ RUN chmod +x /usr/local/bin/confd && \
   mkdir -p /etc/confd/conf.d && \
   mkdir -p /etc/confd/templates
 
-# Embed custom org CA
+# Embed custom org CA into image
 COPY etc/pki/ca-trust/source/anchors /etc/pki/ca-trust/source/anchors
 RUN update-ca-trust
 
 # Copy rsyslog config templates (for confd)
 COPY etc/confd /etc/confd
 
-# Copy rsyslog config files
+# Copy rsyslog config files and create folders for template config
 COPY etc/rsyslog.conf /etc/rsyslog.conf
-COPY etc/rsyslog.d /etc/rsyslog.d
+COPY etc/rsyslog.d/input /etc/rsyslog.d/input
+COPY etc/rsyslog.d/output /etc/rsyslog.d/output
+# Directories intended as optional v0lume mounted config
+RUN mkdir -p \
+  /etc/rsyslog.d/filter \
+  /etc/rsyslog.d/output/forward_extra
+# Note:
+# - rsyslog.d/output/extra is a volume used for unforseen custom outputs
+# - rsyslog.d/filter is a volume used for unforseen custom input filters
+# - filters that apply to a specific forwarder should rather be done within that forwarders ruleset
+
+# Copy default self-signed cert (to help handle cases when the rsyslog tls volume doesn't have expected files present)
+COPY etc/pki/tls/private/default_self_signed.key.pem /etc/pki/tls/private
+COPY etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/tls/certs
 
 #TODO: default ENV vars for rsyslog config
 # global
 ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt'
+ENV rsyslog_server_cert_file='/etc/pki/rsyslog/cert.pem'
+ENV rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
 # input
 ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon'
   # 'anon' or 'x509/certvalid' or 'x509/name'
-ENV rsyslog_module_imtcp_permitted_peer='["*"]'
+ENV rsyslog_tls_permitted_peer='["*"]'
 ENV rsyslog_module_impstats_interval='300'
 
-# output flags
-ENV rsyslog_omfile_enabled=false
-#ENV rsyslog_omkafka_enabled=true
-#ENV rsyslog_omfwd=true
+# metadata, filtering and output flags
+ENV rsyslog_metadata_enabled=false
+ENV rsyslog_filtering_enabled=false
+ENV rsyslog_omfile_enabled=true
+ENV rsyslog_omkafka_enabled=false
+ENV rsyslog_omfwd_enabled=false
+ENV rsyslog_forward_extra_enabled=false
 #TODO: check how not to lose/include orginal host if events are relayed
 #TODO: check if it's possible to add/tag 5424 with metadata about syslog method used (e.g. strong auth, just SSL sever, weak udp security)
 #TODO: 5424 format (rfc5424micro)?
 
-# Note, forwarding config will probably be highly varied, so instead of trying to template it, we allow for that config to be red from a volume and managed by simply picking up from a forward ruleset
+# Note, output config will probably be highly varied, so instead of trying to template it, we allow for that config to be red from a volume and managed by simply picking up from a forward ruleset
 
 #TODO: understand which "stateful" runtime directories rsyslog should have in order to perist accross errors/container runs
-VOLUME ['/var/log', '/var/spool/rsyslog', '/etc/pki/tls/rsyslog/', '/etc/rsyslog.d/forward', '/etc/rsyslog.d/file']
-#TODO TLS folder
-#TODO: which ports to expose
+# Volumes required
+VOLUME /var/log/remote \
+  /var/spool/rsyslog \
+  /etc/pki/rsyslog
+# Extra optional volumes that could be supplied at runtime
+# - /etc/rsyslog.d/output/forward_extra
+# - /etc/rsyslog.d/filter
+
+# Ports to expose
 EXPOSE 514/udp
   #UDP
 EXPOSE 514/tcp

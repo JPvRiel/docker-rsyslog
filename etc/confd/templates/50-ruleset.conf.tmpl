@@ -1,0 +1,84 @@
+# Rules and actions to apply when a specific kind of input is received
+
+{{$rsyslog_metadata_enabled := getenv "rsyslog_metadata_enabled" | toLower | eq "true"}}
+{{$rsyslog_filtering_enabled := getenv "rsyslog_filtering_enabled" | toLower | eq "true"}}
+{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "true"}}
+
+ruleset(name="remote_udp")
+{
+  {{if $rsyslog_metadata_enabled}}
+  reset $.meta!is_tls = "false";
+  reset $.meta!is_authenticated_client = "false";
+  {{end}}
+  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
+  {{if $rsyslog_omfile_enabled}}call out_file_udp{{end}}
+  call forward
+}
+
+ruleset(name="remote_tcp")
+{
+  {{if $rsyslog_metadata_enabled}}
+  reset $.meta!is_tls = "false";
+  reset $.meta!is_authenticated_client = "false";
+  {{end}}
+  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
+  {{if $rsyslog_omfile_enabled}}call out_file_tcp{{end}}
+  call forward
+}
+
+ruleset(name="remote_tcp_secure")
+{
+  {{if $rsyslog_metadata_enabled}}
+  reset $.meta!is_tls = "true";
+  reset $.meta!is_authenticated_client = "false";
+  {{end}}
+  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
+  {{if $rsyslog_omfile_enabled}}call out_file_tcp_secure{{end}}
+  call forward
+}
+
+ruleset(name="remote_relp")
+{
+  {{if $rsyslog_metadata_enabled}}
+  reset $.meta!is_tls = "false";
+  reset $.meta!is_authenticated_client = "false";
+  {{end}}
+  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
+  {{if $rsyslog_omfile_enabled}}call out_file_relp{{end}}
+  call forward
+}
+
+ruleset(name="remote_relp_secure")
+{
+  {{if $rsyslog_metadata_enabled}}
+  reset $.meta!is_tls = "true";
+  reset $.meta!is_authenticated_client = "false";
+  {{end}}
+  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
+  {{if $rsyslog_omfile_enabled}}call out_file_relp_secure{{end}}
+  call forward
+}
+
+ruleset(name="remote_relp_secure_client_auth")
+{
+  {{if $rsyslog_metadata_enabled}}
+  reset $.meta!is_tls = "true";
+  reset $.meta!is_authenticated_client = "true";
+  {{end}}
+  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
+  {{if $rsyslog_omfile_enabled}}call out_file_relp_secure_client_auth{{end}}
+  call forward
+}
+
+# Input filter rules are placed in filter/*.conf
+
+# Rules to forward and output messages placed in output/*.conf
+
+ruleset(name="forward")
+{
+  # Standard outputs (templated)
+  call forward_kafka
+  call forward_syslog
+  # Optional extra output config inlcude
+  {{if getenv "rsyslog_forward_extra"}}call forward_extra{{end}}
+}
