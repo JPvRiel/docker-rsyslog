@@ -39,11 +39,11 @@ The 'yolo' way (volumes left dangling between container runs, data loss likely, 
 docker container run --rm -it --name syslog jpvriel/rsyslog:latest
 ```
 
+_NB!_ The default self-signed cert's private key isn't private, it's PUBLIC, since it's checked into the code repo for testing purposes.
+
 ### Minimally sane way
 
 The minimally sane way
-
-Generate the required certificate data via your own CA.
 
 Create named volumes beforehand
 
@@ -52,6 +52,12 @@ docker volume create syslog_log
 docker volume create syslog_spool
 docker volume create syslog_tls
 ```
+
+Provide 3 files for TLS setup placed in the `syslog_tls` and mounted as a volume at `/etc/pki/tls/rsyslog`:
+- a `key.pem`,
+- a signed certificate, `cert.pem`, and
+- your own trusted CA, e.g. `ca.pem`
+(file names can be modified via ENV vars at runtime if need be)
 
 Run docker mounting volumes
 ```bash
