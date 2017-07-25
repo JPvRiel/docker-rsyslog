@@ -11,6 +11,20 @@ An RSyslog container able to:
   - Downstream syslog servers (e.g. traditional/legacy SIEM)
   - Kafka (e.g. data analytic platforms like Hadoop)
 
+For testing/debug purposes, file output to a volume is also provided.
+
+## Status
+
+Done:
+- Multiple inputs
+- File output
+- Using confd to template config via env vars
+- First attempt to add metadata to a message about peer connection (helps with provenance) - avoid spoofed syslog messages, or bad info from poorly configured clients.
+
+Not yet done:
+- Kafka and syslog forwarding. Kafka output considerations incomplete.
+- Gracefull exit - entrypoint passing singals to rsyslog. Need to background rsyslogd without loosing output to console (given docker logging models expect that), or find ways to handle signal traps/proxying while rsyslog runs in foreground.
+
 # Usage
 
 ## Runtime
@@ -50,46 +64,13 @@ docker container run --rm -it \
 
 ### Compose way
 
-TODO:
-
-```
 TODO
-```
-
-### Debug
-
-Set debug flag for rsyslogd:
-
-```
-TODO
-```
-
-Sometimes you may need to debug within the container, e.g. when it doesn't even make it past configuration.
-
-Override the entrypoint:
-
-```
-docker container run --rm -it \
- -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
- -v syslog_tls:/etc/pki/rsyslog \
- --name syslog --entrypoing jpvriel/rsyslog:latest
-```
-
-Run the init script manually:
-
-```
-/usr/local/bin/rsyslog.sh
-```
-
 
 ## Managing Rsyslog Configuration Options Dynamically
 
 See the `ENV` options in the Dockerfile defined with `rsyslog_*` which need to be set according to your own use case.
 
 Note, `rsyslog` is a traditional UNIX-like application not written with micro-services and container architecture in mind. It has many complex configuration options and syntax not easily managed as environment variables or command switches.
-
-For more advanced custom configuration, template config via env vars would be too tedious, so dedicated configuration file volumes can be instead.
 
 ## Volumes and files the container requires
 
@@ -101,19 +82,60 @@ The container expects the following in order to use TLS/SSL:
 If not provided with valid files in those volumes, a default signed cert is used, but this will obviously work poorly for clients validating the server cert.
 
 The container will use the following for RSyslog to operate gracefully (recreate a container without losing data)
-- ``
+- `/var/spool/rsyslog`
 
-## Optional volumes
+If enabling and using file output, a named volume is recommended for `/var/log/remote`. E.g, on my docker setup, the files get written out the hosts docker volume storage like this `/var/lib/docker/volumes/syslog_log/_data/tcp_secure/rfc5424/<hostname>`. Sub folders help distinguish and split the syslog collection methods (UDP vs TCP vs secure or not, etc).
 
-TODO
+### Optional config file volumes
+
+For more advanced custom configuration, template config via env vars would be too tedious (given RainerScript and rsyslog options are so vast), so dedicated configuration file volumes can be used instead for custom filering or output in the folling sub-folders:
+
+- `/etc/rsyslog.d/filter`
+- `/etc/rsyslog.d/output/extra`
 
 ## Build
 
 To embed an internal/extra org CA, add more files to `etc/pki/ca-trust/source/anchors` and rebuild
 
-# Notes related references
+Build command example
 
-## Limitations
+```
+docker build -t jpvriel/rsyslog:0.0.6 -t jpvriel/rsyslog:latest .
+```
+
+## Debug
+
+Set debug flag for rsyslogd:
+
+```bash
+docker container run --rm -it \
+ -v syslog_log:/var/log/remote \
+ -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_tls:/etc/pki/tls/rsyslog \
+ --name syslog jpvriel/rsyslog:latest rsyslog -d3
+```
+
+Set env to DEBUG if working on problems the `rsyslog.sh` entrypoint script.
+
+Sometimes you may need to debug within the container, e.g. when it doesn't even make it past configuration.
+
+Override the entrypoint or use exec on a running container. E.g.:
+
+```
+docker container run --rm -it \
+ -v syslog_log:/var/log/remote \
+ -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
+ --name syslog --entrypoint /bin/bash jpvriel/rsyslog:latest
+```
+
+Then run the init script manually to see if there are problems:
+
+```
+/usr/local/bin/rsyslog.sh
+```
+
+# Known limitations
 
 RSyslog appears to use GNU TLS and TLS libraries in ways which don't readily allow TLS client authentication to be optionally set.
 
@@ -126,6 +148,8 @@ For `imrelp`:
 
 - TLS settings can apply per input.
 - While there's no documented setting for optional TLS client authentication, it is possible to have two listeners on two different ports, one allowing anonymous clients, and a 2nd requiring client certificates
+
+# Notes, related work and references
 
 ## Upstream RSyslog repo with latest stable
 
@@ -292,7 +316,9 @@ input module name
 
 Splunk CIM is useful for field naming conventions when we add metadata. The [Protocols that map to Splunk CIM](https://docs.splunk.com/Documentation/StreamApp/7.1.1/DeployStreamApp/WhichprotocolsmaptoCIM) has a fuller listing of the Splunk CIM namespace accross multiple catagories ('Protocols').
 
-## Docker examples
+## Realted docker examples
+
+### RSyslog images
 
 On docker hub:
 
@@ -326,9 +352,9 @@ Docker specific (not related to syslog/bypass, use kafka directly)
 
 - <https://github.com/moby/moby/issues/21271>
 
-## Configuration file templates inside of a container
+## Container config methods
 
-Using a configuration template system might be unnecessary given RSyslog has a `getenv` function in recent versions. Nonetheless, template   configuration via tools that support micro-service friendly configuration APIs beyond just environment variables is a step in the right direction.
+### Configuration file templates inside of a container
 
 As per [Environment Variable Templating](http://steveadams.io/2016/08/18/Environment-Variable-Templates.html), it's a good idea to help legacy apps become container and micro-service friendlier by 'templating' configuration files. Some tools (in order of github popularity) to help with this are:
 
@@ -341,3 +367,5 @@ Confd:
 - <https://www.slideshare.net/m_richardson/bootstrapping-containers-with-confd>
 - <http://www.mricho.com/confd-and-docker-separating-config-and-code-for-containers/>
 - <https://theagileadmin.com/2015/11/12/templating-config-files-in-docker-containers/>
+
+While rsyslog does have a `getenv` fuction build into it's config, it's usage seems limited.
