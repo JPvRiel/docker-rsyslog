@@ -1,5 +1,3 @@
-venv
 *.DS_Store
-*.retry
-**/.vagrant
 **/*key.pem
+etc/pki/tls/*

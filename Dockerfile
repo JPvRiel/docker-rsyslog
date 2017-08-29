@@ -1,20 +1,21 @@
 FROM centos
-MAINTAINER jp.vanriel@gmail.com
-LABEL vendor='Jean-Pierre van Riel' \
+LABEL application="rsyslog" \
+  maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>' \
   version='0.0.8' \
   release-date='2017-08-21'
+
 ENV container=docker
 
 # Setup repos, etc
 # Disable fast mirror plugin to better leverage upstream proxy caching (or use specific repos)
-RUN sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf
 # Switch yum config to use a consitant base url (useful if not caching docker build, but relying on an upstream proxy)
-RUN sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
+RUN sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf && \
+  sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/CentOS-Base.repo
-# Note, some rsyslog modules have dependancies in epel
+# Some rsyslog modules have dependancies in epel
 RUN yum --setopt=timeout=120 -y update && \
   yum -y install epel-release
-# Also switch yum config to use a base url for epel repo
+# Also switch to a base url for epel repo
 RUN sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/epel.repo
 
@@ -72,23 +73,30 @@ COPY etc/pki/tls/private/default_self_signed.key.pem /etc/pki/tls/private
 COPY etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/tls/certs
 
 # Default ENV vars for rsyslog config
-# global
-ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt'
-ENV rsyslog_server_cert_file='/etc/pki/rsyslog/cert.pem'
-ENV rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
-# input
-ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon'
-  # 'anon' or 'x509/certvalid' or 'x509/name'
-ENV rsyslog_tls_permitted_peer='["*"]'
-ENV rsyslog_module_impstats_interval='300'
-
-# metadata, filtering and output flags
-ENV rsyslog_metadata_enabled=false
-ENV rsyslog_filtering_enabled=false
-ENV rsyslog_omfile_enabled=true
-ENV rsyslog_omkafka_enabled=false
-ENV rsyslog_omfwd_enabled=false
-ENV rsyslog_forward_extra_enabled=false
+# Globals
+ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
+  rsyslog_server_cert_file='/etc/pki/rsyslog/cert.pem' \
+  rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
+# Inputs
+# Note 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode
+ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
+  rsyslog_tls_permitted_peer='["*"]' \
+  rsyslog_module_impstats_interval='300'
+# Metadata, filtering and outputs
+ENV rsyslog_metadata_enabled=false \
+  rsyslog_filtering_enabled=false \
+  rsyslog_omfile_enabled=true \
+  rsyslog_omkafka_enabled=false \
+  rsyslog_omkafka_hosts='[]' \
+  rsyslog_omkafka_port=9092 \
+  rsyslog_omkafka_tls=false \
+  rsyslog_omfwd_syslog_enabled=false \
+  rsyslog_omfwd_syslog_host='' \
+  rsyslog_omfwd_syslog_port=514 \
+  rsyslog_omfwd_json_enabled=false \
+  rsyslog_omfwd_json_host='' \
+  rsyslog_omfwd_json_port=5443 \
+  rsyslog_forward_extra_enabled=false
 
 #TODO: check how not to lose/include orginal host if events are relayed
 #TODO: check if it's possible to add/tag 5424 with metadata about syslog method used (e.g. strong auth, just SSL sever, weak udp security)
@@ -106,18 +114,8 @@ VOLUME /var/log/remote \
 # - /etc/rsyslog.d/filter
 
 # Ports to expose
-EXPOSE 514/udp
-  #UDP
-EXPOSE 514/tcp
-  #TCP
-EXPOSE 6514/tcp
-  #TCP Secure
-EXPOSE 2514/tcp
-  #RELP
-EXPOSE 7514/tcp
-  #RELP Secure
-EXPOSE 8514/tcp
-  #RELP Secure with strong client auth
+# Note: UDP=514, TCP=514, TCP Secure=6514, RELP=2514, RELP Secure=7514, RELP Secure with strong client auth=8514
+EXPOSE 514/udp 514/tcp 6514/tcp 2514/tcp 7514/tcp 8514/tcp
 
 #TODO: also, decide if we will accept the signal to reload config without restarting the container
 

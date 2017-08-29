@@ -108,17 +108,28 @@ For more advanced custom configuration, template config via env vars would be to
 
 ## Build
 
+A pre-requisit is to create your own self-signed cert for default/test purposes expected in the following places:
+
+- key: `etc/pki/tls/private/default_self_signed.key.pem`
+- cert: `etc/pki/tls/certs/default_self_signed.cert.pem`
+
+As a convenience, run the following form the base repo folder (in bash):
+
+```bash
+./util/self_signed_cert.sh test_syslog
+```
+
 To embed an internal/extra org CA, add more files to `etc/pki/ca-trust/source/anchors` and rebuild
 
 Build command example
 
-```
+```bash
 docker build -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
 ```
 
 Building from behind a proxy (assuming proxy env vars are appropriately set)
 
-```
+```bash
 sudo -E docker build --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
 ```
 
@@ -263,5 +274,5 @@ Done:
 Not yet done:
 
 - Kafka and syslog forwarding. Kafka output considerations incomplete.
-- Build test suites.
+- Build test suites (try use python behave framework).
 - JSON output
