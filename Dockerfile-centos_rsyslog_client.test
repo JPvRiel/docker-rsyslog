@@ -1,0 +1,6 @@
+FROM centos
+LABEL application="rsyslog_centos_client"
+# TODO:
+# - RELP client config
+# - Set CA cert
+COPY etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/tls/certs

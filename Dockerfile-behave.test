@@ -1,0 +1,10 @@
+FROM python
+LABEL application="behave"
+RUN pip install behave && \
+    pip install requests && \
+    pip install PyYaml
+RUN mkdir -p /tmp/test/behave/features
+VOLUME /tmp/test/behave/features
+VOLUME /tmp/test/behave/reports
+WORKDIR /tmp/test/behave/features
+ENTRYPOINT ["behave", "--junit", "--junit-directory", "/tmp/test/behave/reports"]

@@ -1,0 +1,36 @@
+version: '2.1'
+services:
+
+  # Syslog server to be tested
+  syslog_server:
+    image: jpvriel/rsyslog
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      rsyslog_omfile_enabled: true
+      #TODO: kafka logstash server outputs
+    volumes:
+      - test_syslog_log:/var/log/remote
+      - test_syslog_spool:/var/spool/rsyslog
+
+  # Specific syslog client required to send messages via advanced protocols like RELP
+  centos_rsyslog_relp_client:
+    build:
+      context: .
+      dockerfile: Dockerfile-centos_rsyslog_client.test
+    depends_on: ['syslog_server']
+  volumes:
+    - ./test/samples:/tmp/test/samples
+
+  # Simple test suite to validate reception, parsing and ouptut/forwarding of syslog messages
+  test_behave:
+    build:
+      context: .
+      dockerfile: Dockerfile-behave.test
+    depends_on: ['syslog_client']
+    volumes_from: ['syslog_server']
+    volumes:
+      - ./test/behave/features:/tmp/test/behave/features
+      - ./test/behave/results:/tmp/test/behave/results
+      - ./test/behave/reports:/tmp/test/behave/reports
