@@ -5,6 +5,7 @@ import re
 from behave import *
 from hamcrest import *
 
+
 @given('a log "{log_file}"')
 def step_impl(context, log_file):
     assert_that(os.path.isfile(log_file), equal_to(True))
