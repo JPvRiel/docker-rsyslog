@@ -169,6 +169,9 @@ Splunk CIM is useful for field naming conventions when we add metadata. The [Pro
 
 ### RSyslog images
 
+Changes needed for RHEL 7 default rsyslog config to be able to run in a container:
+- http://www.projectatomic.io/blog/2014/09/running-syslog-within-a-docker-container/
+
 On docker hub:
 
 - 'rsyslog': <https://hub.docker.com/search/?isAutomated=0&isOfficial=0&page=1&pullCount=0&q=rsyslog&starCount=1>

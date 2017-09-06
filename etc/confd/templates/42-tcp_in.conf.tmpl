@@ -5,7 +5,7 @@
 
 # Global directives
 global(
-  #TCP TLS (does not apply to RELP)
+  # TCP TLS (does not apply to RELP)
   defaultNetstreamDriverCAFile="{{ getenv "rsyslog_global_ca_file" }}"
   defaultNetstreamDriverCertFile="{{ getenv "rsyslog_server_cert_file" }}"
   defaultNetstreamDriverKeyFile="{{ getenv "rsyslog_server_key_file" }}"
@@ -31,6 +31,9 @@ module(
 input(type="imptcp" port="514" ruleset="remote_tcp")
 
 # provides secure TCP syslog reception
+# Limitation:
+# - Not possbile to have client authentication optional. Forced to require it or not.
+# - https://github.com/rsyslog/rsyslog/issues/435
 input(
   type="imtcp"
   name="tcp_secure"

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 set -e
 [ "$DEBUG" == 'true' ] && export RSYSLOG_DEBUG=DebugOnDemand && set -x
 
@@ -6,7 +6,6 @@ set -e
 T_DEFAULT='\e[0m'
 T_RED_BOLD='\e[1;31m'
 T_YELLOW_BOLD='\e[1;33m'
-T_GREEN='\e[0;32m'
 T_BLUE='\e[0;34m'
 
 function report_info() {
@@ -24,7 +23,7 @@ function report_error(){
 # Setup hanlder functions and traps to pass on signals to the rsyslog process
 function sigterm_handler() {
   rsyslog_pid=$(cat /var/run/rsyslogd.pid)
-  report_info 'INFO: Terminating rsyslog process.'
+  report_info 'Terminating rsyslog process.'
   kill -SIGTERM "$rsyslog_pid"
   wait "$rsyslog_pid"
   rsyslog_exit_status=$?
@@ -38,7 +37,7 @@ function sigterm_handler() {
 
 function sighup_handler() {
   # This is typically only needed for log rotate
-  report_info 'Instructing rsyslog to close all open files.'
+  report_info 'HUP signal sento to rsyslog to close all open files and flush buffers'
   kill -SIGHUP "$(cat /var/run/rsyslogd.pid)"
 }
 
@@ -51,19 +50,44 @@ trap 'sigterm_handler' SIGTERM SIGINT SIGQUIT
 trap 'sighup_handler' SIGHUP
 trap 'sigusr1_handler' SIGUSR1
 
+# Check TLS key
+warn_insecure=false
+if [[ -z "$rsyslog_server_key_file" ]]; then
+  report_error 'rsyslog_server_key_file not set (assertion failure).'
+  exit 1
+elif ! [[ -f "$rsyslog_server_key_file" ]]; then
+  if [[ "$rsyslog_server_key_file" == '/etc/pki/rsyslog/key.pem' ]]; then
+    report_warning "No key found at default location \"$rsyslog_server_key_file\"."
+    rsyslog_server_key_file=/etc/pki/tls/private/default_self_signed.key.pem
+    warn_insecure=true
+  else
+    report_error "No key found at custom location \"$rsyslog_server_key_file\". Aborting."
+    exit 1
+  fi
+fi
+# Check TLS Cert
+if [[ -z "$rsyslog_server_cert_file" ]]; then
+  report_error 'rsyslog_server_cert_file not set (assertion failure).'
+  exit 1
+elif ! [[ -f "$rsyslog_server_cert_file" ]]; then
+  if [[ "$rsyslog_server_cert_file" == '/etc/pki/rsyslog/cert.pem' ]]; then
+    report_warning "No certficate found at default location \"$rsyslog_server_cert_file\"."
+    rsyslog_server_cert_file=/etc/pki/tls/certs/default_self_signed.cert.pem
+    warn_insecure=true
+  else
+    report_error "No certficate found at custom location \"$rsyslog_server_cert_file\". Aborting."
+    exit 1
+  fi
+fi
+if [[ $warn_insecure ]]; then
+  report_warning 'Insecure built-in TLS key or certifcate in use. DO NOT run in produciton.'
+fi
+report_info "Using $rsyslog_server_key_file as the prviate key."
+report_info "Using $rsyslog_server_cert_file as the certficate."
+
 # Apply config templates
 /usr/local/bin/confd -onetime -backend env -log-level warn
 
-# Check TLS
-if ! ([ -f "$rsyslog_server_key_file" ] || [ -f "$rsyslog_server_cert_file" ]); then
-  report_warning 'TLS certficates not found in /etc/pki/rsyslog. Linking to default self-signed certficates. Insecure - DO NOT run in produciton.'
-  ln -s /etc/pki/tls/private/default_self_signed.key.pem /etc/pki/rsyslog/key.pem
-  ln -s /etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/rsyslog/cert.pem
-else
-  report_info 'TLS certficates found in /etc/pki/rsyslog.'
-  report_info "Using $rsyslog_server_key_file as the prviate key"
-  report_info "Using $rsyslog_server_cert_file as the certficate"
-fi
 
 # Do a config sanity check
 if ! rsyslogd -N1; then
@@ -73,6 +97,7 @@ fi
 
 # Run rsyslog in the background
 # - We can't simply exec rsyslog because of the zombie PID 1 reping problem...
+# - Rsyslog does accept and handle SIGCHLD to reap child processes, but most users (and docker stop) use SIGTERM
 if [[ -n "${1}" ]]; then
   # Allow arguments to be passed to rsyslog
   if [[ "${1:0:1}" == '-' ]]; then

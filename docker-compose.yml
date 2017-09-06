@@ -5,3 +5,12 @@ services:
     image: jpvriel/rsyslog
     build:
       context: .
+    volumes:
+      - syslog_log:/var/log/remote
+      - syslog_work:/var/lib/rsyslog
+      - syslog_tls:/etc/pki/tls/rsyslog
+
+volumes:
+  syslog_log:
+  syslog_work:
+  syslog_tls:

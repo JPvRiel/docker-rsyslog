@@ -38,7 +38,7 @@ Create named volumes beforehand
 
 ```bash
 docker volume create syslog_log
-docker volume create syslog_spool
+docker volume create syslog_work
 docker volume create syslog_tls
 ```
 
@@ -54,14 +54,14 @@ Run docker mounting volumes
 ```bash
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/tls/rsyslog \
  --name syslog jpvriel/rsyslog:latest
 ```
 
 ### Compose way
 
-TODO
+The usual `docker-compose up`. Note, assumes or creates named volumes (`syslog_log`, `syslog_work`, `syslog_tls`).
 
 ## Gracefully stopping the container (and rsyslog process)
 
@@ -95,7 +95,7 @@ The container expects the following in order to use TLS/SSL:
 If not provided with valid files in those volumes, a default signed cert is used, but this will obviously work poorly for clients validating the server cert.
 
 The container will use the following for RSyslog to operate gracefully (recreate a container without losing data)
-- `/var/spool/rsyslog`
+- `/var/lib/rsyslog`
 
 If enabling and using file output, a named volume is recommended for `/var/log/remote`. E.g, on my docker setup, the files get written out the hosts docker volume storage like this `/var/lib/docker/volumes/syslog_log/_data/tcp_secure/rfc5424/<hostname>`. Sub folders help distinguish and split the syslog collection methods (UDP vs TCP vs secure or not, etc).
 
@@ -108,7 +108,7 @@ For more advanced custom configuration, template config via env vars would be to
 
 ## Build
 
-A pre-requisit is to create your own self-signed cert for default/test purposes expected in the following places:
+A pre-requisite is to create your own self-signed cert as a built-in for default/test purposes. It is expected in the following places:
 
 - key: `etc/pki/tls/private/default_self_signed.key.pem`
 - cert: `etc/pki/tls/certs/default_self_signed.cert.pem`
@@ -116,7 +116,7 @@ A pre-requisit is to create your own self-signed cert for default/test purposes 
 As a convenience, run the following form the base repo folder (in bash):
 
 ```bash
-./util/self_signed_cert.sh test_syslog
+./util/self_signed_cert.sh test_syslog_server
 ```
 
 To embed an internal/extra org CA, add more files to `etc/pki/ca-trust/source/anchors` and rebuild
@@ -127,10 +127,49 @@ Build command example
 docker build -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
 ```
 
-Building from behind a proxy (assuming proxy env vars are appropriately set)
+Building from behind a caching proxy (assuming proxy env vars are appropriately set) when you don't want yum mirror plug-ins to invalidate your proxy cache:
 
 ```bash
-sudo -E docker build --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
+sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
+```
+
+### Embed own CA certs for TLS
+
+Note, there is a runtime `rsyslog_global_ca_file` env var to set the CA for rsyslog.
+
+However, should you need to embed a CA for other reasons (e.g. building via a corporate TLS intercepting proxy), you embed your own CA at build time by placing your own CA certificates in `etc/pki/ca-trust/source/anchors`.
+
+### Build test suite
+
+The test suite was written with python behave.
+
+To build
+
+```
+docker-compose -f docker-compose.test.yml build sut
+```
+
+Use `--build-arg http_proxy=$http_proxy` etc if you have to do this via a corporate proxy.
+
+To run the test suite
+
+```
+$ docker-compose -f docker-compose.test.yml run sut
+```
+
+To run just `@wip` pieces
+
+```
+$ docker-compose -f docker-compose.test.yml run sut behave -w behave/features
+```
+
+To see interplay between the output of the test containers and the syslog server container
+```
+
+...
+$ docker-compose -f docker-compose.test.yml up
+...
+$ docker-compose -f docker-compose.test.yml down
 ```
 
 ## Debug and validation steps
@@ -144,7 +183,7 @@ Assuming a suitable volume is created, e.g. `docker volume create syslog_log`, r
 ```bash
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/tls/rsyslog \
  -e rsyslog_omfile_enabled=true \
  --name syslog jpvriel/rsyslog:latest
@@ -181,7 +220,7 @@ Set debug flag for rsyslogd (does not affect entrypoint script debugging):
 ```bash
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/tls/rsyslog \
  --name syslog jpvriel/rsyslog:latest rsyslogd -d
 ```
@@ -191,7 +230,7 @@ Alternatively, to run with rsyslogd debug enabled but silent until signaled (via
 ```
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/tls/rsyslog \
  --name syslog jpvriel/rsyslog:latest
 ```
@@ -201,7 +240,7 @@ Set env to `DEBUG=true` if working on problems with the `rsyslog.sh` entrypoint 
 ```
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/tls/rsyslog \
  -e DEBUG=true \
  --name syslog jpvriel/rsyslog:latest
@@ -222,7 +261,7 @@ E.g. override entrypoint:
 ```
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
- -v syslog_spool:/var/spool/rsyslog \
+ -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/rsyslog \
  --name syslog --entrypoint /bin/bash jpvriel/rsyslog:latest
 ```
@@ -276,3 +315,10 @@ Not yet done:
 - Kafka and syslog forwarding. Kafka output considerations incomplete.
 - Build test suites (try use python behave framework).
 - JSON output
+
+Maybe someday:
+- Filter/send rsyslog performance metrics to stdout (omstdout)
+- All syslog output to omstdout
+- More test cases
+  - Unit test for stopping and starting the server container to check that persistent queues in /var/lib/rsyslog function as intended
+  - Older and other syslog demons as clients, e.g. from centos6, syslog-ng, etc
