@@ -1,0 +1,23 @@
+FROM ubuntu:16.04
+LABEL application="rsyslog_test_client_ubuntu1604"
+
+ENV container=docker
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+  rsyslog \
+  rsyslog-gnutls \
+  rsyslog-relp \
+  && rm -rf /var/lib/apt/lists/*
+
+COPY tls_x509/certs/default_self_signed.cert.pem /etc/ssl/certs/
+COPY tls_x509/private/default_self_signed.key.pem /etc/ssl/private/
+
+RUN rm -r /etc/rsyslog.d/ \
+  && rm /etc/rsyslog.conf
+COPY ubuntu1604/etc/ /etc/
+COPY rsyslog_test_client.sh /usr/local/bin
+RUN chmod +x /usr/local/bin/rsyslog_test_client.sh
+
+VOLUME /var/spool/rsyslog
+
+ENTRYPOINT ["/usr/local/bin/rsyslog_test_client.sh"]

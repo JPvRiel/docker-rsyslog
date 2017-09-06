@@ -1,0 +1,12 @@
+# Notable references
+# - http://www.projectatomic.io/blog/2014/09/running-syslog-within-a-docker-container/
+
+FROM python:3
+LABEL application="behave_test"
+RUN pip install behave && \
+    pip install requests && \
+    pip install pyhamcrest
+
+VOLUME /tmp/test
+WORKDIR /tmp/test
+CMD ["behave", "--junit", "--junit-directory", "/tmp/test/behave/reports", "behave/features"]

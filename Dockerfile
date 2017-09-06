@@ -1,4 +1,4 @@
-FROM centos
+FROM centos:7
 LABEL application="rsyslog" \
   maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>' \
   version='0.0.8' \
@@ -6,17 +6,24 @@ LABEL application="rsyslog" \
 
 ENV container=docker
 
+# Embed custom org CA into image if need be
+COPY etc/pki/ca-trust/source/anchors/* /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
+
 # Setup repos, etc
 # Disable fast mirror plugin to better leverage upstream proxy caching (or use specific repos)
 # Switch yum config to use a consitant base url (useful if not caching docker build, but relying on an upstream proxy)
-RUN sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf && \
+ARG DISABLE_YUM_MIRROR=false
+RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
+  sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf && \
   sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/CentOS-Base.repo
 # Some rsyslog modules have dependancies in epel
 RUN yum --setopt=timeout=120 -y update && \
-  yum -y install epel-release
+  yum -y install --setopt=timeout=120 --setopt=tsflags=nodocs epel-release
 # Also switch to a base url for epel repo
-RUN sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
+RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
+  sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/epel.repo
 
 # Install Rsyslog. For http://rpms.adiscon.com/v8-stable/rsyslog.repo
@@ -27,11 +34,12 @@ RUN sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
 RUN yum --setopt=timeout=120 -y update && \
-  yum --setopt=timeout=120 -y --enablerepo=epel install \
+  yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog \
   rsyslog-gnutls \
   rsyslog-kafka \
   rsyslog-relp \
+  lsof \
   && yum clean all
 RUN rm -r /etc/rsyslog.d/ \
   && rm /etc/rsyslog.conf
@@ -45,17 +53,13 @@ RUN chmod +x /usr/local/bin/confd && \
   mkdir -p /etc/confd/conf.d && \
   mkdir -p /etc/confd/templates
 
-# Embed custom org CA into image
-COPY etc/pki/ca-trust/source/anchors /etc/pki/ca-trust/source/anchors
-RUN update-ca-trust
-
 # Copy rsyslog config templates (for confd)
 COPY etc/confd /etc/confd
 
 # Copy rsyslog config files and create folders for template config
 COPY etc/rsyslog.conf /etc/rsyslog.conf
-COPY etc/rsyslog.d/input /etc/rsyslog.d/input
-COPY etc/rsyslog.d/output /etc/rsyslog.d/output
+COPY etc/rsyslog.d/input/* /etc/rsyslog.d/input/
+COPY etc/rsyslog.d/output/* /etc/rsyslog.d/output/
 # Directories intended as optional v0lume mounted config
 RUN mkdir -p \
   /etc/rsyslog.d/filter \
@@ -69,8 +73,8 @@ RUN mkdir -p \
 # - To help handle cases when the rsyslog tls volume doesn't have expected files present
 # - rsyslog.sh entrypoint script will symlink and use these defaults if not provided in a volume
 # - For production, avoid insecure default by providing an /etc/pki/tls/rsyslog volume provisioned with your own keys and certficates
-COPY etc/pki/tls/private/default_self_signed.key.pem /etc/pki/tls/private
 COPY etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/tls/certs
+COPY etc/pki/tls/private/default_self_signed.key.pem /etc/pki/tls/private
 
 # Default ENV vars for rsyslog config
 # Globals
@@ -107,7 +111,7 @@ ENV rsyslog_metadata_enabled=false \
 #TODO: understand which "stateful" runtime directories rsyslog should have in order to perist accross errors/container runs
 # Volumes required
 VOLUME /var/log/remote \
-  /var/spool/rsyslog \
+  /var/lib/rsyslog \
   /etc/pki/rsyslog
 # Extra optional volumes that could be supplied at runtime
 # - /etc/rsyslog.d/output/forward_extra
@@ -119,7 +123,10 @@ EXPOSE 514/udp 514/tcp 6514/tcp 2514/tcp 7514/tcp 8514/tcp
 
 #TODO: also, decide if we will accept the signal to reload config without restarting the container
 
-COPY rsyslog.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/rsyslog.sh
+COPY rsyslog.sh rsyslog_healthcheck.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/rsyslog.sh \
+  && chmod +x /usr/local/bin/rsyslog_healthcheck.sh
 
 ENTRYPOINT ["/usr/local/bin/rsyslog.sh"]
+
+HEALTHCHECK CMD /usr/local/bin/rsyslog_healthcheck.sh

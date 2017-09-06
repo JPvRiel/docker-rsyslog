@@ -1,0 +1,58 @@
+version: '2.1'
+services:
+
+  sut:
+    image: jpvriel/behave
+    build:
+      context: test
+      dockerfile: Dockerfile-behave.test
+    depends_on:
+      - test_syslog_server
+      - test_syslog_client_centos7
+      - test_syslog_client_ubuntu1604
+    volumes:
+      - ./test:/tmp/test
+    volumes_from:
+      - test_syslog_server:ro
+
+  # syslog clients to be tested
+  test_syslog_client_centos7:
+    image: jpvriel/syslog_client_centos7
+    build:
+      context: test
+      dockerfile: Dockerfile-syslog_client_centos7.test
+    hostname: 'test_syslog_client_centos7'
+    depends_on:
+      - test_syslog_server
+    #environment:
+    #  DEBUG: 'true'
+
+  test_syslog_client_ubuntu1604:
+    image: jpvriel/syslog_client_ubuntu1604
+    build:
+      context: test
+      dockerfile: Dockerfile-syslog_client_ubuntu1604.test
+    hostname: 'test_syslog_client_ubuntu1604'
+    depends_on:
+      - test_syslog_server
+    #environment:
+    #  DEBUG: 'true'
+
+  # remote outputs to be tested, e.g. kafka
+  # TODO
+
+  # syslog server
+  test_syslog_server:
+    image: jpvriel/rsyslog
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: 'test_syslog_server'
+    environment:
+      rsyslog_omfile_enabled: 'true'
+      rsyslog_global_ca_file: '/etc/pki/tls/certs/default_self_signed.cert.pem'
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/rsyslog_healthcheck.sh"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
