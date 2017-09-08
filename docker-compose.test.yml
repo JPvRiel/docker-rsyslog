@@ -7,6 +7,7 @@ services:
       context: test
       dockerfile: Dockerfile-behave.test
     depends_on:
+      - test_kafka
       - test_syslog_server
       - test_syslog_client_centos7
       - test_syslog_client_ubuntu1604
@@ -21,7 +22,7 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-syslog_client_centos7.test
-    hostname: 'test_syslog_client_centos7'
+    hostname: test_syslog_client_centos7
     depends_on:
       - test_syslog_server
     #environment:
@@ -32,14 +33,26 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-syslog_client_ubuntu1604.test
-    hostname: 'test_syslog_client_ubuntu1604'
-    depends_on:
-      - test_syslog_server
+    hostname: test_syslog_client_ubuntu1604
     #environment:
     #  DEBUG: 'true'
 
   # remote outputs to be tested, e.g. kafka
-  # TODO
+  test_zookeeper:
+    image: zookeeper
+    hostname: test_zookeeper
+
+  test_kafka:
+    image: wurstmeister/kafka
+    hostname: test_kafka
+    depends_on:
+      - test_zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: test_zookeeper:2181
+      KAFKA_ADVERTISED_HOST_NAME: test_kafka
+      KAFKA_CREATE_TOPICS: test_syslog:1:1
+
+  # TODO - test logstash
 
   # syslog server
   test_syslog_server:
@@ -47,10 +60,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    hostname: 'test_syslog_server'
+    hostname: test_syslog_server
+    depends_on:
+      - test_kafka
     environment:
-      rsyslog_omfile_enabled: 'true'
       rsyslog_global_ca_file: '/etc/pki/tls/certs/default_self_signed.cert.pem'
+      rsyslog_omfile_enabled: 'true'
+      rsyslog_omkafka_enabled: 'false'
+      rsyslog_omkafka_broker: test_kafka
     healthcheck:
       test: ["CMD", "/usr/local/bin/rsyslog_healthcheck.sh"]
       interval: 5s

@@ -1,0 +1,3 @@
+[template]
+src = "76-out_file_relp_secure_client_auth.conf.tmpl"
+dest = "/etc/rsyslog.d/output/76-out_file_relp_secure_client_auth.conf"

@@ -176,10 +176,15 @@ On docker hub:
 
 - 'rsyslog': <https://hub.docker.com/search/?isAutomated=0&isOfficial=0&page=1&pullCount=0&q=rsyslog&starCount=1>
 
-Well matched examples for our use-case
+Well matched examples for our use-case (specifically wanting to output to kafka)
 
 - <https://github.com/tcnksm-sample/omkafka>
 - <https://github.com/sergeevii123/joker.logs/blob/master/docker-rsyslog-kafka.yml>
+- <https://github.com/djenriquez/rsyslog-omkafka>
+
+Some of the above images are lightweight and expect a DIY config supplied by the user, e.g.:
+- Don't define expected data volumes for rsyslog queues
+- Don't have pre-defined inputs for various protocols like RELP and TLS options
 
 Other examples (but no github source)
 
@@ -189,7 +194,7 @@ Other examples (but no github source)
 - <http://www.simulmedia.com/blog/2016/02/19/centralized-docker-logging-with-rsyslog/>
 - <http://www.projectatomic.io/blog/2014/09/running-syslog-within-a-docker-container/>
 
-Almost suitable example for our use-case, but uses a lesser know/tested go syslog implimentation:
+Almost suitable example for our use-case, but uses a lesser know/tested go syslog implementation:
 
 - <https://hub.docker.com/r/elodina/syslog-kafka/>
 - <https://github.com/elodina/syslog-kafka>
@@ -220,4 +225,12 @@ Confd:
 - <http://www.mricho.com/confd-and-docker-separating-config-and-code-for-containers/>
 - <https://theagileadmin.com/2015/11/12/templating-config-files-in-docker-containers/>
 
-While rsyslog does have a `getenv` fuction build into it's config, it's usage seems limited.
+While rsyslog does have a `getenv` function built into it's config, it's usage seems limited.
+
+See [Re: set config values from env var](https://lists.gt.net/rsyslog/users/21128#21128)
+
+> no.
+>
+> there are ways to assign variables to be equal to environemnt variables with the set command, but those cannot be used for most config options.
+
+In any even, something like confd has more flexibly for deployments that might use distributed config management and orchestration tools like etcd, zookeeper, etc.

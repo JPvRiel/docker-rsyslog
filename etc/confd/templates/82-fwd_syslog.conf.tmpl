@@ -1,6 +1,10 @@
-# Syslog output
-#omfwd
+# Syslog output (if enabled, else blank)
+{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "true"}}
+
+{{if $rsyslog_omfwd_syslog_enabled}}
+# omfwd module is loaded by deafault / built-in?
 ruleset(name="forward_syslog")
 {
 
 }
+{{end}}

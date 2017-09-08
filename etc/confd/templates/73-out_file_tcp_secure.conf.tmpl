@@ -3,13 +3,13 @@
 # Note, if enabled in conjunciton with forwading to logstash/elasticsearch, then
 # we're doubling up logs and I/O load...
 
-template(name="TmplPerHostTcp5424AuthFile" type="string" string="/var/log/remote/tcp/rfc5424/%HOSTNAME%/security")
-template(name="TmplPerHostTcp5424AuditFile" type="string" string="/var/log/remote/tcp/rfc5424/%HOSTNAME%/audit")
-template(name="TmplPerHostTcp5424ConsoleFile" type="string" string="/var/log/remote/tcp/rfc5424/%HOSTNAME%/console")
-template(name="TmplPerHostTcp5424FirewallFile" type="string" string="/var/log/remote/tcp/rfc5424/%HOSTNAME%/firewall")
-template(name="TmplPerHostTcp5424MsgFile" type="string" string="/var/log/remote/tcp/rfc5424/%HOSTNAME%/messages")
+template(name="TmplPerHostTcpSec5424AuthFile" type="string" string="/var/log/remote/tcp_secure/rfc5424/%HOSTNAME%/security")
+template(name="TmplPerHostTcpSec5424AuditFile" type="string" string="/var/log/remote/tcp_secure/rfc5424/%HOSTNAME%/audit")
+template(name="TmplPerHostTcpSec5424ConsoleFile" type="string" string="/var/log/remote/tcp_secure/rfc5424/%HOSTNAME%/console")
+template(name="TmplPerHostTcpSec5424FirewallFile" type="string" string="/var/log/remote/tcp_secure/rfc5424/%HOSTNAME%/firewall")
+template(name="TmplPerHostTcpSec5424MsgFile" type="string" string="/var/log/remote/tcp_secure/rfc5424/%HOSTNAME%/messages")
 
-ruleset(name="out_file_tcp")
+ruleset(name="out_file_tcp_secure")
 {
   if ($syslogfacility-text == 'kern' and (
 	$msg startswith "iptables" or
@@ -19,8 +19,8 @@ ruleset(name="out_file_tcp")
   {  action(
        name="remote_file_auth"
        type="omfile"
-       template="TmplRFC5424Format"
-       dynaFile="TmplPerHostTcp5424FirewallFile"
+       template="{{ getenv "rsyslog_omfile_template" }}"
+       dynaFile="TmplPerHostTcpSec5424FirewallFile"
        dynaFileCacheSize="100"
        asyncWriting="on"
        flushOnTXEnd="off"
@@ -43,8 +43,8 @@ ruleset(name="out_file_tcp")
       action(
         name="remote_file_auth"
         type="omfile"
-	      template="TmplRFC5424Format"
-        dynaFile="TmplPerHostTcp5424AuthFile"
+	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostTcpSec5424AuthFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -63,8 +63,8 @@ ruleset(name="out_file_tcp")
       action(
         name="remote_file_audit"
         type="omfile"
-        template="TmplRFC5424Format"
-        dynaFile="TmplPerHostTcp5424AuditFile"
+	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostTcpSec5424AuditFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -84,8 +84,8 @@ ruleset(name="out_file_tcp")
       action(
         name="remote_file_console"
         type="omfile"
-	template="TmplRFC5424Format"
-        dynaFile="TmplPerHostTcp5424ConsoleFile"
+	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostTcpSec5424ConsoleFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -111,8 +111,8 @@ ruleset(name="out_file_tcp")
       action(
         name="remote_file_messages"
         type="omfile"
-	template="TmplRFC5424Format"
-        dynaFile="TmplPerHostTcp5424MsgFile"
+	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostTcpSec5424MsgFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"

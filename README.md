@@ -106,6 +106,35 @@ For more advanced custom configuration, template config via env vars would be to
 - `/etc/rsyslog.d/filter`
 - `/etc/rsyslog.d/output/extra`
 
+## Optional Output Modules
+
+Pre-defined support for some common forwarding use cases:
+- kafka (TODO)
+- syslog (TODO)
+- JSON (TODO)
+
+### Kafka Output
+
+### Extra Output Modules
+
+If a forwarding use case isn't covered as above, then
+1. Set `rsyslog_forward_extra_enabled=true`
+1. Use `/etc/rsyslog.d/output/extra` with your own config file which must specify `rsyslog_forward_extra` (See `50-ruleset.conf` that expects to call this ruleset).
+
+E.g. `/etc/rsyslog.d/output/extra/mongo.conf`
+
+```
+module(load="ommongodb")
+ruleset(name="forward_kafka")
+{
+  action(
+    server="mymonddb"
+    serverport=27017
+    ...
+  )
+}
+```
+
 ## Build
 
 A pre-requisite is to create your own self-signed cert as a built-in for default/test purposes. It is expected in the following places:
@@ -313,8 +342,14 @@ Done:
 Not yet done:
 
 - Kafka and syslog forwarding. Kafka output considerations incomplete.
-- Build test suites (try use python behave framework).
+- More test suites (only basics done thus far).
 - JSON output
+- Optimised config, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
+
+```
+$PreserveFQDN on
+$MaxMessageSize 64k
+```
 
 Maybe someday:
 - Filter/send rsyslog performance metrics to stdout (omstdout)

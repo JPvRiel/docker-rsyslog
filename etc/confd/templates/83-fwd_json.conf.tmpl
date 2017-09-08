@@ -1,0 +1,9 @@
+# JSON output (if enabled, else blank)
+{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true"}}
+
+{{if $rsyslog_omfwd_json_enabled}}
+ruleset(name="forward_json")
+{
+
+}
+{{end}}

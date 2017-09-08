@@ -58,8 +58,8 @@ COPY etc/confd /etc/confd
 
 # Copy rsyslog config files and create folders for template config
 COPY etc/rsyslog.conf /etc/rsyslog.conf
-COPY etc/rsyslog.d/input/* /etc/rsyslog.d/input/
-COPY etc/rsyslog.d/output/* /etc/rsyslog.d/output/
+COPY etc/rsyslog.d/input/ /etc/rsyslog.d/input/
+COPY etc/rsyslog.d/output/ /etc/rsyslog.d/output/
 # Directories intended as optional v0lume mounted config
 RUN mkdir -p \
   /etc/rsyslog.d/filter \
@@ -86,17 +86,24 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
 ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
   rsyslog_tls_permitted_peer='["*"]' \
   rsyslog_module_impstats_interval='300'
-# Metadata, filtering and outputs
-ENV rsyslog_metadata_enabled=false \
-  rsyslog_filtering_enabled=false \
+# filtering, templates and outputs
+# See 60-output_format.conf.tmpl
+ENV rsyslog_filtering_enabled=false \
+  rsyslog_support_metadata_formats=false \
   rsyslog_omfile_enabled=true \
+  rsyslog_omfile_template='TmplRFC5424Format' \
   rsyslog_omkafka_enabled=false \
-  rsyslog_omkafka_hosts='[]' \
+  rsyslog_omkafka_broker='' \
   rsyslog_omkafka_port=9092 \
-  rsyslog_omkafka_tls=false \
+  rsyslog_omkafka_confParam='' \
+  rsyslog_omkafka_topic='syslog' \
+  rsyslog_omkafka_dynatopic='off' \
+  rsyslog_omkafka_topicConfParam='' \
+  rsyslog_omkafka_template='TmplRFC5424Format' \
   rsyslog_omfwd_syslog_enabled=false \
   rsyslog_omfwd_syslog_host='' \
   rsyslog_omfwd_syslog_port=514 \
+  rsyslog_omfwd_syslog_template='TmplRFC5424Format' \
   rsyslog_omfwd_json_enabled=false \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5443 \
