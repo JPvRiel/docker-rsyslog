@@ -1,8 +1,8 @@
 FROM centos:7
 LABEL application="rsyslog" \
   maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>' \
-  version='0.0.9' \
-  release-date='2017-09-06'
+  version='0.0.10' \
+  release-date='2017-09-08'
 
 ENV container=docker
 
