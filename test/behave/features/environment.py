@@ -21,3 +21,5 @@ def before_scenario(context, scenario):
     if "skip" in scenario.effective_tags:
         scenario.skip("Scenario tagged with @skip")
         return
+    # create a default empty dict to track env vars we want in context
+    context.env = {}

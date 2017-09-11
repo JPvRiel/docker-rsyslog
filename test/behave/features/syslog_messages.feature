@@ -8,7 +8,6 @@ Feature: Accept syslog messages in various formats
   Background: Syslog service is available
     Given a server "test_syslog_server"
 
-  @wip
   Scenario Outline: Messages are received from syslog clients
     Given a log "<file>"
     When searching log lines for the pattern "<regex>"

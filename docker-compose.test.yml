@@ -6,15 +6,16 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-behave.test
+    env_file:
+      - ./test/test_syslog_server.env
     depends_on:
-      - test_kafka
       - test_syslog_server
       - test_syslog_client_centos7
       - test_syslog_client_ubuntu1604
     volumes:
       - ./test:/tmp/test
-    volumes_from:
-      - test_syslog_server:ro
+      - syslog_log:/var/log/remote:ro
+
 
   # syslog clients to be tested
   test_syslog_client_centos7:
@@ -61,15 +62,17 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: test_syslog_server
+    env_file:
+      - ./test/test_syslog_server.env
     depends_on:
       - test_kafka
-    environment:
-      rsyslog_global_ca_file: '/etc/pki/tls/certs/default_self_signed.cert.pem'
-      rsyslog_omfile_enabled: 'true'
-      rsyslog_omkafka_enabled: 'false'
-      rsyslog_omkafka_broker: test_kafka
     healthcheck:
       test: ["CMD", "/usr/local/bin/rsyslog_healthcheck.sh"]
       interval: 5s
       timeout: 5s
       retries: 3
+    volumes:
+      - syslog_log:/var/log/remote
+
+volumes:
+  syslog_log:

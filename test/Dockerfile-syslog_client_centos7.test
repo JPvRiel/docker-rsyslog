@@ -14,9 +14,6 @@ RUN [ "$DISABLE_YUM_MIRROR" == true ] && \
   sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf && \
   sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/CentOS-Base.repo
-RUN yum --setopt=timeout=120 -y update && \
-  yum -y install centos-release-scl
-# At this point, CentOS-SCLo-scl doesn't use a mirrorlist
 
 # Install default rsyslog packages and redhat-lsb-core
 RUN yum --setopt=timeout=120 -y update && \
