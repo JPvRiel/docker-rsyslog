@@ -1,10 +1,16 @@
 # Syslog output (if enabled, else blank)
-{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "true"}}
+{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "true" -}}
 
-{{if $rsyslog_omfwd_syslog_enabled}}
+{{if $rsyslog_omfwd_syslog_enabled -}}
 # omfwd module is loaded by deafault / built-in?
 ruleset(name="forward_syslog")
 {
-
+  action(
+    type="omfwd"
+    Target="{{ getenv "rsyslog_omfwd_syslog_host" }}"
+    Port="{{ getenv "rsyslog_omfwd_syslog_port" }}"
+    Protocol="{{ getenv "rsyslog_omfwd_syslog_protocol" }}"
+    template="{{ getenv "rsyslog_omfwd_syslog_template" }}"
+  )
 }
-{{end}}
+{{- end}}

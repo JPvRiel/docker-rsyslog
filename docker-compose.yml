@@ -8,9 +8,12 @@ services:
     volumes:
       - syslog_log:/var/log/remote
       - syslog_work:/var/lib/rsyslog
-      - syslog_tls:/etc/pki/tls/rsyslog
+      - syslog_tls:/etc/pki/rsyslog
 
 volumes:
   syslog_log:
+    name: syslog_log
   syslog_work:
+    name: syslog_work
   syslog_tls:
+    name: syslog_tls

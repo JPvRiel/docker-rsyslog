@@ -6,6 +6,7 @@ Feature: Foward syslog messages
 
   Background: Syslog service is available
     Given a server "test_syslog_server"
+      And an environment variable file "test_syslog_server.env"
 
   @skip
   Scenario: Messages are forwarded to another syslog server
@@ -15,14 +16,12 @@ Feature: Foward syslog messages
     When sending the message "Testing syslog forwarding"
     Then the remote syslog server should have received the message within "5" seconds
 
-  @wip
   Scenario: Messages are forwarded to kafka
     Given "rsyslog_omkafka_enabled" environment variable is "true"
       And "rsyslog_omkafka_broker" environment variable is set
-      And "rsyslog_omkafka_port" environment variable is set
       And "rsyslog_omkafka_topic" environment variable is set
     When sending the message "Testing kafka forwarding"
-    Then the kafka topic should have received the message within "5" seconds
+    Then the kafka topic should have the the message within "15" seconds
 
   @skip
   Scenario: Messages are forwarded to logstash

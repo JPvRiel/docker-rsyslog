@@ -37,6 +37,7 @@ RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog \
   rsyslog-gnutls \
+	adisconbuild-librdkafka1 \
   rsyslog-kafka \
   rsyslog-relp \
   lsof \
@@ -72,7 +73,7 @@ RUN mkdir -p \
 # Copy a default self-signed cert and key - this is INSECURE and for testing/build purposes only
 # - To help handle cases when the rsyslog tls volume doesn't have expected files present
 # - rsyslog.sh entrypoint script will symlink and use these defaults if not provided in a volume
-# - For production, avoid insecure default by providing an /etc/pki/tls/rsyslog volume provisioned with your own keys and certficates
+# - For production, avoid insecure default by providing an /etc/pki/rsyslog volume provisioned with your own keys and certficates
 COPY etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/tls/certs
 COPY etc/pki/tls/private/default_self_signed.key.pem /etc/pki/tls/private
 
@@ -94,7 +95,6 @@ ENV rsyslog_filtering_enabled=false \
   rsyslog_omfile_template='TmplRFC5424Format' \
   rsyslog_omkafka_enabled=false \
   rsyslog_omkafka_broker='' \
-  rsyslog_omkafka_port=9092 \
   rsyslog_omkafka_confParam='' \
   rsyslog_omkafka_topic='syslog' \
   rsyslog_omkafka_dynatopic='off' \
@@ -103,10 +103,11 @@ ENV rsyslog_filtering_enabled=false \
   rsyslog_omfwd_syslog_enabled=false \
   rsyslog_omfwd_syslog_host='' \
   rsyslog_omfwd_syslog_port=514 \
+  rsyslog_omfwd_syslog_protocol='tcp' \
   rsyslog_omfwd_syslog_template='TmplRFC5424Format' \
   rsyslog_omfwd_json_enabled=false \
   rsyslog_omfwd_json_host='' \
-  rsyslog_omfwd_json_port=5443 \
+  rsyslog_omfwd_json_port=5000 \
   rsyslog_forward_extra_enabled=false
 
 #TODO: check how not to lose/include orginal host if events are relayed

@@ -3,11 +3,11 @@
 # Note, if enabled in conjunciton with forwading to logstash/elasticsearch, then
 # we're doubling up logs and I/O load...
 
-template(name="TmplPerHostRelpSec5424AuthFile" type="string" string="/var/log/remote/relp_secure/rfc5424/%HOSTNAME%/security")
-template(name="TmplPerHostRelpSec5424AuditFile" type="string" string="/var/log/remote/relp_secure/rfc5424/%HOSTNAME%/audit")
-template(name="TmplPerHostRelpSec5424ConsoleFile" type="string" string="/var/log/remote/relp_secure/rfc5424/%HOSTNAME%/console")
-template(name="TmplPerHostRelpSec5424FirewallFile" type="string" string="/var/log/remote/relp_secure/rfc5424/%HOSTNAME%/firewall")
-template(name="TmplPerHostRelpSec5424MsgFile" type="string" string="/var/log/remote/relp_secure/rfc5424/%HOSTNAME%/messages")
+template(name="TmplPerHostRelpSecAuthFile" type="string" string="/var/log/remote/relp_secure_client/%HOSTNAME%/security")
+template(name="TmplPerHostRelpSecAuditFile" type="string" string="/var/log/remote/relp_secure_client/%HOSTNAME%/audit")
+template(name="TmplPerHostRelpSecConsoleFile" type="string" string="/var/log/remote/relp_secure_client/%HOSTNAME%/console")
+template(name="TmplPerHostRelpSecFirewallFile" type="string" string="/var/log/remote/relp_secure_client/%HOSTNAME%/firewall")
+template(name="TmplPerHostRelpSecMsgFile" type="string" string="/var/log/remote/relp_secure_client/%HOSTNAME%/messages")
 
 ruleset(name="out_file_relp_secure_client_auth")
 {
@@ -20,7 +20,7 @@ ruleset(name="out_file_relp_secure_client_auth")
        name="remote_file_auth"
        type="omfile"
        template="{{ getenv "rsyslog_omfile_template" }}"
-       dynaFile="TmplPerHostRelpSec5424FirewallFile"
+       dynaFile="TmplPerHostRelpSecFirewallFile"
        dynaFileCacheSize="100"
        asyncWriting="on"
        flushOnTXEnd="off"
@@ -43,8 +43,8 @@ ruleset(name="out_file_relp_secure_client_auth")
       action(
         name="remote_file_auth"
         type="omfile"
-	template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostRelpSec5424AuthFile"
+	      template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostRelpSecAuthFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -63,8 +63,8 @@ ruleset(name="out_file_relp_secure_client_auth")
       action(
         name="remote_file_audit"
         type="omfile"
-	template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostRelpSec5424AuditFile"
+      	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostRelpSecAuditFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -84,8 +84,8 @@ ruleset(name="out_file_relp_secure_client_auth")
       action(
         name="remote_file_console"
         type="omfile"
-	template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostRelpSec5424ConsoleFile"
+      	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostRelpSecConsoleFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -103,16 +103,15 @@ ruleset(name="out_file_relp_secure_client_auth")
     if not
     ( $syslogfacility-text == 'auth' or
       $syslogfacility-text == 'authpriv' or
-      $syslogfacility == '13' or
-      $syslogfacility == '14'
+      $syslogfacility == '13'
     )
     then
     {
       action(
         name="remote_file_messages"
         type="omfile"
-	template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostRelpSec5424MsgFile"
+      	template="{{ getenv "rsyslog_omfile_template" }}"
+        dynaFile="TmplPerHostRelpSecMsgFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"

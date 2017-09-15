@@ -1,9 +1,15 @@
 # JSON output (if enabled, else blank)
-{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true"}}
+{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true" -}}
 
-{{if $rsyslog_omfwd_json_enabled}}
+{{if $rsyslog_omfwd_json_enabled -}}
 ruleset(name="forward_json")
 {
-
+  action(
+    type="omfwd"
+    Target="{{ getenv "rsyslog_omfwd_json_host" }}"
+    Port="{{ getenv "rsyslog_omfwd_json_port" }}"
+    Protocol="tcp"
+    template="json_lines"
+  )
 }
-{{end}}
+{{- end}}

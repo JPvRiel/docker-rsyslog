@@ -14,9 +14,13 @@ An RSyslog container able to:
 
 The container also supports advanced debug scenarios.
 
-# Usage
+# Version
 
-## Runtime
+The convention is `<rsyslogd version>-<docker image release build number>`.
+
+E.g. `8.29.0-3` means the output of `rsyslogd -v` shows `rsyslogd 8.16.0`, and it's the 3rd image released for that upstream version.
+
+# Usage
 
 ## TL;DR
 
@@ -42,7 +46,7 @@ docker volume create syslog_work
 docker volume create syslog_tls
 ```
 
-Provide 3 files for TLS setup placed in the `syslog_tls` and mounted as a volume at `/etc/pki/tls/rsyslog`:
+Provide 3 files for TLS setup placed in the `syslog_tls` and mounted as a volume at `/etc/pki/rsyslog`:
 
 - a `key.pem`,
 - a signed certificate, `cert.pem`, and
@@ -55,7 +59,7 @@ Run docker mounting volumes
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/tls/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
  --name syslog jpvriel/rsyslog:latest
 ```
 
@@ -63,7 +67,16 @@ docker container run --rm -it \
 
 The usual `docker-compose up`. Note, assumes or creates named volumes (`syslog_log`, `syslog_work`, `syslog_tls`).
 
-## Gracefully stopping the container (and rsyslog process)
+Note, the volume name is forced (doesn't use the directory prefix). E.g. if run from a directory `docker-rsyslog`, then:
+
+```
+$ docker container inspect -f "{{range .Mounts}}{{.Destination}} = {{.Source}}{{println}}{{end}}" dockerrsyslog_syslog_1
+/var/log/remote = /var/lib/docker/volumes/syslog_log/_data
+/var/lib/rsyslog = /var/lib/docker/volumes/syslog_work/_data
+/etc/pki/rsyslog = /var/lib/docker/volumes/syslog_tls/_data
+```
+
+## Checking if the container (and rsyslog process) stopped gracefully
 
 As per `man rsyslogd`, the daemon process responds to various signals. The `rsyslog.sh` entry-point script has handlers to pass these along provided the container is stopped as follows:
 
@@ -79,25 +92,52 @@ Stopping the container should allow the entry point script to execute `kill -SIG
 
 If you see `ERROR: Ungraceful exit...`, then most likely, the rsyslogd process died/aborted somehow.
 
-## Managing Rsyslog Configuration Options Dynamically
+## Environment variables that manage and wrap rsyslog configuration
 
-See the `ENV` options in the Dockerfile defined with `rsyslog_*` which need to be set according to your own use case.
+Reading the `ENV rsyslog_*` optons in the `Dockerfile` should make it obvious about what rsyslog configuration options are supported via environment variables.
 
-Note, `rsyslog` is a traditional UNIX-like application not written with micro-services and container architecture in mind. It has many complex configuration options and syntax not easily managed as environment variables or command switches.
+`rsyslog` is a traditional UNIX-like application not written with micro-services and container architecture in mind. It has many complex configuration options and syntax not easily managed as environment variables or command switches. Only a few common configuration scenarios are catered for as environment variables. See 'Optional config file volumes' to handle more complex cases.
+
+_NB!_: Watch out for rsyslog configuration with arrays and docker's `env_file` handling
+
+If the array is quoted as an environment variable, e.g. `a='["o1","o2"]'`, the docker passes along the environment variable with the literal quotes included (i.e. `'["o1","o2"]'` and not `["o1","o2"]`). The rsyslog configuration then fails to interpret the value as an array.
+
+- rsyslog rainerscript has array objects, e.g, `["o1", "o2"]`, where `[` signifies the start of an array object.
+- For rsyslog, `'["o1", "o2"]'` will be read by rainerscript as a string instead of an array.
+- Using an `.env` file with square just brackets and unquoted seems to pass the array into rsyslog rainerscript without mangling it (via confd and golang text templates used in the background).
+- For bash, `[` are `]` are special pattern character and `export a=["o1","o2"]; echo $a` results in `[o1,o2]` as output. Python also seems to end up interpreting the environment variables in this way.
+- Docker / docker-compose has the nasty unexpected behaviour that quotes in the supplied `.env` file are not interpolated, but instead literally included! This breaks rsyslog config because `env_var='value'` in the `.env` file gets injected as `setting="'value'"` into rsyslog config instead of the expected `setting="value"`.
+  - [Inconsistent env var parsing from docker-compose.yml](https://github.com/docker/compose/issues/2854)
+  - [strange interpretation/parsing of .env file](https://github.com/docker/compose/issues/3702)
 
 ## Volumes and files the container requires
+
+The container will use the following for rsyslog's "working" directory and is needed to recreate a container without losing data from previous runs:
+
+### Volume for rsyslog TLS X509 certificate and private key
 
 The container expects the following in order to use TLS/SSL:
 
 - `/etc/pki/rsyslog/cert.pem`
 - `/etc/pki/rsyslog/key.pem`
 
-If not provided with valid files in those volumes, a default signed cert is used, but this will obviously work poorly for clients validating the server cert.
+If not provided with valid files in those volumes, a default signed cert is used, but this will obviously work poorly for clients validating the server cert. It's only for testing.
 
-The container will use the following for RSyslog to operate gracefully (recreate a container without losing data)
 - `/var/lib/rsyslog`
 
-If enabling and using file output, a named volume is recommended for `/var/log/remote`. E.g, on my docker setup, the files get written out the hosts docker volume storage like this `/var/lib/docker/volumes/syslog_log/_data/tcp_secure/rfc5424/<hostname>`. Sub folders help distinguish and split the syslog collection methods (UDP vs TCP vs secure or not, etc).
+### Volume for rsyslog output files
+
+If enabling and using file output, a named volume is recommended for `/var/log/remote`. E.g, on my docker setup, the files get written out the hosts docker volume storage at `/var/lib/docker/volumes/syslog_log/_data/<transport>/<hostname>` where sub-directories help distinguish and split the syslog collection methods (UDP vs TCP vs secure or not, etc) and hosts. `<transport>` can be `udp`, `tcp`, `tcp_secure`, `relp` and `relp_secure`. The files within each directory are split further into:
+
+| Filename | Use | Filter |
+| - | - | - |
+| messages | | Everything not sent to facilities auth, authpriv and 13 |
+| security | Operating system security messages | auth and authpriv facilities |
+| audit | Linux kernel auditing? | facility 13 |
+| firewall | Firewall execution actions | From Kernel facility and starting with keyworlds that common firewall messages use |
+| console | Alert messages usually broadcast on the console | facility 14 |
+
+The default output template applied is RFC4524, but it can be modified via the `rsyslog_omfile_template` env var to point to another output format template.
 
 ### Optional config file volumes
 
@@ -135,44 +175,44 @@ ruleset(name="forward_kafka")
 }
 ```
 
-## Build
+# Build
 
-A pre-requisite is to create your own self-signed cert as a built-in for default/test purposes. It is expected in the following places:
-
-- key: `etc/pki/tls/private/default_self_signed.key.pem`
-- cert: `etc/pki/tls/certs/default_self_signed.cert.pem`
-
-As a convenience, run the following form the base repo folder (in bash):
-
-```bash
-./util/self_signed_cert.sh test_syslog_server
-```
-
-To embed an internal/extra org CA, add more files to `etc/pki/ca-trust/source/anchors` and rebuild
+Match the `rsyslog_version` to the version of rsyslogd the container is based on.
 
 Build command example
 
 ```bash
-docker build -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
+docker build -t jpvriel/rsyslog:$rsyslog_version -t jpvriel/rsyslog:latest .
 ```
 
 Building from behind a caching proxy (assuming proxy env vars are appropriately set) when you don't want yum mirror plug-ins to invalidate your proxy cache:
 
 ```bash
-sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:0.0.8 -t jpvriel/rsyslog:latest .
+sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:$rsyslog_version -t jpvriel/rsyslog:latest .
 ```
 
-### Embed own CA certs for TLS
+## Pre-bundled X509 test certificate and private key
+
+Note, a pre-bundled self-signed cert is used for test purposes. It is expected in the following places:
+
+- key: `etc/pki/tls/private/default_self_signed.key.pem`
+- cert: `etc/pki/tls/certs/default_self_signed.cert.pem`
+
+The default certs are generated via `./util/self_signed_cert.sh test_syslog_server` to work for the `sut` test suite.
+
+To embed an internal/extra org CA, add more files to `etc/pki/ca-trust/source/anchors` and rebuild.
+
+## Embed own CA certs for TLS
 
 Note, there is a runtime `rsyslog_global_ca_file` env var to set the CA for rsyslog.
 
 However, should you need to embed a CA for other reasons (e.g. building via a corporate TLS intercepting proxy), you embed your own CA at build time by placing your own CA certificates in `etc/pki/ca-trust/source/anchors`.
 
-### Build test suite
+## SUT test suite
 
-The test suite was written with python behave.
+The "system under test" suite was written with python behave.
 
-To build
+To build just the `sut` service:
 
 ```
 docker-compose -f docker-compose.test.yml build sut
@@ -180,28 +220,48 @@ docker-compose -f docker-compose.test.yml build sut
 
 Use `--build-arg http_proxy=$http_proxy` etc if you have to do this via a corporate proxy.
 
-To run the test suite
+Run the full test suite to regression test:
 
 ```
-$ docker-compose -f docker-compose.test.yml run sut
+docker-compose -f docker-compose.test.yml run sut
 ```
 
-To run just `@wip` pieces
+If you're extending, run just `@wip` pieces to focus on new features:
 
 ```
-$ docker-compose -f docker-compose.test.yml run sut behave -w behave/features
+docker-compose -f docker-compose.test.yml run sut behave -w behave/features
 ```
 
-To see interplay between the output of the test containers and the syslog server container
+To see interplay between other test container dependencies and the syslog server container:
+
+```
+docker-compose -f docker-compose.test.yml up
 ```
 
-...
-$ docker-compose -f docker-compose.test.yml up
-...
-$ docker-compose -f docker-compose.test.yml down
+cleanup
+
+```
+docker-compose -f docker-compose.test.yml down
+docker-compose -f docker-compose.test.yml rm
 ```
 
-## Debug and validation steps
+### Building test dependencies
+
+Assuming a corporate proxy and wanting to avoid yum mirror list breaking upstream proxy caching, centos test client:
+
+```
+docker-compose -f docker-compose.test.yml build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy test_syslog_client_centos7
+```
+
+Ubuntu test client:
+
+```
+docker-compose -f docker-compose.test.yml build --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy test_syslog_client_ubuntu1604
+```
+
+There are also standard logstash, kafka and zookeeper images needed for testing.
+
+# Debug and additional validation steps
 
 ### Checking for file output
 
@@ -213,7 +273,7 @@ Assuming a suitable volume is created, e.g. `docker volume create syslog_log`, r
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/tls/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
  -e rsyslog_omfile_enabled=true \
  --name syslog jpvriel/rsyslog:latest
 ```
@@ -237,7 +297,6 @@ Check the output file
 $ sudo tail /var/lib/docker/volumes/syslog_log/_data/udp/5424/$(hostname)/messages | grep --color -E 'Test UDP message|$'
 ```
 
-
 ### Advanced debugging
 
 One may want to debug the entry point script `rsyslog.sh`, `rsyslogd`, or both.
@@ -250,7 +309,7 @@ Set debug flag for rsyslogd (does not affect entrypoint script debugging):
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/tls/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
  --name syslog jpvriel/rsyslog:latest rsyslogd -d
 ```
 
@@ -260,7 +319,7 @@ Alternatively, to run with rsyslogd debug enabled but silent until signaled (via
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/tls/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
  --name syslog jpvriel/rsyslog:latest
 ```
 
@@ -270,7 +329,7 @@ Set env to `DEBUG=true` if working on problems with the `rsyslog.sh` entrypoint 
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/tls/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
  -e DEBUG=true \
  --name syslog jpvriel/rsyslog:latest
 ```

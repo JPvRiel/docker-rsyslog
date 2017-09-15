@@ -6,21 +6,21 @@
 # - RSYSLOG_TraditionalForwardFormat
 # - RSYSLOG_SyslogProtocol23Format
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "true"}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "true" -}}
 
 # Standard example of RFC5424
 template(name="TmplRFC5424Format" type="string" string="<%PRI%>1 %TIMESTAMP:::date-rfc3339% %HOSTNAME% %APP-NAME% %PROCID% %MSGID% %STRUCTURED-DATA% %msg%\n")
 # Note, RSYSLOG_SyslogProtocol23Format is the built-in reserved template name for a draft of RFC5424, so the above is more or less identical to that
 
-{{if $rsyslog_support_metadata_formats}}
+{{if $rsyslog_support_metadata_formats -}}
 # RFC5424 with own custom meta-data added
 template(name="TmplRFC5424FormatMeta" type="string" string="<%PRI%>1 %TIMESTAMP:::date-rfc3339% %HOSTNAME% %APP-NAME% %PROCID% %MSGID% [received@16543 message_received_time=\"%timegenerated:::date-rfc3339%\" src=\"%fromhost%\" src_ip=\"%fromhost-ip%\" dest=\"%$myhostname%\" app=\"rsyslog_%inputname%\" ssl=\"%$!is_tls%\" authentication_client=\"%$!is_authenticated_client%\"] %STRUCTURED-DATA% %msg%\n")
-{{end}}
+{{- end}}
 
 # JSON: TODO
 #$template ls_json,"{%timestamp:::date-rfc3339,jsonf:@timestamp%,%source:::jsonf:@source_host%,\"@source\":\"syslog://%fromhost-ip:::json%\",\"@message\":\"%timestamp% %app-name%:%msg:::json%\",\"@fields\":{%syslogfacility-text:::jsonf:facility%,%syslogseverity-text:::jsonf:severity%,%app-name:::jsonf:program%,%procid:::jsonf:processid%}}"
 
-{{if $rsyslog_support_metadata_formats}}
+{{if $rsyslog_support_metadata_formats -}}
 # JSON with metadata: TODO
 
-{{end}}
+{{- end}}

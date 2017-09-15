@@ -1,77 +1,101 @@
 # Rules and actions to apply when a specific kind of input is received
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "true"}}
-{{$rsyslog_filtering_enabled := getenv "rsyslog_filtering_enabled" | toLower | eq "true"}}
-{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "true"}}
-{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "true"}}
-{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "true"}}
-{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true"}}
-{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "true"}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "true" -}}
+{{$rsyslog_filtering_enabled := getenv "rsyslog_filtering_enabled" | toLower | eq "true" -}}
+{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "true" -}}
+{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "true" -}}
+{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "true" -}}
+{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true" -}}
+{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "true" -}}
 
 ruleset(name="remote_udp")
 {
-  {{if $rsyslog_support_metadata_formats}}
+  {{if $rsyslog_support_metadata_formats -}}
   set $!is_tls = "false";
   set $!is_authenticated_client = "false";
-  {{end}}
-  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
-  {{if $rsyslog_omfile_enabled}}call out_file_udp{{end}}
+  {{- end}}
+  {{if $rsyslog_filtering_enabled -}}
+  call input_filter
+  {{- end}}
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file_udp
+  {{- end}}
   call forward
 }
 
 ruleset(name="remote_tcp")
 {
-  {{if $rsyslog_support_metadata_formats}}
+  {{if $rsyslog_support_metadata_formats -}}
   set $!is_tls = "false";
   set $!is_authenticated_client = "false";
-  {{end}}
-  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
-  {{if $rsyslog_omfile_enabled}}call out_file_tcp{{end}}
+  {{- end}}
+  {{if $rsyslog_filtering_enabled -}}
+  call input_filter
+  {{- end}}
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file_tcp
+  {{- end}}
   call forward
 }
 
 ruleset(name="remote_tcp_secure")
 {
-  {{if $rsyslog_support_metadata_formats}}
+  {{if $rsyslog_support_metadata_formats -}}
   set $!is_tls = "true";
   set $!is_authenticated_client = "false";
-  {{end}}
-  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
-  {{if $rsyslog_omfile_enabled}}call out_file_tcp_secure{{end}}
+  {{- end}}
+  {{if $rsyslog_filtering_enabled -}}
+  call input_filter
+  {{- end}}
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file_tcp_secure
+  {{- end}}
   call forward
 }
 
 ruleset(name="remote_relp")
 {
-  {{if $rsyslog_support_metadata_formats}}
+  {{if $rsyslog_support_metadata_formats -}}
   set $!is_tls = "false";
   set $!is_authenticated_client = "false";
-  {{end}}
-  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
-  {{if $rsyslog_omfile_enabled}}call out_file_relp{{end}}
+  {{- end}}
+  {{if $rsyslog_filtering_enabled -}}
+  call input_filter
+  {{- end}}
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file_relp
+  {{- end}}
   call forward
 }
 
 # NB: rsyslog limitation seems to block RELP TLS without client authentication
 ruleset(name="remote_relp_secure")
 {
-  {{if $rsyslog_support_metadata_formats}}
+  {{if $rsyslog_support_metadata_formats -}}
   set $!is_tls = "true";
   set $!is_authenticated_client = "false";
-  {{end}}
-  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
-  {{if $rsyslog_omfile_enabled}}call out_file_relp_secure{{end}}
+  {{- end}}
+  {{if $rsyslog_filtering_enabled -}}
+  call input_filter
+  {{- end}}
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file_relp_secure
+  {{- end}}
   call forward
 }
 
 ruleset(name="remote_relp_secure_client_auth")
 {
-  {{if $rsyslog_support_metadata_formats}}
+  {{if $rsyslog_support_metadata_formats -}}
   set $!is_tls = "true";
   set $!is_authenticated_client = "true";
-  {{end}}
-  {{if $rsyslog_filtering_enabled}}call input_filter{{end}}
-  {{if $rsyslog_omfile_enabled}}call out_file_relp_secure_client_auth{{end}}
+  {{- end}}
+  {{if $rsyslog_filtering_enabled -}}
+  call input_filter
+  {{- end}}
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file_relp_secure_client_auth
+  {{- end}}
   call forward
 }
 
@@ -82,10 +106,18 @@ ruleset(name="remote_relp_secure_client_auth")
 ruleset(name="forward")
 {
   # Standard outputs (templated)
-  {{if $rsyslog_omkafka_enabled}}call forward_kafka{{end}}
-  {{if $rsyslog_omfwd_syslog_enabled}}call forward_syslog{{end}}
-  {{if $rsyslog_omfwd_json_enabled}}call forward_json{{end}}
+  {{if $rsyslog_omkafka_enabled -}}
+  call forward_kafka
+  {{- end}}
+  {{if $rsyslog_omfwd_syslog_enabled -}}
+  call forward_syslog
+  {{- end}}
+  {{if $rsyslog_omfwd_json_enabled -}}
+  call forward_json
+  {{- end}}
+  {{if $rsyslog_forward_extra -}}
   # Optional extra output config inlcude
   # Add as volume via /etc/rsyslog.d/output/extra
-  {{if $rsyslog_forward_extra}}call forward_extra{{end}}
+  call forward_extra
+  {{- end}}
 }

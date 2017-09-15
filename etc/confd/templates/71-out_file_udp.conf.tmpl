@@ -3,11 +3,11 @@
 # Note, if enabled in conjunciton with forwading to logstash/elasticsearch, then
 # we're doubling up logs and I/O load...
 
-template(name="TmplPerHostUdp5424AuthFile" type="string" string="/var/log/remote/udp/5424/%HOSTNAME%/security")
-template(name="TmplPerHostUdp5424AuditFile" type="string" string="/var/log/remote/udp/5424/%HOSTNAME%/audit")
-template(name="TmplPerHostUdp5424ConsoleFile" type="string" string="/var/log/remote/udp/5424/%HOSTNAME%/console")
-template(name="TmplPerHostUdp5424FirewallFile" type="string" string="/var/log/remote/udp/5424/%HOSTNAME%/firewall")
-template(name="TmplPerHostUdp5424MsgFile" type="string" string="/var/log/remote/udp/5424/%HOSTNAME%/messages")
+template(name="TmplPerHostUdpAuthFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/security")
+template(name="TmplPerHostUdpAuditFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/audit")
+template(name="TmplPerHostUdpConsoleFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/console")
+template(name="TmplPerHostUdpFirewallFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/firewall")
+template(name="TmplPerHostUdpMsgFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/messages")
 
 ruleset(name="out_file_udp")
 {
@@ -20,7 +20,7 @@ ruleset(name="out_file_udp")
        name="remote_file_auth"
        type="omfile"
        template="{{ getenv "rsyslog_omfile_template" }}"
-       dynaFile="TmplPerHostUdp5424FirewallFile"
+       dynaFile="TmplPerHostUdpFirewallFile"
        dynaFileCacheSize="100"
        asyncWriting="on"
        flushOnTXEnd="off"
@@ -44,7 +44,7 @@ ruleset(name="out_file_udp")
         name="remote_file_auth"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdp5424AuthFile"
+        dynaFile="TmplPerHostUdpAuthFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -64,7 +64,7 @@ ruleset(name="out_file_udp")
         name="remote_file_audit"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdp5424AuditFile"
+        dynaFile="TmplPerHostUdpAuditFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -85,7 +85,7 @@ ruleset(name="out_file_udp")
         name="remote_file_console"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdp5424ConsoleFile"
+        dynaFile="TmplPerHostUdpConsoleFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -103,8 +103,7 @@ ruleset(name="out_file_udp")
     if not
     ( $syslogfacility-text == 'auth' or
       $syslogfacility-text == 'authpriv' or
-      $syslogfacility == '13' or
-      $syslogfacility == '14'
+      $syslogfacility == '13'
     )
     then
     {
@@ -112,7 +111,7 @@ ruleset(name="out_file_udp")
         name="remote_file_messages"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdp5424MsgFile"
+        dynaFile="TmplPerHostUdpMsgFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"

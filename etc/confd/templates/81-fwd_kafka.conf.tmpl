@@ -1,26 +1,26 @@
 # Kafka output (if enabled, else blank)
-{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "true"}}
+{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "true" -}}
 
-{{if $rsyslog_omkafka_enabled}}
+{{if $rsyslog_omkafka_enabled -}}
 module(load="omkafka")
 ruleset(name="forward_kafka")
 {
   action(
     type="omkafka"
     broker={{ getenv "rsyslog_omkafka_broker" }}
-    {{- if getenv "rsyslog_omkafka_confParam" | ne "" -}}
+    {{if getenv "rsyslog_omkafka_confParam" | ne "" -}}
     confParam={{ getenv "rsyslog_omkafka_confParam" }}
-    {{- end -}}
+    {{- end}}
     topic="{{ getenv "rsyslog_omkafka_topic" }}"
     dynatopic="{{ getenv "rsyslog_omkafka_dynatopic" }}"
     partitions.auto="on"
-    {{- if getenv "topicConfParam" | ne "" -}}
+    {{if getenv "topicConfParam" | ne "" -}}
     topicConfParam={{ getenv "rsyslog_omkafka_topicConfParam" }}
-    {{- end -}}
+    {{- end}}
     resubmitOnFailure="on"
     keepFailedMessages="on"
     failedMsgFile="/var/lib/rsyslog/kafka_failed.msg"
     template="{{ getenv "rsyslog_omkafka_template" }}"
   )
 }
-{{end}}
+{{- end}}

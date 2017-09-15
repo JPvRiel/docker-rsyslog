@@ -5,7 +5,9 @@ FROM python:3
 LABEL application="behave_test"
 RUN pip install behave && \
     pip install requests && \
-    pip install pyhamcrest
+    pip install pyhamcrest && \
+    pip install rfc5424-logging-handler && \
+    pip install pykafka
 
 VOLUME /tmp/test
 WORKDIR /tmp/test
