@@ -13,8 +13,7 @@
 # - Avoid adding in a pre-pending space in the message field
 parser(name="custom.rfc3164" type="pmrfc3164" force.tagEndingByColon="on" remove.msgFirstSpace="on")
 
-ruleset(name="remote_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
-{
+ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "false";
   set $!authenticated_client = "false";
@@ -22,14 +21,10 @@ ruleset(name="remote_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
   {{- end}}
-  {{if $rsyslog_omfile_enabled -}}
-  call out_file_udp
-  {{- end}}
-  call forward
+  call output
 }
 
-ruleset(name="remote_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
-{
+ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "false";
   set $!authenticated_client = "false";
@@ -37,14 +32,10 @@ ruleset(name="remote_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
   {{- end}}
-  {{if $rsyslog_omfile_enabled -}}
-  call out_file_tcp
-  {{- end}}
-  call forward
+  call output
 }
 
-ruleset(name="remote_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"])
-{
+ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "true";
   set $!authenticated_client = "false";
@@ -52,14 +43,10 @@ ruleset(name="remote_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"])
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
   {{- end}}
-  {{if $rsyslog_omfile_enabled -}}
-  call out_file_tcp_secure
-  {{- end}}
-  call forward
+  call output
 }
 
-ruleset(name="remote_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
-{
+ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "false";
   set $!authenticated_client = "false";
@@ -67,15 +54,11 @@ ruleset(name="remote_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
   {{- end}}
-  {{if $rsyslog_omfile_enabled -}}
-  call out_file_relp
-  {{- end}}
-  call forward
+  call output
 }
 
 # NB: rsyslog limitation seems to block RELP TLS without client authentication
-ruleset(name="remote_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"])
-{
+ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "true";
   set $!authenticated_client = "false";
@@ -83,14 +66,10 @@ ruleset(name="remote_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"])
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
   {{- end}}
-  {{if $rsyslog_omfile_enabled -}}
-  call out_file_relp_secure
-  {{- end}}
-  call forward
+  call output
 }
 
-ruleset(name="remote_relp_secure_client_auth" parser=["rsyslog.rfc5424", "custom.rfc3164"])
-{
+ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "true";
   set $!authenticated_client = "true";
@@ -98,31 +77,47 @@ ruleset(name="remote_relp_secure_client_auth" parser=["rsyslog.rfc5424", "custom
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
   {{- end}}
-  {{if $rsyslog_omfile_enabled -}}
-  call out_file_relp_secure_client_auth
-  {{- end}}
-  call forward
+  call output
 }
 
-# Input filter rules are placed in filter/*.conf
+# Input filter rules are placed in filter/*.conf and should be conditions that drop (stop) messages from being processed futher
 
-# Rules to forward and output messages placed in output/*.conf
+# Rules to output and forward / relay messages placed in output/*.conf and called below
 
-ruleset(name="forward")
-{
-  # Standard outputs (templated)
+ruleset(name="output") {
+
+  {{if $rsyslog_support_metadata_formats -}}
+  # append more meta-data
+  if $protocol-version == "1" then {
+    set $!format = "RFC5424";
+  } else {
+    # assume protocol-version == 0
+    if $rawmsg-after-pri startswith $hostname then {
+      # there is no syslog header starting with a timestamp
+      set $!format = "RFC3164_malformed";
+    } else {
+      set $!format = "RFC3164";
+    }
+  }
+  {{- end}}
+
+  # Standard outputs "pre-bundled
+  {{if $rsyslog_omfile_enabled -}}
+  call out_file
+  {{- end}}
   {{if $rsyslog_omkafka_enabled -}}
-  call forward_kafka
+  call fwd_kafka
   {{- end}}
   {{if $rsyslog_omfwd_syslog_enabled -}}
-  call forward_syslog
+  call fwd_syslog
   {{- end}}
   {{if $rsyslog_omfwd_json_enabled -}}
-  call forward_json
+  call fwd_json
   {{- end}}
   {{if $rsyslog_forward_extra -}}
   # Optional extra output config inlcude
   # Add as volume via /etc/rsyslog.d/output/extra
-  call forward_extra
+  call output_extra
   {{- end}}
+
 }

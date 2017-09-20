@@ -3,7 +3,7 @@
 
 {{if $rsyslog_omkafka_enabled -}}
 module(load="omkafka")
-ruleset(name="forward_kafka")
+ruleset(name="fwd_kafka")
 {
   action(
     type="omkafka"

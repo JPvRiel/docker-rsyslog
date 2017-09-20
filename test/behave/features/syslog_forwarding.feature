@@ -14,7 +14,7 @@ Feature: Foward syslog messages
       And "rsyslog_omkafka_broker" environment variable is set
       And "rsyslog_omkafka_topic" environment variable is set
     When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format
-    Then the kafka topic should have the the message within "5" seconds
+    Then the kafka topic should have the the message within "15" seconds
 
   Scenario: Messages are forwarded to another server in syslog format
     Given "rsyslog_omfwd_syslog_enabled" environment variable is "true"

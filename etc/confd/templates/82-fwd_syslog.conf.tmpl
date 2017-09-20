@@ -3,7 +3,7 @@
 
 {{if $rsyslog_omfwd_syslog_enabled -}}
 # omfwd module is loaded by deafault / built-in?
-ruleset(name="forward_syslog")
+ruleset(name="fwd_syslog")
 {
   action(
     type="omfwd"

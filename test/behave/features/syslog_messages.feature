@@ -17,9 +17,9 @@ Feature: Accept syslog messages in various formats
     Then the pattern should be found
 
     Examples:
-      | file                                                               | regex                                   |
-      | /var/log/remote/relp/test_syslog_client_centos7/messages           | CentOS Linux 7.* was running rsyslogd.* |
-      | /var/log/remote/relp_secure/test_syslog_client_ubuntu1604/messages | Ubuntu 16\.04.* was running rsyslogd.*  |
+      | file                                          | regex                                   |
+      | /var/log/remote/test_syslog_client_centos7    | CentOS Linux 7.* was running rsyslogd.* |
+      | /var/log/remote/test_syslog_client_ubuntu1604 | Ubuntu 16\.04.* was running rsyslogd.*  |
 
   # TODO
   # - Positive testing well formed message samples

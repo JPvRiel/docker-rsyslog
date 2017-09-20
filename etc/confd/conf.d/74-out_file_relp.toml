@@ -1,3 +1,0 @@
-[template]
-src = "74-out_file_relp.conf.tmpl"
-dest = "/etc/rsyslog.d/output/74-out_file_relp.conf"

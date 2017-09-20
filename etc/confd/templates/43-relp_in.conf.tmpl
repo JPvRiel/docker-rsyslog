@@ -3,7 +3,7 @@
 module(load="imrelp")
 
 # proivdes RELP reception
-input(type="imrelp" name="imrepl" port="2514" ruleset="remote_relp" tls="off")
+input(type="imrelp" name="imrepl" port="2514" ruleset="remote_in_relp" tls="off")
 
 # provides secure RELP reception (with client not needing to provide a CA signed cert)
 # Limitation:
@@ -13,7 +13,7 @@ input(type="imrelp" name="imrepl" port="2514" ruleset="remote_relp" tls="off")
 #  type="imrelp"
 #  name="imrelp_secure"
 #  port="7514"
-#  ruleset="remote_relp_secure"
+#  ruleset="remote_in_relp_secure"
 #  tls="on"
 #  tls.dhbits="2048"
 #  tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
@@ -26,7 +26,7 @@ input(
   type="imrelp"
   name="imrelp_secure_client_auth"
   port="8514"
-  ruleset="remote_relp_secure_client_auth"
+  ruleset="remote_in_relp_secure_client_auth"
   tls="on"
   tls.dhbits="2048"
   tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"

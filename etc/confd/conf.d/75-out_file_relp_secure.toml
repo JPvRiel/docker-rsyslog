@@ -1,3 +1,0 @@
-[template]
-src = "75-out_file_relp_secure.conf.tmpl"
-dest = "/etc/rsyslog.d/output/75-out_file_relp_secure.conf"

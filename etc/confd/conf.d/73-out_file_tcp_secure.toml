@@ -1,3 +1,0 @@
-[template]
-src = "73-out_file_tcp_secure.conf.tmpl"
-dest = "/etc/rsyslog.d/output/73-out_file_tcp_secure.conf"

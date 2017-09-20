@@ -92,6 +92,7 @@ ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
 ENV rsyslog_filtering_enabled=false \
   rsyslog_support_metadata_formats=false \
   rsyslog_omfile_enabled=true \
+  rsyslog_omfile_split_files_per_host=false \
   rsyslog_omfile_template='RSYSLOG_TraditionalFileFormat' \
   rsyslog_omkafka_enabled=false \
   rsyslog_omkafka_broker='' \

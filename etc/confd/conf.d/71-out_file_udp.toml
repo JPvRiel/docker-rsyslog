@@ -1,3 +1,0 @@
-[template]
-src = "71-out_file_udp.conf.tmpl"
-dest = "/etc/rsyslog.d/output/71-out_file_udp.conf"

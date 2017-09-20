@@ -28,7 +28,7 @@ module(
 )
 
 # provides plain TCP syslog reception
-input(type="imptcp" port="514" ruleset="remote_tcp")
+input(type="imptcp" port="514" ruleset="remote_in_tcp")
 
 # provides secure TCP syslog reception
 # Limitation:
@@ -38,5 +38,5 @@ input(
   type="imtcp"
   name="tcp_secure"
   port="6514"
-  ruleset="remote_tcp_secure"
+  ruleset="remote_in_tcp_secure"
 )

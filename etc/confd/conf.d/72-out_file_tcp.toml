@@ -1,3 +1,0 @@
-[template]
-src = "72-out_file_tcp.conf.tmpl"
-dest = "/etc/rsyslog.d/output/72-out_file_tcp.conf"

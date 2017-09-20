@@ -1,26 +1,50 @@
 ## Option to write remote logs to plain files
-# also check config in ##_remote_in.conf for wrapping ruleset that calls this
-# Note, if enabled in conjunciton with forwading to logstash/elasticsearch, then
-# we're doubling up logs and I/O load...
+# Note further, it would be prudent to setup logrotate for /var/log/remote/*
+# See 50-ruleset.conf for the parent ruleset that calls this
 
-template(name="TmplPerHostUdpAuthFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/security")
-template(name="TmplPerHostUdpAuditFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/audit")
-template(name="TmplPerHostUdpConsoleFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/console")
-template(name="TmplPerHostUdpFirewallFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/firewall")
-template(name="TmplPerHostUdpMsgFile" type="string" string="/var/log/remote/udp/%HOSTNAME%/messages")
+{{ $rsyslog_omfile_split_files_per_host := getenv "rsyslog_omfile_split_files_per_host" | toLower | eq "true" -}}
 
-ruleset(name="out_file_udp")
-{
+template(name="TmplPerHostFile" type="string" string="/var/log/remote/%hostname%")
+template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%hostname%/secure")
+template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%hostname%/audit")
+template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%hostname%/console")
+template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%hostname%/firewall")
+template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%hostname%/messages")
+
+ruleset(name="out_file") {
+
+  {{if not $rsyslog_omfile_split_files_per_host -}}
+  # In the simple case, we use the hostname as the filename and place all logs in that file
+  action(
+       name="remote_in_file_hostname"
+       type="omfile"
+       template="{{ getenv "rsyslog_omfile_template" }}"
+       dynaFile="TmplPerHostFile"
+       dynaFileCacheSize="100"
+       asyncWriting="on"
+       flushOnTXEnd="off"
+       ioBufferSize="256k"
+       dirOwner="root"
+       dirGroup="wheel"
+       dirCreateMode="0755"
+       fileOwner="root"
+       fileGroup="wheel"
+       FileCreateMode="0640"
+  )
+
+  {{else -}}
+  # In the more complex case, the hostname is the directory and filenames are similar to those used in RedHat/Fedora
+  # firewall
   if ($syslogfacility-text == 'kern' and (
 	$msg startswith "iptables" or
 	$msg contains"[UFW"
 	)
   ) then
   {  action(
-       name="remote_file_auth"
+       name="remote_in_file_auth"
        type="omfile"
        template="{{ getenv "rsyslog_omfile_template" }}"
-       dynaFile="TmplPerHostUdpFirewallFile"
+       dynaFile="TmplPerHostFirewallFile"
        dynaFileCacheSize="100"
        asyncWriting="on"
        flushOnTXEnd="off"
@@ -35,16 +59,16 @@ ruleset(name="out_file_udp")
   }
   else
   {
-    # auth and authpriv
+    # secure / auth and authpriv
     if ($syslogfacility-text == 'auth' or
          $syslogfacility-text == 'authpriv'
     ) then
     {
       action(
-        name="remote_file_auth"
+        name="remote_in_file_auth"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdpAuthFile"
+        dynaFile="TmplPerHostAuthFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -57,14 +81,14 @@ ruleset(name="out_file_udp")
         FileCreateMode="0640"
       )
     }
-
+    # audit
     if ($syslogfacility == '13') then
     {
       action(
-        name="remote_file_audit"
+        name="remote_in_file_audit"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdpAuditFile"
+        dynaFile="TmplPerHostAuditFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -77,15 +101,14 @@ ruleset(name="out_file_udp")
         FileCreateMode="0640"
      )
     }
-
     # logalert. Note, no formal syslog faciltiy keyword supported by rsyslog
     if ($syslogfacility == '14') then
     {
       action(
-        name="remote_file_console"
+        name="remote_in_file_console"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdpConsoleFile"
+        dynaFile="TmplPerHostConsoleFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -98,8 +121,7 @@ ruleset(name="out_file_udp")
         FileCreateMode="0640"
      )
     }
-
-    # other
+    # other / messages / syslog
     if not
     ( $syslogfacility-text == 'auth' or
       $syslogfacility-text == 'authpriv' or
@@ -108,10 +130,10 @@ ruleset(name="out_file_udp")
     then
     {
       action(
-        name="remote_file_messages"
+        name="remote_in_file_messages"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
-        dynaFile="TmplPerHostUdpMsgFile"
+        dynaFile="TmplPerHostMsgFile"
         dynaFileCacheSize="100"
         asyncWriting="on"
         flushOnTXEnd="off"
@@ -125,6 +147,6 @@ ruleset(name="out_file_udp")
      )
     }
   }
-}
 
-# Note further, it would be prudent to setup logrotate for /var/log/remote/*
+  {{- end}}
+}
