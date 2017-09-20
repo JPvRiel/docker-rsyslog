@@ -55,24 +55,20 @@ The 'origin' and 'meta' standard structured data elements don't cover the intend
 
 See "6.3.5\. Examples" in the standard as a good point to jump into it. Basically, via an example:
 
-Given no appropriate standard, a custom structured data element 'received@16543 ' is pre-pended to include the following (field names loosely based on Splunk CIM):
+Given no appropriate standard, a custom structured data element `rsyslog_relay@16543` can be pre-pended to include the following meta-data about how the log event was received:
 
-<dl>
-  <dt>message_received_time</dt>
-  <dd>When the message was received (timegenerated rsyslog property)</dd>
-  <dt>src</dt>
-  <dd>Source DNS or IP if reverse DNS lookup fails (fromhost rsyslog property)</dd>
-  <dt>src_ip</dt>
-  <dd>Always source IP (fromhost-ip rsyslog property)</dd>
-  <dt>dest</dt>
-  <dd>Server processing the message (myhostname rsyslog property)</dd>
-  <dt>app</dt>
-  <dd>Always rsyslog and the input module used, e.g. imudp, imptcp, imtcp, imrelp, etc (inputname rsyslog property)</dd>
-  <dt>ssl</dt>
-  <dd>a true/false flag for SSL/TLS (no rsyslog property documented)</dd>
-  <dt>auth_client</dt>
-  <dd>the type of client authentication applied (no rsyslog property documented - the 'authMode' applied for SSL/TLS)</dd>
-</dl>
+| rsyslog property | Splunk CIM | Use |
+| - | - | - |
+| `inputname` | `app` | rsyslog input module used, e.g. imudp, imptcp, imtcp, imrelp, etc |
+| `fromhost` | `src` | Source DNS or IP if reverse DNS lookup fails for the connected syslog client |
+| `fromhost-ip ` | `src_ip` | Source IP of the connected syslog client |
+| `$myhostname` | `dest` | Server instance processing the message |
+| `timegenerated` | message_received_time | When the message was received |
+| `protocol-version` | ?? | 1 if input conformed to RFC5424, or 0 if input was guessed to be RFC3164 |
+| custom variable: $!tls | ?? | true/false flag for SSL/TLS |
+| custom variable: $!authenticated_client | ?? | if client authentication was applied, i.e. the 'authMode' applied for SSL/TLS - limited to true/false |
+
+When rsyslog doesn't have a property available, we can generate it with our own custom variables.
 
 If rsyslog supported extracting properties from the input's TLS/SSL library, the authentication information such as the following could be included (but is not, given there are no such documented features in RSyslog):
 
@@ -89,7 +85,7 @@ Knowing which format the source message was in is complicated because rsyslog by
 
 'unconventional' indicates that something didn't respect the conventions laid out by section 5 of RFC3164.
 
-_NB_: 'rfc5424_malformed' may not be possible given that if 5424 parsing fails, rsyslog next applies the 3164 parser, which accepts any printable string. Given a 3164 message priority (e.g. `<177>`) doesn't have a version, and a 5424 message priority does (e.g. `<177>1`), it's possible to check RFC5424 conformance, except for a highly rare edge case of an unconventional 3164 message of "1 <some text>".
+_NB_: 'rfc5424_malformed' may not be possible given that if 5424 parsing fails, rsyslog next applies the 3164 parser, which accepts _any_ printable string. Given a 3164 message priority (e.g. `<177>`) doesn't have a version, and a 5424 message priority does (e.g. `<177>1`), it's possible to check RFC5424 conformance, except for a highly rare edge case of an unconventional 3164 message of "1 <some text>".
 
 More specific parser should go earlier in the parser chain, and the default parser chain set is `rsyslog.rfc5424` and then `rsyslog.rfc3164`. Parser chains are applied after input modules.
 
@@ -102,9 +98,24 @@ However, there inst any documented obvious property to indicate which parser was
 
 The above helps establish a server perspective and view of the provenance/origin of a message. However, since syslog messages can be relayed, the information above is not complete provenance, just information about the peer.
 
-TODO: Dealing with syslog relay scenarios is a future concern. Prepending more structured data elements for each relay won't work given "the same SD-ID MUST NOT exist more than once in a message" (as per the RFC), so it's not that simple. Structured data element fields can be duplicated, so perhaps by adding the sever (dest) name as a field helps and a known sequence of the same fields (structured data parameters) repeated and appended per relay could better establish a full chain of provenance. This might entail using the mmpstrucdata module to check for an existing data element at increased overhead...
+TODO: Dealing with syslog relay scenarios is a future concern. Perpending more structured data elements for each relay won't work given "the same SD-ID MUST NOT exist more than once in a message" (as per the RFC), so it's not that simple. Structured data element fields can be duplicated, so perhaps by adding the sever (dest) name as a field helps and a known sequence of the same fields (structured data parameters) repeated and appended per relay could better establish a full chain of provenance. This might entail using the mmpstrucdata module to check for an existing data element at increased overhead...
 
 Note further, templates are not affected by if-statements or config nesting.
+
+If the structured data element follows Splunk CIM field names, the template string would be as follows:
+
+```
+[received@16543 message_received_time=\"%timegenerated:::date-rfc3339%\" src=\"%fromhost%\" src_ip=\"%fromhost-ip%\" dest=\"%$myhostname%\" app=\"rsyslog_%inputname%\" ssl=\"%$!tls%\" authenticated_client=\"%$!authenticated_client%\"]
+```
+
+However, elsewhere within the message from the client, information about the event might supersede fields such as src and dest.
+
+If the structured data element follows rsyslogs default property names, the template string would be as follows:
+
+```
+[received@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" tls=\"%$!tls%\" authenticated_client=\"%$!authenticated_client%\"]
+```
+
 
 #### RFC3164 (legacy) converted to RFC5424 with meta-data pre-pended to structured data
 

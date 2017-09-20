@@ -5,14 +5,15 @@ Feature: Accept syslog network connections for various syslog transports
   I want the service to allow network connections to various syslog transports: UDP, TCP, RELP and with TLS
 
   Background: Syslog service is available
-    Given a server "test_syslog_server"
+    Given a valid rsyslog configuration
+      And a server "test_syslog_server"
 
   # Positive testing
 
   Scenario Outline: Accept <transport protocol> connections on <port> for <use>
     Given a protocol "<transport protocol>" and port "<port>"
     When connecting
-    Then a connection should be established
+    Then a connection should be complete
 
     Examples: Insecure transports
       | transport protocol | port | use               |
@@ -24,7 +25,7 @@ Feature: Accept syslog network connections for various syslog transports
     Given a protocol "<transport protocol>" and port "<port>"
       And a "tls_x509/certs/default_self_signed.cert.pem" certificate authority file
     When connecting with TLS
-    Then a TLS session should be established
+    Then a TLS session should be complete
 
     Examples: Secure transports without client authentication
       | transport protocol | port | use                |
@@ -39,7 +40,7 @@ Feature: Accept syslog network connections for various syslog transports
       And a "tls_x509/certs/default_self_signed.cert.pem" certificate file
       And a "tls_x509/private/default_self_signed.key.pem" private key file
     When connecting with TLS
-    Then a TLS session should be established
+    Then a TLS session should be complete
 
     Examples: Secure transports with client authentication
       | transport protocol | port | use                                           |

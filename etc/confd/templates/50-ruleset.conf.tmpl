@@ -8,11 +8,16 @@
 {{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true" -}}
 {{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "true" -}}
 
-ruleset(name="remote_udp")
+# Customise the settings of the built-in RFC3164 to
+# - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
+# - Avoid adding in a pre-pending space in the message field
+parser(name="custom.rfc3164" type="pmrfc3164" force.tagEndingByColon="on" remove.msgFirstSpace="on")
+
+ruleset(name="remote_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
 {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!is_tls = "false";
-  set $!is_authenticated_client = "false";
+  set $!tls = "false";
+  set $!authenticated_client = "false";
   {{- end}}
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
@@ -23,11 +28,11 @@ ruleset(name="remote_udp")
   call forward
 }
 
-ruleset(name="remote_tcp")
+ruleset(name="remote_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
 {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!is_tls = "false";
-  set $!is_authenticated_client = "false";
+  set $!tls = "false";
+  set $!authenticated_client = "false";
   {{- end}}
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
@@ -38,11 +43,11 @@ ruleset(name="remote_tcp")
   call forward
 }
 
-ruleset(name="remote_tcp_secure")
+ruleset(name="remote_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"])
 {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!is_tls = "true";
-  set $!is_authenticated_client = "false";
+  set $!tls = "true";
+  set $!authenticated_client = "false";
   {{- end}}
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
@@ -53,11 +58,11 @@ ruleset(name="remote_tcp_secure")
   call forward
 }
 
-ruleset(name="remote_relp")
+ruleset(name="remote_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"])
 {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!is_tls = "false";
-  set $!is_authenticated_client = "false";
+  set $!tls = "false";
+  set $!authenticated_client = "false";
   {{- end}}
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
@@ -69,11 +74,11 @@ ruleset(name="remote_relp")
 }
 
 # NB: rsyslog limitation seems to block RELP TLS without client authentication
-ruleset(name="remote_relp_secure")
+ruleset(name="remote_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"])
 {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!is_tls = "true";
-  set $!is_authenticated_client = "false";
+  set $!tls = "true";
+  set $!authenticated_client = "false";
   {{- end}}
   {{if $rsyslog_filtering_enabled -}}
   call input_filter
@@ -84,11 +89,11 @@ ruleset(name="remote_relp_secure")
   call forward
 }
 
-ruleset(name="remote_relp_secure_client_auth")
+ruleset(name="remote_relp_secure_client_auth" parser=["rsyslog.rfc5424", "custom.rfc3164"])
 {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!is_tls = "true";
-  set $!is_authenticated_client = "true";
+  set $!tls = "true";
+  set $!authenticated_client = "true";
   {{- end}}
   {{if $rsyslog_filtering_enabled -}}
   call input_filter

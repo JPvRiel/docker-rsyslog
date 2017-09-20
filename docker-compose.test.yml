@@ -9,13 +9,30 @@ services:
     env_file:
       - ./test/test_syslog_server.env
     depends_on:
+      - test_syslog_server_config
       - test_syslog_server
       - test_syslog_client_centos7
       - test_syslog_client_ubuntu1604
     volumes:
       - ./test:/tmp/test
+      - config_check:/tmp/config_check:ro
       - syslog_log:/var/log/remote:ro
+      - syslog_relay:/tmp/syslog_relay:ro
+      - json_relay:/tmp/json_relay:ro
 
+  # rsyslog config validation
+  # Note: sut depends on this running and creating files with outputs using a shared volume
+  # TODO: not sure if there is a better way for sut to be able to see and check output
+  test_syslog_server_config:
+    image: jpvriel/rsyslog
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - ./test/test_syslog_server.env
+    entrypoint: bash -c '/usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1; echo -n $$? > /tmp/config_check/rsyslog_n1_exit_code.txt'
+    volumes:
+      - config_check:/tmp/config_check
 
   # syslog clients to be tested
   test_syslog_client_centos7:
@@ -53,9 +70,28 @@ services:
       KAFKA_ADVERTISED_HOST_NAME: test_kafka
       KAFKA_CREATE_TOPICS: test_syslog:1:1
 
-  # TODO - test logstash
+  # To test syslog relay/forwarding
+  # Simple netcat to file: https://github.com/appropriate/docker-nc
+  test_syslog_relay:
+    image: appropriate/nc
+    hostname: syslog_relay
+    volumes:
+      - syslog_relay:/tmp/syslog_relay
+    ports:
+      - "10514"
+    command: sh -c 'nc -lk 0.0.0.0 10514 > /tmp/syslog_relay/nc.out'
 
-  # syslog server
+  # To test forwarding as JSON output
+  test_json_relay:
+    image: appropriate/nc
+    hostname: json_relay
+    volumes:
+      - json_relay:/tmp/json_relay
+    ports:
+      - "15000"
+    command: sh -c 'nc -lk 0.0.0.0 15000 > /tmp/json_relay/nc.out'
+
+  # Main syslog server (the test object / target)
   test_syslog_server:
     image: jpvriel/rsyslog
     build:
@@ -65,7 +101,10 @@ services:
     env_file:
       - ./test/test_syslog_server.env
     depends_on:
+      # test cases need to relay / forward to the following
       - test_kafka
+      - test_syslog_relay
+      - test_json_relay
     healthcheck:
       test: ["CMD", "/usr/local/bin/rsyslog_healthcheck.sh"]
       interval: 5s
@@ -75,4 +114,9 @@ services:
       - syslog_log:/var/log/remote
 
 volumes:
+  # Volumes below get shared with the behave container so that files therein can
+  # be inspected
+  config_check:
   syslog_log:
+  syslog_relay:
+  json_relay:

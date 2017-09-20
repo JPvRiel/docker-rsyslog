@@ -6,11 +6,14 @@ An RSyslog container able to:
 - Accept multiple transports (UDP, TCP or RELP).
 - Accept multiple security options (TLS or not).
 - Optionally append useful metadata.
-- File output to a volume.
-- Forward the messages to other systems, either:
+- Split and output files to a volume.
+- Forward the messages to other systems for a few built-in use cases, either:
 
-  - Downstream syslog servers (e.g. traditional/legacy SIEM).
+  - Downstream syslog servers expecting RFC3164 or RFC5424 (e.g. a SIEM product).
+  - Downstream analytic tools that can handle JSON (e.g. logstash).
   - Kafka (e.g. data analytic platforms like Hadoop).
+
+- Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
 
 The container also supports advanced debug scenarios.
 
@@ -137,7 +140,7 @@ If enabling and using file output, a named volume is recommended for `/var/log/r
 | firewall | Firewall execution actions | From Kernel facility and starting with keyworlds that common firewall messages use |
 | console | Alert messages usually broadcast on the console | facility 14 |
 
-The default output template applied is RFC4524, but it can be modified via the `rsyslog_omfile_template` env var to point to another output format template.
+The default traditional file output template applied is, but it can be modified to something better like `RSYSLOG_SyslogProtocol23Format` (RFC5424) via the `rsyslog_omfile_template` env var.
 
 ### Optional config file volumes
 
@@ -149,9 +152,9 @@ For more advanced custom configuration, template config via env vars would be to
 ## Optional Output Modules
 
 Pre-defined support for some common forwarding use cases:
-- kafka (TODO)
-- syslog (TODO)
-- JSON (TODO)
+- kafka
+- syslog forwarding / relay
+- JSON forwarding / relay
 
 ### Kafka Output
 
@@ -382,11 +385,13 @@ For `imrelp`:
 - TLS settings can apply per input.
 - While there's no documented setting for optional TLS client authentication, it is possible to have two listeners on two different ports, one allowing anonymous clients, and a 2nd requiring client certificates
 
-## RFC3164 legacy format ouptut not supported
+## Legacy formats
 
-While RFC3164 is the native output format of many Linux distro's and *nixes, it's a poor logging format (no year, sub-second accuracy, timezone, etc). Therefore not supported as output. The config defaults to using more modern RFC5424 or JSON formats.
+RFC3164 and the legacy file output format of many Linux distro's and *nixes does not include the year, sub-second accuracy, timezone, etc. Since it's still somewhat common to expect files in this format, the file output rsyslog_omfile_template defaults to `RSYSLOG_TraditionalFileFormat`. This can help with other logging agents that anticipate these old formats and cannot handle the newer formats.
 
-Note however, rsyslog can still accept and convert RFC3164 legacy input, but with some conversion caveats, such as guessing the timezone of the client matches that of the server.
+The other forwarding/relay outputs default to using more modern RFC5424 or JSON formats.
+
+rsyslog can accept and convert RFC3164 legacy input, but with some conversion caveats, such as guessing the timezone of the client matches that of the server, and lazy messages without conventional syslog headers are poorly assumed to map into host and process name fields.
 
 # Status
 
@@ -397,12 +402,11 @@ Done:
 - Using confd to template config via env vars
 - First attempt to add metadata to a message about peer connection (helps with provenance) - avoid spoofed syslog messages, or bad info from poorly configured clients.
 - Gracefull entrypoint script exit and debugging by passing signals to rsyslogd.
+- Kafka and syslog forwarding.
+- JSON output
 
 Not yet done:
-
-- Kafka and syslog forwarding. Kafka output considerations incomplete.
-- More test suites (only basics done thus far).
-- JSON output
+- More test scenarios (only basics done thus far). No negative testing.
 - Optimised config, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
 
 ```
@@ -412,7 +416,7 @@ $MaxMessageSize 64k
 
 Maybe someday:
 - Filter/send rsyslog performance metrics to stdout (omstdout)
-- All syslog output to omstdout
+- All syslog output to omstdout (would we even need this?)
 - More test cases
   - Unit test for stopping and starting the server container to check that persistent queues in /var/lib/rsyslog function as intended
   - Older and other syslog demons as clients, e.g. from centos6, syslog-ng, etc

@@ -25,14 +25,6 @@ function sigterm_handler() {
   rsyslog_pid=$(cat /var/run/rsyslogd.pid)
   report_info 'Terminating rsyslog process.'
   kill -SIGTERM "$rsyslog_pid"
-  wait "$rsyslog_pid"
-  rsyslog_exit_status=$?
-  if [ $rsyslog_exit_status -eq 0 ]; then
-    report_info 'rsyslog stopped normally.'
-  else
-    report_error "rsyslog stopped abnormally! Exit code = $rsyslog_exit_status."
-  fi
-  exit $rsyslog_exit_status
 }
 
 function sighup_handler() {
@@ -49,6 +41,19 @@ function sigusr1_handler() {
 trap 'sigterm_handler' SIGTERM SIGINT SIGQUIT
 trap 'sighup_handler' SIGHUP
 trap 'sigusr1_handler' SIGUSR1
+
+if [[ -n "${1}" ]]; then
+  # Allow arguments to be passed to rsyslog
+  if [[ "${1:0:1}" == '-' ]]; then
+    EXTRA_ARGS=( "$@" )
+  # Don't allow custom rsyslogd exec
+  # Need to intercept custom rsyslogd command in order to apply confd template
+  elif [[ "${1}" == rsyslogd || "${1}" == /usr/sbin/rsyslogd ]]; then
+    EXTRA_ARGS=( "${@:2}" )
+  else
+    exec "$@"
+  fi
+fi
 
 # Check TLS key
 warn_insecure=false
@@ -88,39 +93,40 @@ report_info "Using $rsyslog_server_cert_file as the certficate."
 # Apply config templates
 /usr/local/bin/confd -onetime -backend env -log-level warn
 
-
-# Do a config sanity check
+# Config sanity check options - handle and augment config checking
+if [[ -n ${EXTRA_ARGS[*]} ]]; then
+  for a in "${EXTRA_ARGS[@]}"; do
+    if [[ "${a:0:2}" == '-E' ]]; then
+      report_info 'Expanding config files.'
+      /usr/local/bin/rsyslog_config_expand.py
+      exit
+    fi
+    if [[ "${a:0:2}" == '-N' ]]; then
+      report_info 'Explicit config check.'
+      exec rsyslogd "${EXTRA_ARGS[@]}"
+    fi
+  done
+fi
+# Rsyslog config problems occur often, so run a config check by default
+report_info 'Implicit config check.'
 if ! rsyslogd -N1; then
-  report_error 'Rsyslog configuration corrupt! Aborting.'
+  report_error 'Rsyslog configuration corrupt! Aborting. Run with -E to output a flattend configuration for inspection.'
   exit 1
 fi
 
 # Run rsyslog in the background
-# - We can't simply exec rsyslog because of the zombie PID 1 reping problem...
-# - Rsyslog does accept and handle SIGCHLD to reap child processes, but most users (and docker stop) use SIGTERM
-if [[ -n "${1}" ]]; then
-  # Allow arguments to be passed to rsyslog
-  if [[ "${1:0:1}" == '-' ]]; then
-    report_info 'Running rsyslogd with extra arguments.'
-    EXTRA_ARGS=( "$@" )
-    rsyslogd -n "${EXTRA_ARGS[@]}" 1>> /dev/stdout 2>> /dev/stderr &
-  elif [[ "${1}" == rsyslogd || "${1}" == /usr/sbin/rsyslogd ]]; then
-    report_info 'Running custom rsyslogd command and arguments.'
-    EXTRA_ARGS=( "${@:2}" )
-    rsyslogd -n "${EXTRA_ARGS[@]}" 1>> /dev/stdout 2>> /dev/stderr &
-  else
-    report_info 'Custom command run (in foreground).'
-    "$@"
-    exit $!
-  fi
+if [[ -n ${EXTRA_ARGS[*]} ]]; then
+  report_info "Running rsyslogd with extra arguments \"${EXTRA_ARGS[*]}\"."
+  rsyslogd -n "${EXTRA_ARGS[@]}" 1>> /dev/stdout 2>> /dev/stderr & pid=$!
+  #TODO: catch exit code case where incorrect argument passed
 else
   report_info 'Running rsyslogd.'
-  rsyslogd -n 1>> /dev/stdout 2>> /dev/stderr &
+  rsyslogd -n 1>> /dev/stdout 2>> /dev/stderr & pid=$!
 fi
-pid=$!
 
 # Notes:
 # - While one could simply exec rsyslogd and let it handle signals directly, do note that rsyslog source code makes use of fork() - and is therefore might create child processes.
+# - Rsyslog does accept and handle SIGCHLD to reap child processes, but most users (and docker stop) use SIGTERM.
 # - Hopefully no orphined defunct / 'zombie' processes should result when rsylog terminates (gracefully via TERM).
 # - Regardless, wait again in case rsyslog managed to spawn child processes it didn't clean up, given pid 1 is meat to reap all children.
 # - Waiting within a loop is necessary becuse traping SIGUSR1 or SIGINT for rsyslog causes wait to return with exit code = 128 + <SIGNAL int>
@@ -131,5 +137,16 @@ while [ -e /proc/$pid ]; do
   rsyslog_exit_status=$?
 done
 set -e
-# If not trapped and exited via the term signal handler above, report an error.
-report_error "Ungraceful exit - rsyslog died! Exit code = $rsyslog_exit_status."
+
+# Check the exit code
+if [[ -n $rsyslog_exit_status ]]; then
+  if [[ ! $rsyslog_exit_status ]]; then
+    report_error "rsyslog stopped abnormally! Exit code = $rsyslog_exit_status."
+  else
+    report_info 'rsyslog stopped normally.'
+  fi
+  exit $rsyslog_exit_status
+else
+  report_error 'Unknown rsyslog exit status.'
+  exit 1
+fi

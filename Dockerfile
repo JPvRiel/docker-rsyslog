@@ -92,7 +92,7 @@ ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
 ENV rsyslog_filtering_enabled=false \
   rsyslog_support_metadata_formats=false \
   rsyslog_omfile_enabled=true \
-  rsyslog_omfile_template='TmplRFC5424Format' \
+  rsyslog_omfile_template='RSYSLOG_TraditionalFileFormat' \
   rsyslog_omkafka_enabled=false \
   rsyslog_omkafka_broker='' \
   rsyslog_omkafka_confParam='' \
@@ -108,6 +108,7 @@ ENV rsyslog_filtering_enabled=false \
   rsyslog_omfwd_json_enabled=false \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
+  rsyslog_omfwd_json_template='TmplJSON' \
   rsyslog_forward_extra_enabled=false
 
 #TODO: check how not to lose/include orginal host if events are relayed
@@ -131,10 +132,8 @@ EXPOSE 514/udp 514/tcp 6514/tcp 2514/tcp 7514/tcp 8514/tcp
 
 #TODO: also, decide if we will accept the signal to reload config without restarting the container
 
-COPY rsyslog.sh rsyslog_healthcheck.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/rsyslog.sh \
-  && chmod +x /usr/local/bin/rsyslog_healthcheck.sh
+COPY usr/local/bin/entrypoint.sh usr/local/bin/rsyslog_healthcheck.sh usr/local/bin/rsyslog_healthcheck.sh usr/local/bin/rsyslog_config_expand.py /usr/local/bin/
 
-ENTRYPOINT ["/usr/local/bin/rsyslog.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 HEALTHCHECK CMD /usr/local/bin/rsyslog_healthcheck.sh

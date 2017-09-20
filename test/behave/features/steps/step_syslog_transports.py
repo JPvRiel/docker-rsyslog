@@ -41,7 +41,7 @@ def step_impl(context):
             # Typically, s.recv(1024) could be used to detect ICMP port
             # unreachable, but UDP syslog servers don't send back any data, so
             # it will timeout and raise an exception
-            context.socket.send(b"UDP Connection Test\n")
+            context.socket.send(b"\n")
             context.socket.recv(1024)
         context.connected = True
     except socket.error as e:
@@ -63,7 +63,7 @@ def step_impl(context):
             context.connected = False
 
 
-@then('a connection should be established')
+@then('a connection should be complete')
 def step_impl(context):
     assert_that(context.socket, not_none())
     assert_that(context.connected, equal_to(True))
@@ -147,7 +147,7 @@ def step_impl(context):
         context.connected_tls = False
 
 
-@then('a TLS session should be established')
+@then('a TLS session should be complete')
 def step_impl(context):
     assert_that(context.socket_tls, not_none())
     assert_that(context.connected_tls, equal_to(True))

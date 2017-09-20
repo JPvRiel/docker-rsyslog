@@ -9,7 +9,7 @@ ruleset(name="forward_json")
     Target="{{ getenv "rsyslog_omfwd_json_host" }}"
     Port="{{ getenv "rsyslog_omfwd_json_port" }}"
     Protocol="tcp"
-    template="json_lines"
+    template="{{ getenv "rsyslog_omfwd_json_template" }}"
   )
 }
 {{- end}}

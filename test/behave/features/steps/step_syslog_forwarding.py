@@ -23,15 +23,18 @@ def step_impl(context, env_var):
     context.env[env_var] = os.environ[env_var]
 
 
-@when('sending the message "{message}"')
-def step_impl(context, message):
+@when('sending the syslog message "{message}" in "{sending_format}" format')
+def step_impl(context, message, sending_format):
+    context.sending_format = sending_format
     context.message = message
     context.message_sent = None
     try:
-        logging.info("Sending message \"{0:s}\" to {1:s}:{2:d}".format(
+        logging.info("Sending message \"{0:s}\" to {1:s}:{2:d} in "
+            "{3:s} format".format(
                 context.message,
                 context.server_name,
                 logging.handlers.SYSLOG_TCP_PORT,
+                context.sending_format
             )
         )
         syslogger = logging.getLogger('syslog')
@@ -44,14 +47,19 @@ def step_impl(context, message):
             facility=logging.handlers.SysLogHandler.LOG_USER,
             socktype=socket.SOCK_STREAM
         )
-        # Note SysLogHandler TCP doesnt do "Octet-counting" and needs a newline
-        # added for "Non-Transparent-Framing". See RFC6587.
+        # Note SysLogHandler TCP doesnt do "Octet-counting" and needs a
+        # newline added for "Non-Transparent-Framing". See RFC6587.
         syslog_3164_formatter = logging.Formatter(
             "%(asctime)s behave %(processName)s[%(process)d]: "
             "%(module)s.%(funcName)s: %(message)s\n",
             datefmt='%b %d %H:%M:%S'
             )
-        syslog_handler.setFormatter(syslog_3164_formatter)
+        if (sending_format == 'RFC3164'):
+            syslog_handler.setFormatter(syslog_3164_formatter)
+        elif (sending_format == 'RFC5424'):
+            raise NotImplementedError
+        else:
+            raise ValueError("Unkown format requested")
         syslogger.addHandler(syslog_handler)
         syslogger.info(message)
         context.message_sent = True
@@ -68,6 +76,11 @@ def step_impl(context, message):
     assert_that(context.message_sent, equal_to(True))
 
 
+@when('waiting "{timeout}" seconds')
+def step_impl(context, timeout):
+    time.sleep(float(timeout))
+
+
 @then('the kafka topic should have the the message within "{timeout}" seconds')
 def step_impl(context, timeout):
     message_found = None
@@ -80,7 +93,9 @@ def step_impl(context, timeout):
         )
         client = pykafka.client.KafkaClient(hosts=broker_list)
         topic = client.topics[b'test_syslog']
-        consumer = topic.get_simple_consumer(consumer_timeout_ms=int(timeout) * 1000)
+        consumer = topic.get_simple_consumer(
+            consumer_timeout_ms=int(timeout) * 1000
+        )
         for kafka_message in consumer:
             if kafka_message is not None:
                 logging.error(kafka_message.value.decode())

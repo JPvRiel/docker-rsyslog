@@ -5,28 +5,33 @@ Feature: Foward syslog messages
   I want the service to forward messages
 
   Background: Syslog service is available
-    Given a server "test_syslog_server"
+    Given a valid rsyslog configuration
+      And a server "test_syslog_server"
       And an environment variable file "test_syslog_server.env"
 
-  @skip
-  Scenario: Messages are forwarded to another syslog server
-    Given "rsyslog_omfwd_syslog_enabled" environment variable is "true"
-      And "rsyslog_omfwd_syslog_host" environment variable is set
-      And "rsyslog_omfwd_syslog_port" environment variable is set
-    When sending the message "Testing syslog forwarding"
-    Then the remote syslog server should have received the message within "5" seconds
-
-  Scenario: Messages are forwarded to kafka
+  Scenario: Messages are relayed to kafka
     Given "rsyslog_omkafka_enabled" environment variable is "true"
       And "rsyslog_omkafka_broker" environment variable is set
       And "rsyslog_omkafka_topic" environment variable is set
-    When sending the message "Testing kafka forwarding"
-    Then the kafka topic should have the the message within "15" seconds
+    When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format
+    Then the kafka topic should have the the message within "5" seconds
 
-  @skip
-  Scenario: Messages are forwarded to logstash
+  Scenario: Messages are forwarded to another server in syslog format
+    Given "rsyslog_omfwd_syslog_enabled" environment variable is "true"
+      And "rsyslog_omfwd_syslog_host" environment variable is set
+      And "rsyslog_omfwd_syslog_port" environment variable is set
+      And a file "/tmp/syslog_relay/nc.out"
+    When sending the syslog message "Testing syslog forwarding" in "RFC3164" format
+      And waiting "1" seconds
+      And searching lines for the pattern "Testing syslog forwarding"
+    Then the pattern should be found
+
+  Scenario: Messages are forwarded to JSON format
     Given "rsyslog_omfwd_json_enabled" environment variable is "true"
       And "rsyslog_omfwd_json_host" environment variable is set
       And "rsyslog_omfwd_json_port" environment variable is set
-    When sending the message "Testing logstash forwarding"
-    Then the logstash instance should have received the message within "5" seconds
+      And a file "/tmp/json_relay/nc.out"
+    When sending the syslog message "Testing JSON forwarding" in "RFC3164" format
+      And waiting "1" seconds
+      And searching lines for the pattern "Testing JSON forwarding"
+    Then the pattern should be found
