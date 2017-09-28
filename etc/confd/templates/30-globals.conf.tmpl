@@ -3,3 +3,8 @@ module(load="impstats" interval="{{ getenv "rsyslog_module_impstats_interval" }}
 
 # Manipulate RFC 5424 structured data
 #mmpstrucdata(load="mmpstrucdata")
+
+# Globals
+global(
+  parser.permitSlashInProgramname = "{{ getenv "rsyslog_global_parser_permitslashinprogramname" }}"
+)

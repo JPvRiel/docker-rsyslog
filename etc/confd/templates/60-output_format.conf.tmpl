@@ -6,19 +6,19 @@
 # - RSYSLOG_TraditionalForwardFormat
 # - RSYSLOG_SyslogProtocol23Format
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "true" -}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" -}}
 
 # Standard example of RFC5424
 # Note, RSYSLOG_SyslogProtocol23Format is the built-in reserved template name for a draft of RFC5424, so the above is more or less identical to that
 template(name="TmplRFC5424Format" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %hostname% %app-name% %procid% %msgid% %structured-data% %msg%\n")
 
 {{if $rsyslog_support_metadata_formats -}}
-# RFC5424 with own custom meta-data pre-pended to the structured data elements
+# RFC5424 with syslog relay and own custom meta-data pre-pended to the structured data element
 # Like RSYSLOG_SyslogProtocol23Format, but with a special extra structured data field to append structured data.
 # Regex needed to deal with structured data being null '-' and needing to append/replace null.
 # `%structured-data:R,ERE,0,BLANK:[[].*--end%` avoids appending a null charceter '-' if there wasn't any pre-existing structured data.
 # See http://www.rsyslog.com/doc/v8-stable/configuration/nomatch.html
-template(name="TmplRFC5424FormatMeta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %hostname% %app-name% %procid% %msgid% [rsyslog_relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" protocol-version=\"%protocol-version%\" tls=\"%$!tls%\" authenticated_client=\"%$!authenticated_client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
+template(name="TmplRFC5424FormatMeta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname-valid% %app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$!format%\" pri-valid=\"%$!pri-valid%\" header-valid=\"%$!header-valid%\" tls=\"%$!tls%\" authenticated_client=\"%$!authenticated_client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
 {{- end}}
 
 # JSON templates / WIP / TODO
@@ -30,80 +30,16 @@ template(name="TmplRSyslogJSONFull" type="string" string="%jsonmesg%\n")
 template(
   name="TmplJSON"
   type="string"
-  string="{%rawmsg:::jsonfr%}"
+  option.json="on"
+  string="{%syslogfacility:::jsonf%,%syslogfacility-text:::jsonf%,%syslogseverity:::jsonf%,%syslogseverity-text:::jsonf%,%timestamp:::date-rfc3339,jsonf%,%hostname:::jsonf%,%app-name:::jsonf%,%procid:::jsonf%,%msgid:::jsonf%,%structured-data:::jsonf%,%msg:::jsonf%}"
 )
 
 {{if $rsyslog_support_metadata_formats -}}
-# JSON with metadata: TODO
-template(name="TmplJSONMeta" type="list" option.json="on") {
-  property(name="jsonmesg") constant(value="\n")
-}
+# JSON output with syslog relay and own custom meta-data pre-pended to the structured data element
+# RFC3164 assumed hostname guesses are replaced with local var $.hostname = $fromhost instead of standard $hostname property when headers are not provided by the source
+template(
+  name="TmplJSONRawMeta"
+  type="string"
+  string="{%syslogfacility:::jsonf%,%syslogfacility-text:::jsonf%,%syslogseverity:::jsonf%,%syslogseverity-text:::jsonf%,%timestamp:::date-rfc3339,jsonf%,%$.hostname-valid:::jsonf:hostname%,%app-name:::jsonf%,%procid:::jsonf%,%msgid:::jsonf%,%structured-data:::jsonf%,%rawmsg:::jsonf%,\"syslog-relay\":{%timegenerated:::date-rfc3339,jsonf%,%fromhost:::jsonf%,%fromhost-ip:::jsonf%,%$myhostname:::jsonf:myhostname%,%inputname:::jsonf%,%$!format:::jsonf%,%$!pri-valid:::jsonf%,%$!header-valid:::jsonf%,%$!tls:::jsonf%}}"
+)
 {{- end}}
-
-#template(name="ls_json" type="string" string="{%timestamp:::date-rfc3339,jsonf:@timestamp%,%source:::jsonf:@source_host%,\"@source\":\"syslog://%fromhost-ip:::json%\",\"@message\":\"%timestamp% %app-name%:%msg:::json%\",\"@fields\":{%syslogfacility-text:::jsonf:facility%,%syslogseverity-text:::jsonf:severity%,%app-name:::jsonf:program%,%procid:::jsonf:processid%}}")
-
-# Example from http://www.rsyslog.com/connecting-with-logstash-via-apache-kafka/
-template(name="TmplJSONLines" type="list" option.json="on") {
-  constant(value="{")
-  constant(value="\"timestamp\":\"")
-  property(name="timereported" dateFormat="rfc3339")
-  constant(value="\",\"message\":\"")
-  property(name="msg")
-  constant(value="\",\"host\":\"")
-  property(name="hostname")
-  constant(value="\",\"severity\":\"")
-  property(name="syslogseverity-text")
-  constant(value="\",\"facility\":\"")
-  property(name="syslogfacility-text")
-  constant(value="\",\"syslog-tag\":\"")
-  property(name="syslogtag")
-  constant(value="\"}")
-}
-
-template(name="TmplJSONLinesRawMsg" type="list" option.json="on") {
-  constant(value="{")
-  constant(value="\"timestamp\":\"")
-  property(name="timereported" dateFormat="rfc3339")
-  constant(value="\",\"message\":\"")
-  property(name="rawmsg")
-  constant(value="\",\"host\":\"")
-  property(name="hostname")
-  constant(value="\",\"severity\":\"")
-  property(name="syslogseverity-text")
-  constant(value="\",\"facility\":\"")
-  property(name="syslogfacility-text")
-  constant(value="\",\"syslog-tag\":\"")
-  property(name="syslogtag")
-  constant(value="\"}")
-}
-
-# Meant to be similar to the logstash syslog input plugin behaviour and fields
-# Follows same ordering of fields output by logstash (buth that should not matter with JSON)
-# Output includes extra @timestamp and @version fields that logstash would normally add
-template(name="TmplJSONLogstash" type="list" option.json="on") {
-  constant(value="{")
-  constant(value="\",\"severity\":\"")
-  property(name="syslogseverity")
-  constant(value="\",\"@timestamp\":\"")
-  property(name="timegenerated" dateFormat="rfc3339")
-  constant(value="\",\"@version\":\"1")
-  constant(value="\",\"host\":\"")
-  property(name="hostname")
-  constant(value="\",\"message\":\"")
-  property(name="msg")
-  constant(value="\",\"priority\":\"")
-  property(name="pri")
-  constant(value="\",\"logsource\":\"")
-  property(name="fromhost")
-  constant(value="\",\"facility\":\"")
-  property(name="syslogfacility")
-  constant(value="\",\"severity_label\":\"")
-  property(name="syslogseverity-text")
-  constant(value="\",\"timestamp\":\"")
-  property(name="syslogseverity-text")
-  constant(value="\"timestamp\":\"")
-  property(name="timereported")
-  constant(value="\"facility_label\":\"")
-  property(name="syslogfacility-text")
-  constant(value="\"}")
-}

@@ -3,7 +3,7 @@
 # - Therefore, there cannot be varied TLS security requirements for multiple TCP TLS inputs.
 # - There don't seem to be any documented settings for TLS client auth as optional (it's either required or not).
 
-# Global directives
+# Global directives related to TCP
 global(
   # TCP TLS (does not apply to RELP)
   defaultNetstreamDriverCAFile="{{ getenv "rsyslog_global_ca_file" }}"

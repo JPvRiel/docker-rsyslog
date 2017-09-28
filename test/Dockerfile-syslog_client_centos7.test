@@ -24,6 +24,9 @@ RUN yum --setopt=timeout=120 -y update && \
 RUN rm -r /etc/rsyslog.d/ \
   && rm /etc/rsyslog.conf
 COPY centos7/etc /etc
+
+RUN mkdir -p usr/local/etc/pki/test
+
 COPY rsyslog_test_client.sh /usr/local/bin
 RUN chmod +x /usr/local/bin/rsyslog_test_client.sh
 

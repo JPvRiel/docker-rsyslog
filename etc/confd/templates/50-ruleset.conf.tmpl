@@ -1,24 +1,28 @@
 # Rules and actions to apply when a specific kind of input is received
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "true" -}}
-{{$rsyslog_filtering_enabled := getenv "rsyslog_filtering_enabled" | toLower | eq "true" -}}
-{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "true" -}}
-{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "true" -}}
-{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "true" -}}
-{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "true" -}}
-{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "true" -}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" -}}
+{{$rsyslog_input_filtering_enabled := getenv "rsyslog_input_filtering_enabled" | toLower | eq "on" -}}
+{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" -}}
+{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" -}}
+{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" -}}
+{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" -}}
+{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "on" -}}
 
-# Customise the settings of the built-in RFC3164 to
+# Customise the settings of the built-in RFC3164 to use extra options to better handle malformed messages
 # - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
 # - Avoid adding in a pre-pending space in the message field
-parser(name="custom.rfc3164" type="pmrfc3164" force.tagEndingByColon="on" remove.msgFirstSpace="on")
+parser(
+  name="custom.rfc3164" type="pmrfc3164"
+  force.tagEndingByColon="{{ getenv "rsyslog_pmrfc3164_force_tagEndingByColon" }}"
+  remove.msgFirstSpace="{{ getenv "rsyslog_pmrfc3164_remove_msgFirstSpace" }}"
+)
 
 ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "false";
-  set $!authenticated_client = "false";
+  set $!authenticated_client = "false";\
   {{- end}}
-  {{if $rsyslog_filtering_enabled -}}
+  {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
   call output
@@ -29,7 +33,7 @@ ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   set $!tls = "false";
   set $!authenticated_client = "false";
   {{- end}}
-  {{if $rsyslog_filtering_enabled -}}
+  {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
   call output
@@ -40,7 +44,7 @@ ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]
   set $!tls = "true";
   set $!authenticated_client = "false";
   {{- end}}
-  {{if $rsyslog_filtering_enabled -}}
+  {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
   call output
@@ -51,7 +55,7 @@ ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   set $!tls = "false";
   set $!authenticated_client = "false";
   {{- end}}
-  {{if $rsyslog_filtering_enabled -}}
+  {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
   call output
@@ -63,7 +67,7 @@ ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"
   set $!tls = "true";
   set $!authenticated_client = "false";
   {{- end}}
-  {{if $rsyslog_filtering_enabled -}}
+  {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
   call output
@@ -74,7 +78,7 @@ ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "cus
   set $!tls = "true";
   set $!authenticated_client = "true";
   {{- end}}
-  {{if $rsyslog_filtering_enabled -}}
+  {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
   call output
@@ -88,15 +92,36 @@ ruleset(name="output") {
 
   {{if $rsyslog_support_metadata_formats -}}
   # append more meta-data
-  if $protocol-version == "1" then {
+  if ($protocol-version == "1") then {
     set $!format = "RFC5424";
   } else {
     # assume protocol-version == 0
-    if $rawmsg-after-pri startswith $hostname then {
-      # there is no syslog header starting with a timestamp
+    # check priority
+    # 0-191 are valid priority encodings, set to 192 > 191 to indicate invalid
+    set $.pri-test = cnum(re_extract($rawmsg, "^<([0-9]{1,3})>", 0, 0, "192"));
+    if ($.pri-test > 191) then {
       set $!format = "RFC3164_malformed";
+      set $!pri-valid = "false";
+      set $.hostname-valid = $fromhost;
+    } else {
+      set $!pri-valid = "true";
+    }
+    # Check syslog header (date and hostname)
+    # - See https://github.com/rsyslog/rsyslog/issues/1789
+    # - Regex is costly, so skim for 'Mmm' pattern of date (but dont match to actual months)
+    # - Also use a trick to see if rsyslog assumed the first word was the hostname after failing to parse a syslog header date
+    if (not re_match($rawmsg-after-pri, "^[A-Z][a-z]{2}") or $rawmsg-after-pri startswith $hostname) then {
+      # rsyslog assumed first word of malformed message was the hostname, so no valid header
+      set $!format = "RFC3164_malformed";
+      set $!header-valid = "false";
+      set $.hostname-valid = $fromhost;
+      #set $.msg-valid = $rawmsg-after-pri;
     } else {
       set $!format = "RFC3164";
+      # above checks not 100% precise to avoid perfomance cost, so only reasonably confident a good header was found
+      set $!header-valid = "true";
+      set $.hostname-valid = $hostname;
+      #set $.msg-valid = $msg;
     }
   }
   {{- end}}

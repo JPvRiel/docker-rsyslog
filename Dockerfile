@@ -1,8 +1,8 @@
 FROM centos:7
 LABEL application="rsyslog" \
   maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>' \
-  version='8.29.0-1' \
-  release-date='2017-09-16'
+  version='8.29.0-2' \
+  release-date='2017-09-27'
 
 ENV container=docker
 
@@ -74,8 +74,10 @@ RUN mkdir -p \
 # - To help handle cases when the rsyslog tls volume doesn't have expected files present
 # - rsyslog.sh entrypoint script will symlink and use these defaults if not provided in a volume
 # - For production, avoid insecure default by providing an /etc/pki/rsyslog volume provisioned with your own keys and certficates
-COPY etc/pki/tls/certs/default_self_signed.cert.pem /etc/pki/tls/certs
-COPY etc/pki/tls/private/default_self_signed.key.pem /etc/pki/tls/private
+RUN mkdir -p usr/local/etc/pki/test
+COPY usr/local/etc/pki/test/test_ca.cert.pem /usr/local/etc/pki/test
+COPY usr/local/etc/pki/test/test_syslog_server.key.pem /usr/local/etc/pki/test
+COPY usr/local/etc/pki/test/test_syslog_server.cert.pem /usr/local/etc/pki/test
 
 # Default ENV vars for rsyslog config
 # Globals
@@ -89,28 +91,31 @@ ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
   rsyslog_module_impstats_interval='300'
 # filtering, templates and outputs
 # See 60-output_format.conf.tmpl
-ENV rsyslog_filtering_enabled=false \
-  rsyslog_support_metadata_formats=false \
-  rsyslog_omfile_enabled=true \
-  rsyslog_omfile_split_files_per_host=false \
+ENV rsyslog_input_filtering_enabled='off' \
+  rsyslog_support_metadata_formats='off' \
+  rsyslog_pmrfc3164_force_tagEndingByColon='off' \
+  rsyslog_pmrfc3164_remove_msgFirstSpace='off' \
+  rsyslog_global_parser_permitslashinprogramname='off' \
+  rsyslog_omfile_enabled='on' \
+  rsyslog_omfile_split_files_per_host='off' \
   rsyslog_omfile_template='RSYSLOG_TraditionalFileFormat' \
-  rsyslog_omkafka_enabled=false \
+  rsyslog_omkafka_enabled='off' \
   rsyslog_omkafka_broker='' \
   rsyslog_omkafka_confParam='' \
   rsyslog_omkafka_topic='syslog' \
   rsyslog_omkafka_dynatopic='off' \
   rsyslog_omkafka_topicConfParam='' \
   rsyslog_omkafka_template='TmplRFC5424Format' \
-  rsyslog_omfwd_syslog_enabled=false \
+  rsyslog_omfwd_syslog_enabled='off' \
   rsyslog_omfwd_syslog_host='' \
   rsyslog_omfwd_syslog_port=514 \
   rsyslog_omfwd_syslog_protocol='tcp' \
   rsyslog_omfwd_syslog_template='TmplRFC5424Format' \
-  rsyslog_omfwd_json_enabled=false \
+  rsyslog_omfwd_json_enabled=off \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
-  rsyslog_forward_extra_enabled=false
+  rsyslog_forward_extra_enabled='off'
 
 #TODO: check how not to lose/include orginal host if events are relayed
 #TODO: check if it's possible to add/tag 5424 with metadata about syslog method used (e.g. strong auth, just SSL sever, weak udp security)

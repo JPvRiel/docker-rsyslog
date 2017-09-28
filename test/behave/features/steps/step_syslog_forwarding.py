@@ -98,7 +98,6 @@ def step_impl(context, timeout):
         )
         for kafka_message in consumer:
             if kafka_message is not None:
-                logging.error(kafka_message.value.decode())
                 if context.message in kafka_message.value.decode():
                     message_found = kafka_message.value.decode()
                     break

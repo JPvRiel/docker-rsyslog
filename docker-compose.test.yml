@@ -6,6 +6,7 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-behave.test
+    hostname: behave
     env_file:
       - ./test/test_syslog_server.env
     depends_on:
@@ -52,6 +53,10 @@ services:
       context: test
       dockerfile: Dockerfile-syslog_client_ubuntu1604.test
     hostname: test_syslog_client_ubuntu1604
+    volumes:
+      - ./test/tls_x509/certs/test_ca.cert.pem:/usr/local/etc/ssl/test/test_ca.cert.pem
+      - ./test/tls_x509/private/test_syslog_client_ubuntu1604.key.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1604.key.pem
+      - ./test/tls_x509/certs/test_syslog_client_ubuntu1604.cert.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1604.cert.pem
     #environment:
     #  DEBUG: 'true'
 
@@ -67,7 +72,11 @@ services:
       - test_zookeeper
     environment:
       KAFKA_ZOOKEEPER_CONNECT: test_zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:SSL
       KAFKA_ADVERTISED_HOST_NAME: test_kafka
+      KAFKA_ADVERTISED_PROTOCOL_NAME: OUTSIDE
+      KAFKA_ADVERTISED_PORT: 9093
+      KAFKA_PROTOCOL_NAME: INSIDE
       KAFKA_CREATE_TOPICS: test_syslog:1:1
 
   # To test syslog relay/forwarding
@@ -79,6 +88,7 @@ services:
       - syslog_relay:/tmp/syslog_relay
     ports:
       - "10514"
+    #command: sh -c 'rm -f /tmp/syslog_relay/nc.out; mkfifo /tmp/syslog_relay/nc.out && nc -lk 0.0.0.0 10514 > /tmp/syslog_relay/nc.out'
     command: sh -c 'nc -lk 0.0.0.0 10514 > /tmp/syslog_relay/nc.out'
 
   # To test forwarding as JSON output
@@ -89,6 +99,7 @@ services:
       - json_relay:/tmp/json_relay
     ports:
       - "15000"
+    #command: sh -c 'rm -f /tmp/json_relay/nc.out; mkfifo /tmp/json_relay/nc.out && nc -lk 0.0.0.0 15000 > /tmp/json_relay/nc.out'
     command: sh -c 'nc -lk 0.0.0.0 15000 > /tmp/json_relay/nc.out'
 
   # Main syslog server (the test object / target)

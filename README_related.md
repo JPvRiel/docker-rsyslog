@@ -185,8 +185,11 @@ Some regex examples below (which fail to account for IPv4 or IPv6 being allowed 
 Strict validation (67 steps)
 
 ```regex
-"^<(([0-9]{2})|(([1][0-8][0-9]|([9][01]))))>((Jan)|(Feb)|(Mar)|(Apr)|(May)|(Jun)|(Jul)|(Aug)|(Sep)|(Oct)|(Nov)|(Dec)) (( [1-9])|([12][0-9])|(?:3[01])|[1-9]) (2[0123]|[01][0-9]):([0-5][0-9]):(([0-5]?[0-9]|60)([:.,][0-9]+)?) (([a-zA-Z0-9][a-zA-Z0-9-]{0,61}[a-zA-Z0-9])|) "
+"^<(([0-9]{1,2})|(1(([0-8][0-9])|([9][01]))))>((Jan)|(Feb)|(Mar)|(Apr)|(May)|(Jun)|(Jul)|(Aug)|(Sep)|(Oct)|(Nov)|(Dec)) (([ 0]?[1-9])|([12][0-9])|(3[01])|[1-9]) (2[0123]|[01][0-9]):([0-5][0-9]):(([0-5]?[0-9]|60)([:.,][0-9]+)?) (20[0-9]{2} )?[a-zA-Z0-9-]{1,63} "
 ```
+
+^<(([0-9]{1,2})|(1(([0-8][0-9])|([9][01]))))>
+
 
 More relaxed validation that still checks for a sane date and time (57 steps)
 

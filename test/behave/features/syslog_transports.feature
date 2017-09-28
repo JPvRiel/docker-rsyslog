@@ -23,7 +23,7 @@ Feature: Accept syslog network connections for various syslog transports
 
   Scenario Outline: Establish TLS sessions without client authentication
     Given a protocol "<transport protocol>" and port "<port>"
-      And a "tls_x509/certs/default_self_signed.cert.pem" certificate authority file
+      And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
     When connecting with TLS
     Then a TLS session should be complete
 
@@ -36,9 +36,9 @@ Feature: Accept syslog network connections for various syslog transports
 
   Scenario Outline: Establish TLS sessions with client authentication
     Given a protocol "<transport protocol>" and port "<port>"
-      And a "tls_x509/certs/default_self_signed.cert.pem" certificate authority file
-      And a "tls_x509/certs/default_self_signed.cert.pem" certificate file
-      And a "tls_x509/private/default_self_signed.key.pem" private key file
+      And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
+      And a "tls_x509/certs/behave.cert.pem" certificate file
+      And a "tls_x509/private/behave.key.pem" private key file
     When connecting with TLS
     Then a TLS session should be complete
 

@@ -63,7 +63,7 @@ if [[ -z "$rsyslog_server_key_file" ]]; then
 elif ! [[ -f "$rsyslog_server_key_file" ]]; then
   if [[ "$rsyslog_server_key_file" == '/etc/pki/rsyslog/key.pem' ]]; then
     report_warning "No key found at default location \"$rsyslog_server_key_file\"."
-    rsyslog_server_key_file=/etc/pki/tls/private/default_self_signed.key.pem
+    rsyslog_server_key_file=/usr/local/etc/pki/test/test_syslog_server.key.pem
     warn_insecure=true
   else
     report_error "No key found at custom location \"$rsyslog_server_key_file\". Aborting."
@@ -77,7 +77,7 @@ if [[ -z "$rsyslog_server_cert_file" ]]; then
 elif ! [[ -f "$rsyslog_server_cert_file" ]]; then
   if [[ "$rsyslog_server_cert_file" == '/etc/pki/rsyslog/cert.pem' ]]; then
     report_warning "No certficate found at default location \"$rsyslog_server_cert_file\"."
-    rsyslog_server_cert_file=/etc/pki/tls/certs/default_self_signed.cert.pem
+    rsyslog_server_cert_file=/usr/local/etc/pki/test/test_syslog_server.cert.pem
     warn_insecure=true
   else
     report_error "No certficate found at custom location \"$rsyslog_server_cert_file\". Aborting."

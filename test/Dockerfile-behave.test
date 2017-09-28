@@ -6,6 +6,7 @@ LABEL application="behave_test"
 RUN pip install behave && \
     pip install requests && \
     pip install pyhamcrest && \
+    pip install jmespath && \
     pip install rfc5424-logging-handler && \
     pip install pykafka
 

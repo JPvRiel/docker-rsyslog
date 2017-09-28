@@ -13,7 +13,7 @@ Feature: Accept syslog messages in various formats
 
   Scenario Outline: Messages are received from syslog clients
     Given a file "<file>"
-    When searching lines for the pattern "<regex>"
+    When searching lines for the pattern "<regex>" over "5" seconds
     Then the pattern should be found
 
     Examples:
@@ -25,40 +25,40 @@ Feature: Accept syslog messages in various formats
   # - Positive testing well formed message samples
   Scenario Outline: Well formed RFC3164 messages create useful fields
   Given a protocol "TCP" and port "514"
-    And "rsyslog_omfwd_json_template" environment variable is "TmplRSyslogJSONFull"
+    And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
     And a file "/tmp/json_relay/nc.out"
   When connecting
     And sending the raw message "<message>"
     And waiting "1" seconds
-    And searching lines for the pattern "<regex>"
+    And searching lines for the pattern "<regex>" over "5" seconds
   Then a connection should be complete
     And the pattern should be found
     And a JSON entry should contain "<json>"
 
   Examples:
     | message                                                            | regex                                       | json |
-    | <14>Sep 19 23:43:29 behave test[99999]: Well formed RFC3164        | .*?Well formed RFC3164.*                    | { "hostname": "behave", "programname": "test", "procid" : "99999" } |
-    | <14>Sep 19 23:43:29 behave test: Well formed RFC3164 without PID   | .*?Well formed RFC3164 without PID.*        | { "hostname": "behave", "programname": "test", "procid" : "-" }     |
-    | <14>Sep 19 23:43:29 behave Well formed RFC3164 without syslog tag  | .*?Well formed RFC3164 without syslog tag.* | { "hostname": "behave", "syslogtag": "-" }                        |
+    | <14>Sep 19 23:43:29 behave test[99999]: Well formed RFC3164        | .*?Well formed RFC3164.*                    | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
+    | <14>Sep 19 23:43:29 behave test: Well formed RFC3164 without PID   | .*?Well formed RFC3164 without PID.*        | { "hostname": "behave", "app-name": "test", "procid" : "-" }     |
+    | <14>Sep 19 23:43:29 behave Well formed RFC3164 without application name  | .*?Well formed RFC3164 without application name.* | { "hostname": "behave", "app-name": "-" }                        |
 
   # TODO
   # - Negative testing with RFC5424 malformed message samples
 
   @wip
-  Scenario Outline: Malformed RFC3164 messages do not create bogus fields
+  Scenario Outline: Malformed RFC3164 messages do not create bogus field values
     Given a protocol "TCP" and port "514"
-      And "rsyslog_omfwd_json_template" environment variable is "TmplRSyslogJSONFull"
+      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
       And a file "/tmp/json_relay/nc.out"
     When connecting
       And sending the raw message "<message>"
       And waiting "1" seconds
-      And searching lines for the pattern "<regex>"
+      And searching lines for the pattern "<regex>" over "5" seconds
     Then a connection should be complete
       And the pattern should be found
-      And a JSON entry should contain "<json>"
-      And a JSON field "<field>" should be "<value>"
+      And a JSON jmespath "<path>" field should be "<value>"
 
   Examples:
-    | message                                                          | regex                        | field       | value | json                   |
-    | Poor form RFC3164 without syslog header - avoid bogus hostname   | .*?avoid bogus hostname.*    | hostname    | -     | { "hostname": "-" }    |
-    | Poor form RFC3164 without syslog header - avoid bogus syslog tag | .*?avoid bogus syslog tag.*  | syslogtag   | -     | { "syslogtag": "-" }   |
+    | message  | regex  | path  | value  |
+    | Sep 19 23:43:29 lies Poor form RFC3164 with no priority  | .*?RFC3164 with no priority.*  | hostname | lies |
+    | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname   | .*?RFC3164 with no syslog header.*  | "syslog-relay"."header-valid" | false |
+    | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.*  | "syslog-relay"."pri-valid" | false |

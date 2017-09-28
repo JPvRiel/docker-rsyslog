@@ -9,8 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   rsyslog-relp \
   && rm -rf /var/lib/apt/lists/*
 
-COPY tls_x509/certs/default_self_signed.cert.pem /etc/ssl/certs/
-COPY tls_x509/private/default_self_signed.key.pem /etc/ssl/private/
+RUN mkdir -p /usr/local/etc/ssl/test
 
 RUN rm -r /etc/rsyslog.d/ \
   && rm /etc/rsyslog.conf

@@ -1,5 +1,5 @@
 # Kafka output (if enabled, else blank)
-{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "true" -}}
+{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" -}}
 
 {{if $rsyslog_omkafka_enabled -}}
 module(load="omkafka")

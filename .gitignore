@@ -2,5 +2,7 @@
 **/*key.pem
 test/behave/reports/**
 
-!**/default_self_signed*.pem
+!test/tls_x509/private/*.key.pem
+!test/tls_x509/certs/*.cert.pem
+!usr/local/etc/pki/test/*.pem
 !**/.gitkeep

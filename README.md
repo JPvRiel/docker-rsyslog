@@ -196,12 +196,12 @@ sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=
 
 ## Pre-bundled X509 test certificate and private key
 
-Note, a pre-bundled self-signed cert is used for test purposes. It is expected in the following places:
+Note, a pre-bundled self-signed cert and ca is used for test purposes. It is expected in the following places:
 
-- key: `etc/pki/tls/private/default_self_signed.key.pem`
-- cert: `etc/pki/tls/certs/default_self_signed.cert.pem`
+- key: `/usr/local/etc/pki/test/test_syslog_server.key.pem`
+- cert: `/usr/local/etc/pki/test/test_syslog_server.cert.pem`
 
-The default certs are generated via `./util/self_signed_cert.sh test_syslog_server` to work for the `sut` test suite.
+The default certs are generated via `./util/certs.sh` to work for the `sut` test suite.
 
 To embed an internal/extra org CA, add more files to `etc/pki/ca-trust/source/anchors` and rebuild.
 

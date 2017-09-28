@@ -1,7 +1,11 @@
 import os
+import stat
+import fcntl
+import time
 import logging
 import re
 import json
+import jmespath
 
 from behave import *
 from hamcrest import *
@@ -9,7 +13,7 @@ from hamcrest import *
 
 @given('a file "{log_file}"')
 def step_impl(context, log_file):
-    assert_that(os.path.isfile(log_file), equal_to(True))
+    assert_that(os.path.isfile(log_file) or stat.S_ISFIFO(os.stat(log_file).st_mode), equal_to(True))
     context.log_file = log_file
 
 
@@ -39,11 +43,13 @@ def step_impl(context, message):
             )
         )
         context.message_sent = False
+        raise e
     assert_that(context.message_sent, equal_to(True))
 
 
-@when('searching lines for the pattern "{regex}"')
-def step_impl(context, regex):
+@when('searching lines for the pattern "{regex}" over "{timeout}" seconds')
+def step_impl(context, regex, timeout):
+    context.re_match = None
     try:
         context.re = re.compile(regex, re.IGNORECASE)
     except Exception as e:
@@ -54,15 +60,31 @@ def step_impl(context, regex):
             )
         )
         context.re = None
+        raise e
     assert_that(context.re, not_none())
-    search_complete = None
+    search_complete = False
     try:
-        with open(context.log_file, 'r') as f:
-            for line in f:
-                context.re_match = context.re.search(line)
-                if context.re_match:
-                    context.matched_line = context.re_match.group(0)
-                    break
+        time_start = time.time()
+        time_end = time_start + float(timeout)
+        f = open(context.log_file, 'r')
+        # set non-blocking in case of reading a fifo
+        #fd = f.fileno()
+        #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        #fcntl.fcntl(fd, fcntl.F_SETFL, fl | os.O_NONBLOCK)
+        #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
+        #if not fl & os.O_NONBLOCK:
+        #    raise Exception('O_NONBLOCK flag not set')
+        while time.time() < time_end and not search_complete:
+            data = f.read()
+            if len(data) != 0:
+                for line in data.splitlines():
+                    context.re_match = context.re.search(line)
+                    if context.re_match:
+                        context.matched_line = context.re_match.group(0)
+                        search_complete = True
+                        break
+            time.sleep(0.5)
+        f.close()
         search_complete = True
     except Exception as e:
         logging.error(
@@ -74,6 +96,7 @@ def step_impl(context, regex):
             )
         )
         search_complete = False
+        raise e
     assert_that(search_complete, equal_to(True))
 
 
@@ -97,7 +120,39 @@ def step_impl(context, json_element):
         json_find = json.loads(json_element)
     except Exception as e:
         logging.error(
-            "Unable to match JSON element \"{0:s}\" on line \"{1:s}\". Exception: "
+            "Unable to load JSON element \"{0:s}\" on line \"{1:s}\". Exception: "
+            "{2:s}".format(
+                json_element,
+                context.matched_line,
+                str(e)
+            )
+        )
+        raise e
+    assert_that(json_obj, not_none)
+    assert_that(json_obj, has_entries(json_find))
+    # hamcrest cannot handle nested dict objects, but niether does the python built-in comparitor
+    #json_sub_match = json_find.items() <= json_obj.items()
+    #if not json_sub_match:
+    #    logging.error(
+    #            "Unable to match JSON element. Assertion failure:\n"
+    #            "  Subset  : {0:s}\n"
+    #            "  Superset: {1:s}\n"
+    #            "".format(
+    #                json.dumps(json_find)
+    #                json.dumps(json_obj)
+    #            )
+    #        )
+    #assert_that(json_sub_match, equal_to(True))
+
+
+@then('a JSON jmespath "{path}" field should be "{value}"')
+def step_impl(context, path, value):
+    json_obj = None
+    try:
+        json_obj = json.loads(context.matched_line)
+    except Exception as e:
+        logging.error(
+            "Unable to load JSON element \"{0:s}\" on line \"{1:s}\". Exception: "
             "{2:s}".format(
                 json_element,
                 context.matched_line,
@@ -105,23 +160,16 @@ def step_impl(context, json_element):
             )
         )
     assert_that(json_obj, not_none)
-    assert_that(json_obj, has_entries(json_find))
-
-
-@then('a JSON field "{field}" should be "{value}"')
-def step_impl(context, field, value):
-    json_obj = None
     try:
-        json_obj = json.loads(context.matched_line)
-    except Exception as e:
+        match = jmespath.search(path, json_obj)
+    except:
         logging.error(
-            "Unable to match JSON field \"{0:s}\" and value \"{1:s}\" on line \"{2:s}\". Exception: "
-            "{3:s}".format(
-                field,
-                value,
+            "Unable to use jmespath \"{0:s}\" to search JSON object \"{1:s}\". Exception: "
+            "{2:s}".format(
+                path,
                 context.matched_line,
                 str(e)
             )
         )
-    assert_that(json_obj, not_none)
-    assert_that(json_obj, has_entry(field, value))
+        raise e
+    assert_that(match, equal_to(value))
