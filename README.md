@@ -81,7 +81,7 @@ $ docker container inspect -f "{{range .Mounts}}{{.Destination}} = {{.Source}}{{
 
 ## Checking if the container (and rsyslog process) stopped gracefully
 
-As per `man rsyslogd`, the daemon process responds to various signals. The `rsyslog.sh` entry-point script has handlers to pass these along provided the container is stopped as follows:
+As per `man rsyslogd`, the daemon process responds to various signals. The `entrypoint.sh` entry-point script has handlers to pass these along provided the container is stopped as follows:
 
 ```bash
 docker container stop -t 300 syslog
@@ -241,11 +241,12 @@ To see interplay between other test container dependencies and the syslog server
 docker-compose -f docker-compose.test.yml up
 ```
 
+The above will have a lot of output... An alternative is to look at `docker logs <service name>`
+
 cleanup
 
 ```
-docker-compose -f docker-compose.test.yml down
-docker-compose -f docker-compose.test.yml rm
+docker-compose -f docker-compose.test.yml down -v
 ```
 
 ### Building test dependencies
@@ -266,9 +267,38 @@ There are also standard logstash, kafka and zookeeper images needed for testing.
 
 # Debug and additional validation steps
 
-### Checking for file output
+## Configuration validation
 
-One basic ways to see if the rsyslog container works is to run it with file output enabled  and written out to a named volume.
+Configuration passing mistakes and issues are all too common with rsyslog.
+
+The entry-point script always validates config by default (Implicit config check). An explicit check can be done by using `-N1`. And a special python script assembles and outputs the full rsyslog configuration if you use `-E`. For example:
+
+```
+docker container run --rm -it \
+ -v syslog_log:/var/log/remote \
+ -v syslog_work:/var/lib/rsyslog \
+ -v syslog_tls:/etc/pki/rsyslog \
+ -e rsyslog_omfile_enabled=true \
+ --name syslog jpvriel/rsyslog:latest -E
+```
+
+Output will have `##` comment tags to help highlight and show when `$IncludeConfig` directives are expanded to produce a flattened config output with line number prefixes:
+
+```
+12: $IncludeConfig /etc/rsyslog.d/*.conf
+##< start of include directive: $IncludeConfig /etc/rsyslog.d/*.conf
+##^ expanding file: /etc/rsyslog.d/30-globals.conf
+ 1: # Collect stats
+ 2: module(load="impstats" interval="300" log.syslog="on")
+...
+##> end of expand directive: $IncludeConfig /etc/rsyslog.d/*.conf
+```
+
+This helps track back to the exact line number of config that rsyslogd had a problem with, which is otherwise non-trivial due to the use of the confd and golang text template pre-processing needed to map environment variables into the config files.
+
+## Checking for file output
+
+One basic ways to see if the rsyslog container works is to run it with file output enabled and written out to a named volume.
 
 Assuming a suitable volume is created, e.g. `docker volume create syslog_log`, run the container with the volume and `-e rsyslog_omfile_enabled=true`.
 
@@ -300,13 +330,13 @@ Check the output file
 $ sudo tail /var/lib/docker/volumes/syslog_log/_data/udp/5424/$(hostname)/messages | grep --color -E 'Test UDP message|$'
 ```
 
-### Advanced debugging
+## Advanced debugging
 
-One may want to debug the entry point script `rsyslog.sh`, `rsyslogd`, or both.
+One may want to debug the entry point script `entrypoint.sh`, `rsyslogd`, or both.
 
-RSyslog depends on a command line flag `-d` or the `RSYSLOG_DEBUG` environment variables being set in order to debug. Enabling debug has performance implications and is probably NOT appropriate for production.
+RSyslog depends on a command line flag `-d` or the `RSYSLOG_DEBUG` environment variables being set in order to debug. See [Rsyslog Debug Support](http://www.rsyslog.com/doc/master/troubleshooting/debug.html).
 
-Set debug flag for rsyslogd (does not affect entrypoint script debugging):
+Enabling debug has performance implications and is probably NOT appropriate for production. Debug flags for rsyslogd does not affect entrypoint script debugging. To make the entrypoint script be verbose about shell commands run, use `ENTRYPOINT_DEBUG=true`.
 
 ```bash
 docker container run --rm -it \
@@ -316,28 +346,9 @@ docker container run --rm -it \
  --name syslog jpvriel/rsyslog:latest rsyslogd -d
 ```
 
-Alternatively, to run with rsyslogd debug enabled but silent until signaled (via `SIGUSR1`)
+Alternatively, to run with rsyslogd debug enabled but silent until signaled (via `SIGUSR1`), add `-e RSYSLOG_DEBUG=DebugOnDemand`.
 
-```
-docker container run --rm -it \
- -v syslog_log:/var/log/remote \
- -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/rsyslog \
- --name syslog jpvriel/rsyslog:latest
-```
-
-Set env to `DEBUG=true` if working on problems with the `rsyslog.sh` entrypoint script. This will also set `RSYSLOG_DEBUG=DebugOnDemand` so that `SIGUSR1` signals can toggle rsyslogd debugging as need be. E.g.
-
-```
-docker container run --rm -it \
- -v syslog_log:/var/log/remote \
- -v syslog_work:/var/lib/rsyslog \
- -v syslog_tls:/etc/pki/rsyslog \
- -e DEBUG=true \
- --name syslog jpvriel/rsyslog:latest
-```
-
-Then send the container a signal (which `rsyslog.sh` entrypoint passes on to rsyslogd)
+To trigger debug output, send the container a signal (which `entrypoint.sh` entrypoint passes on to rsyslogd)
 
 ```
 docker container kill --signal=SIGUSR1 syslog
@@ -360,7 +371,7 @@ docker container run --rm -it \
 Then run the init script manually to see if there are problems:
 
 ```
-DEBUG=true /usr/local/bin/rsyslog.sh
+ENTRYPOINT_DEBUG=true /usr/local/bin/entrypoint.sh
 ```
 
 E.g. or exec on an already running container
@@ -368,6 +379,19 @@ E.g. or exec on an already running container
 ```
 docker container exec -it syslog /bin/bash
 ```
+
+## Debugging a work in progress (WIP) test case
+
+When you just run `sut` via compose, the output from other containers is hard to see.
+
+Some advice here is:
+
+- Set `RSYSLOG_DEBUG: 'Debug'` for the `test_syslog_server` in `docker-compose.test.yml`.
+- Execute `docker-compose -f docker-compose.test.yml run sut behave -w behave/features`.
+- Run `docker logs dockerrsyslog_test_syslog_server_` to see the debug output.
+- Use `docker-compose -f docker-compose.test.yml down` and `docker system prune --filter 'dangling=true'` between test runs to ensure you don't end up searching on log files within volume data for previous test runs...
+
+You may need to adapt according to how dockerd logging is configured.
 
 # Known limitations
 
@@ -396,23 +420,19 @@ rsyslog can accept and convert RFC3164 legacy input, but with some conversion ca
 # Status
 
 Done:
-
 - Multiple inputs
 - File output
 - Using confd to template config via env vars
-- First attempt to add metadata to a message about peer connection (helps with provenance) - avoid spoofed syslog messages, or bad info from poorly configured clients.
+- Add metadata to a message about peer connection (helps with provenance) - avoid spoofed syslog messages, or bad info from poorly configured clients.
 - Gracefull entrypoint script exit and debugging by passing signals to rsyslogd.
 - Kafka and syslog forwarding.
 - JSON output
 
 Not yet done:
-- More test scenarios (only basics done thus far). No negative testing.
-- Optimised config, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
-
-```
-$PreserveFQDN on
-$MaxMessageSize 64k
-```
+- Re-factor test suite
+  - Simplify and depend on less containers one async support in behave allows better network test cases
+  - Watch out for pre-existing files in volumes from prior runs
+- More rsyslog -> kafka optimisation, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
 
 Maybe someday:
 - Filter/send rsyslog performance metrics to stdout (omstdout)

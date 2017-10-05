@@ -7,6 +7,7 @@ services:
       context: test
       dockerfile: Dockerfile-behave.test
     hostname: behave
+    mem_limit: 512m
     env_file:
       - ./test/test_syslog_server.env
     depends_on:
@@ -34,6 +35,7 @@ services:
     entrypoint: bash -c '/usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1; echo -n $$? > /tmp/config_check/rsyslog_n1_exit_code.txt'
     volumes:
       - config_check:/tmp/config_check
+    mem_limit: 256m
 
   # syslog clients to be tested
   test_syslog_client_centos7:
@@ -42,10 +44,9 @@ services:
       context: test
       dockerfile: Dockerfile-syslog_client_centos7.test
     hostname: test_syslog_client_centos7
+    mem_limit: 256m
     depends_on:
       - test_syslog_server
-    #environment:
-    #  DEBUG: 'true'
 
   test_syslog_client_ubuntu1604:
     image: jpvriel/syslog_client_ubuntu1604
@@ -53,37 +54,36 @@ services:
       context: test
       dockerfile: Dockerfile-syslog_client_ubuntu1604.test
     hostname: test_syslog_client_ubuntu1604
+    mem_limit: 256m
     volumes:
       - ./test/tls_x509/certs/test_ca.cert.pem:/usr/local/etc/ssl/test/test_ca.cert.pem
       - ./test/tls_x509/private/test_syslog_client_ubuntu1604.key.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1604.key.pem
       - ./test/tls_x509/certs/test_syslog_client_ubuntu1604.cert.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1604.cert.pem
-    #environment:
-    #  DEBUG: 'true'
 
   # remote outputs to be tested, e.g. kafka
   test_zookeeper:
     image: zookeeper
     hostname: test_zookeeper
+    mem_limit: 512m
 
   test_kafka:
     image: wurstmeister/kafka
     hostname: test_kafka
+    mem_limit: 512m
     depends_on:
       - test_zookeeper
-    environment:
-      KAFKA_ZOOKEEPER_CONNECT: test_zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:SSL
-      KAFKA_ADVERTISED_HOST_NAME: test_kafka
-      KAFKA_ADVERTISED_PROTOCOL_NAME: OUTSIDE
-      KAFKA_ADVERTISED_PORT: 9093
-      KAFKA_PROTOCOL_NAME: INSIDE
-      KAFKA_CREATE_TOPICS: test_syslog:1:1
+    env_file:
+      - ./test/test_kafka.env
+    volumes:
+      - ./test/tls_x509/certs/test_ca.jks:/usr/local/etc/ssl/test/test_ca.jks
+      - ./test/tls_x509/private/test_kafka.pfx:/usr/local/etc/ssl/test/test_kafka.pfx
 
   # To test syslog relay/forwarding
   # Simple netcat to file: https://github.com/appropriate/docker-nc
   test_syslog_relay:
     image: appropriate/nc
     hostname: syslog_relay
+    mem_limit: 64m
     volumes:
       - syslog_relay:/tmp/syslog_relay
     ports:
@@ -95,6 +95,7 @@ services:
   test_json_relay:
     image: appropriate/nc
     hostname: json_relay
+    mem_limit: 64m
     volumes:
       - json_relay:/tmp/json_relay
     ports:
@@ -109,8 +110,12 @@ services:
       context: .
       dockerfile: Dockerfile
     hostname: test_syslog_server
+    mem_limit: 32m
+    stop_grace_period: 15s
     env_file:
       - ./test/test_syslog_server.env
+    #environment:
+    #  RSYSLOG_DEBUG: 'Debug'
     depends_on:
       # test cases need to relay / forward to the following
       - test_kafka
@@ -123,6 +128,7 @@ services:
       retries: 3
     volumes:
       - syslog_log:/var/log/remote
+
 
 volumes:
   # Volumes below get shared with the behave container so that files therein can

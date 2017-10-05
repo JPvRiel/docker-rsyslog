@@ -1,8 +1,8 @@
 FROM centos:7
 LABEL application="rsyslog" \
   maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>' \
-  version='8.29.0-2' \
-  release-date='2017-09-27'
+  version='8.29.0-3' \
+  release-date='2017-10-05'
 
 ENV container=docker
 
@@ -80,23 +80,32 @@ COPY usr/local/etc/pki/test/test_syslog_server.key.pem /usr/local/etc/pki/test
 COPY usr/local/etc/pki/test/test_syslog_server.cert.pem /usr/local/etc/pki/test
 
 # Default ENV vars for rsyslog config
-# Globals
+
+# TLS related globals
 ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
   rsyslog_server_cert_file='/etc/pki/rsyslog/cert.pem' \
   rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
-# Inputs
-# Note 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode
-ENV rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
-  rsyslog_tls_permitted_peer='["*"]' \
-  rsyslog_module_impstats_interval='300'
-# filtering, templates and outputs
-# See 60-output_format.conf.tmpl
-ENV rsyslog_input_filtering_enabled='off' \
-  rsyslog_support_metadata_formats='off' \
+
+# Inputs and parsing inputs
+ENV rsyslog_support_metadata_formats='off' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
   rsyslog_pmrfc3164_remove_msgFirstSpace='off' \
   rsyslog_global_parser_permitslashinprogramname='off' \
-  rsyslog_omfile_enabled='on' \
+  rsyslog_global_preservefqdn='on' \
+  rsyslog_global_maxmessagesize=65536 \
+  rsyslog_input_filtering_enabled='off' \
+  rsyslog_module_impstats_interval='300' \
+  rsyslog_global_action_reportSuspension='on' \
+  rsyslog_global_senders_keeptrack='on' \
+  rsyslog_global_senders_timeoutafter='86400' \
+  rsyslog_global_senders_reportgoneaway='on' \
+  rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
+  rsyslog_tls_permitted_peer='["*"]'
+# Note 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode
+
+# Outputs
+# See 60-output_format.conf.tmpl
+ENV rsyslog_omfile_enabled='on' \
   rsyslog_omfile_split_files_per_host='off' \
   rsyslog_omfile_template='RSYSLOG_TraditionalFileFormat' \
   rsyslog_omkafka_enabled='off' \
@@ -115,21 +124,37 @@ ENV rsyslog_input_filtering_enabled='off' \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
+  rsyslog_om_action_queue_maxdiskspace=1073741824 \
+  rsyslog_om_action_queue_size=2097152 \
+  rsyslog_om_action_queue_discardmark=1048576 \
+  rsyslog_om_action_queue_discardseverity=6 \
   rsyslog_forward_extra_enabled='off'
+# Several globals are defined via rsyslog_global_* inlcuding reporting stats
+#
+# rsyslog_support_metadata_formats and the appropriate template choice must both be used to allow including validation checks on syslog headers, hostnames and tags for RFC3164. The metadata template choices are:
+# - TmplRFC5424FormatMeta
+# - TmplJSONRawMeta
+#
+# Notes for the pre-canned outputs (kafka, JSON, syslog)
+# - each pre-canned output can have it's own template applied, e.g.
+# - rsyslog_om_action_queue_* is set for all outputs (sort of a global)
+# - rsyslog_om_action_queue_maxdiskspace=1073741824 ~ 1G
+# - E.g. if three outputs have ~ 1G file limit for the queue, 3G overall is needed
+# - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardmark need to be adjusted in line with rsyslog_om_action_queue_maxdiskspace
+# - E.g. Assuming 512 byte messages, a 1G file can fit ~ 2 million messages, and start discarding at ~ 1 million messages
+# - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: https://github.com/kelseyhightower/confd/issues/611
+# - rsyslog_om_action_queue_discardseverity=6 implies info and debug messages get discarded
+#
+# Additonal output config will probably be highly varied, so instead of trying to template/pre-can it, we allow for that config to be red from a volume and managed by simply picking up from a `output_extra` ruleset. rsyslog_forward_extra_enabled='on' to enable.
 
-#TODO: check how not to lose/include orginal host if events are relayed
-#TODO: check if it's possible to add/tag 5424 with metadata about syslog method used (e.g. strong auth, just SSL sever, weak udp security)
-#TODO: 5424 format (rfc5424micro)?
 
-# Note, output config will probably be highly varied, so instead of trying to template it, we allow for that config to be red from a volume and managed by simply picking up from a forward ruleset
-
-#TODO: understand which "stateful" runtime directories rsyslog should have in order to perist accross errors/container runs
 # Volumes required
 VOLUME /var/log/remote \
   /var/lib/rsyslog \
   /etc/pki/rsyslog
-# Extra optional volumes that could be supplied at runtime
-# - /etc/rsyslog.d/output/forward_extra
+
+# Extra optional volumes with config that can be supplied at runtime to inject custom needs
+# - /etc/rsyslog.d/output/extra
 # - /etc/rsyslog.d/filter
 
 # Ports to expose

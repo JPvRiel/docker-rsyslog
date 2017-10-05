@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -e
-[ "$DEBUG" == 'true' ] && export RSYSLOG_DEBUG=DebugOnDemand && set -x
+[ "$ENTRYPOINT_DEBUG" == 'true' ] && set -x
 
 # Term colour escape codes
 T_DEFAULT='\e[0m'
@@ -140,10 +140,11 @@ set -e
 
 # Check the exit code
 if [[ -n $rsyslog_exit_status ]]; then
-  if [[ ! $rsyslog_exit_status ]]; then
+  # 128+15 = 143 (143 indicates processing was stoped via a SIGTERM signal)
+  if [[ ! ($rsyslog_exit_status == 0 || $rsyslog_exit_status == 143) ]]; then
     report_error "rsyslog stopped abnormally! Exit code = $rsyslog_exit_status."
   else
-    report_info 'rsyslog stopped normally.'
+    report_info "rsyslog stopped normally. Exit code = $rsyslog_exit_status."
   fi
   exit $rsyslog_exit_status
 else

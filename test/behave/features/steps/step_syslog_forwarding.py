@@ -45,8 +45,9 @@ def step_impl(context, message, sending_format):
                 logging.handlers.SYSLOG_TCP_PORT
             ),
             facility=logging.handlers.SysLogHandler.LOG_USER,
-            socktype=socket.SOCK_STREAM
+            socktype=socket.SOCK_STREAM,
         )
+        syslog_handler.append_nul=False
         # Note SysLogHandler TCP doesnt do "Octet-counting" and needs a
         # newline added for "Non-Transparent-Framing". See RFC6587.
         syslog_3164_formatter = logging.Formatter(
@@ -85,13 +86,21 @@ def step_impl(context, timeout):
 def step_impl(context, timeout):
     message_found = None
     try:
+        tls_config = pykafka.SslConfig(
+            cafile=getattr(context, 'ca_file'),
+            certfile=getattr(context, 'cert_file', None),
+            keyfile=getattr(context, 'key_file', None)
+        )
         # work arround pain where docker-compose incldues literal quotes within
         # enviroment variables. E.g. var="foo" gets passed as '"foo"' instead
         # of just 'foo'
         broker_list = ','.join(
             ast.literal_eval(context.env['rsyslog_omkafka_broker'])
         )
-        client = pykafka.client.KafkaClient(hosts=broker_list)
+        client = pykafka.client.KafkaClient(
+            hosts=broker_list,
+            ssl_config=tls_config
+        )
         topic = client.topics[b'test_syslog']
         consumer = topic.get_simple_consumer(
             consumer_timeout_ms=int(timeout) * 1000

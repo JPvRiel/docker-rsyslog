@@ -7,4 +7,11 @@ module(load="impstats" interval="{{ getenv "rsyslog_module_impstats_interval" }}
 # Globals
 global(
   parser.permitSlashInProgramname = "{{ getenv "rsyslog_global_parser_permitslashinprogramname" }}"
+  preserveFQDN = "{{ getenv "rsyslog_global_preservefqdn" }}"
+  maxMessageSize = "{{ getenv "rsyslog_global_maxmessagesize" }}"
+  action.reportSuspension = "{{ getenv "rsyslog_global_action_reportSuspension" }}"
+  senders.keepTrack = "{{ getenv "rsyslog_global_senders_keeptrack" }}"
+  senders.timeoutAfter = "{{ getenv "rsyslog_global_senders_timeoutafter" }}"
+  senders.reportGoneAway = "{{ getenv "rsyslog_global_senders_reportgoneaway" }}"
+
 )

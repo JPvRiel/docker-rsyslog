@@ -10,6 +10,15 @@ ruleset(name="fwd_json")
     Port="{{ getenv "rsyslog_omfwd_json_port" }}"
     Protocol="tcp"
     template="{{ getenv "rsyslog_omfwd_json_template" }}"
+    # queue config
+    action.resumeRetryCount = "-1"
+    queue.type = "LinkedList"
+    queue.filename="fwd_json"
+    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxdiskspace" }}"
+    queue.saveonshutdown="on"
+    queue.size = "{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardmark" }}"
+    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardseverity" }}"
   )
 }
 {{- end}}
