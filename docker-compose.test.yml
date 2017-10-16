@@ -135,5 +135,17 @@ volumes:
   # be inspected
   config_check:
   syslog_log:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
   syslog_relay:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
   json_relay:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs

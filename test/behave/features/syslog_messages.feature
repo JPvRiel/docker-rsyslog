@@ -14,7 +14,7 @@ Feature: Accept syslog messages in various formats
   @slow
   Scenario Outline: Messages are received from syslog clients
     Given a file "<file>"
-    When searching lines for the pattern "<regex>" over "15" seconds
+    When searching lines for the pattern "<regex>" over "30" seconds
     Then the pattern should be found
 
     Examples:
@@ -32,7 +32,7 @@ Feature: Accept syslog messages in various formats
   When connecting
     And sending the raw message "<message>"
     And waiting "1" seconds
-    And searching lines for the pattern "<regex>" over "15" seconds
+    And searching lines for the pattern "<regex>" over "30" seconds
   Then a connection should be complete
     And the pattern should be found
     And a JSON entry should contain "<json>"
@@ -53,7 +53,7 @@ Feature: Accept syslog messages in various formats
     When connecting
       And sending the raw message "<message>"
       And waiting "1" seconds
-      And searching lines for the pattern "<regex>" over "15" seconds
+      And searching lines for the pattern "<regex>" over "30" seconds
     Then a connection should be complete
       And the pattern should be found
       And a JSON jmespath "<path>" field should be "<value>"
