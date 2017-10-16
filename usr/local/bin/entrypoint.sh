@@ -84,7 +84,7 @@ elif ! [[ -f "$rsyslog_server_cert_file" ]]; then
     exit 1
   fi
 fi
-if [[ $warn_insecure ]]; then
+if [[ "$warn_insecure" == 'true' ]]; then
   report_warning 'Insecure built-in TLS key or certifcate in use. DO NOT run in produciton.'
 fi
 report_info "Using $rsyslog_server_key_file as the prviate key."
