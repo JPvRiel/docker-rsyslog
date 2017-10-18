@@ -6,7 +6,7 @@
 # - RSYSLOG_TraditionalForwardFormat
 # - RSYSLOG_SyslogProtocol23Format
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" -}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
 
 # Standard example of RFC5424
 # Note, RSYSLOG_SyslogProtocol23Format is the built-in reserved template name for a draft of RFC5424, so the above is more or less identical to that

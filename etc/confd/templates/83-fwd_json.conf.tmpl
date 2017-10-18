@@ -1,5 +1,5 @@
 # JSON output (if enabled, else blank)
-{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" -}}
+{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" "true" -}}
 
 {{if $rsyslog_omfwd_json_enabled -}}
 ruleset(name="fwd_json")

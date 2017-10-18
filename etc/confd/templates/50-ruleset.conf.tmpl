@@ -1,12 +1,12 @@
 # Rules and actions to apply when a specific kind of input is received
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" -}}
-{{$rsyslog_input_filtering_enabled := getenv "rsyslog_input_filtering_enabled" | toLower | eq "on" -}}
-{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" -}}
-{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" -}}
-{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" -}}
-{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" -}}
-{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "on" -}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
+{{$rsyslog_input_filtering_enabled := getenv "rsyslog_input_filtering_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "on" "true" -}}
 
 # Customise the settings of the built-in RFC3164 to use extra options to better handle malformed messages
 # - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
@@ -20,7 +20,7 @@ parser(
 ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $!tls = "false";
-  set $!authenticated_client = "false";\
+  set $!authenticated_client = "false";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
@@ -94,6 +94,9 @@ ruleset(name="output") {
   # append more meta-data
   if ($protocol-version == "1") then {
     set $!format = "RFC5424";
+    # when rsyslog parses a message as version 1 / RFC5424, it implies parsing worked
+    set $!pri-valid = "true";
+    set $!header-valid = "true";
   } else {
     # assume protocol-version == 0
     # check priority
