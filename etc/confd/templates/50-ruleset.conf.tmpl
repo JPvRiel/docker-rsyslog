@@ -97,6 +97,7 @@ ruleset(name="output") {
     # when rsyslog parses a message as version 1 / RFC5424, it implies parsing worked
     set $!pri-valid = "true";
     set $!header-valid = "true";
+    set $.hostname-valid = $hostname;
   } else {
     # assume protocol-version == 0
     # check priority
