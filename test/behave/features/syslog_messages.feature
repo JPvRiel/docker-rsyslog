@@ -25,7 +25,7 @@ Feature: Accept syslog messages in various formats
   # - Positive testing well formed message samples
 
   @slow
-  Scenario Outline: Well formed RFC3164 messages create useful fields
+  Scenario Outline: Well formed messages mapped into JSON fields
   Given a protocol "TCP" and port "514"
     And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
     And a file "/tmp/json_relay/nc.out"
@@ -40,10 +40,11 @@ Feature: Accept syslog messages in various formats
   Examples:
     | message | regex | json |
     | <14>Sep 19 23:43:29 behave test[99999]: Well formed RFC3164 with PID | .*?Well formed RFC3164 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
+    | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - [test@16543 key1="value1" key2="value2"] Well formed RFC5424 with PID | .*Well formed RFC5424 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
     | <14>Sep 19 23:43:29 behave test: Well formed RFC3164 without PID | .*?Well formed RFC3164 without PID.* | { "hostname": "behave", "app-name": "test", "procid" : "-" } |
     | <14>Sep 19 23:43:29 behave Well formed RFC3164 without application name  | .*?Well formed RFC3164 without application name.* | { "hostname": "behave", "app-name": "-" } |
 
-  # - Negative testing with RFC5424 malformed message samples
+  # - Negative testing with RFC3164 "malformed" message samples
 
   @slow
   Scenario Outline: Malformed RFC3164 messages do not create bogus field values
