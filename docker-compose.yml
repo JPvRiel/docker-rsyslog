@@ -2,9 +2,17 @@ version: '2.1'
 
 services:
   syslog:
-    image: jpvriel/rsyslog
+    image: jpvriel/rsyslog:${VERSION:-latest}
     build:
       context: .
+      args:
+        - VERSION
+        - BUILD_DATE
+        - http_proxy
+        - https_proxy
+        - ftp_proxy
+        - no_proxy
+        - DISABLE_YUM_MIRROR
     volumes:
       - syslog_log:/var/log/remote
       - syslog_work:/var/lib/rsyslog

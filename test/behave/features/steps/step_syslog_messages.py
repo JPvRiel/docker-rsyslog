@@ -172,4 +172,14 @@ def step_impl(context, path, value):
             )
         )
         raise e
-    assert_that(match, equal_to(value))
+    # hanle cases where value may be a number or boolean
+    if value == "true":
+        implicit_value = True
+    elif value == "false":
+        implicit_value = False
+    elif value.isdecimal():
+        # caution, doesn't handle negative numbers or fractions
+        implicit_value = int(value)
+    else:
+        implicit_value = value
+    assert_that(match, equal_to(implicit_value))

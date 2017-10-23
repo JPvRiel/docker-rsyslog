@@ -3,7 +3,20 @@
 # See 50-ruleset.conf for the parent ruleset that calls this
 
 {{ $rsyslog_omfile_split_files_per_host := getenv "rsyslog_omfile_split_files_per_host" | toLower | eq "on" "true" -}}
+{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
 
+{{if $rsyslog_support_metadata_formats -}}
+# Avoid using invalid hostnames if possible (meta-data enabled)
+template(name="TmplPerHostFile" type="string" string="/var/log/remote/%$.hostname-valid%")
+{{if $rsyslog_omfile_split_files_per_host -}}
+template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%$.hostname-valid%/secure")
+template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%$.hostname-valid%/audit")
+template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%$.hostname-valid%/console")
+template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%$.hostname-valid%/firewall")
+template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%$.hostname-valid%/messages")
+{{- end}}
+{{- else}}
+# The hostname property in rsyslog is taken without any checks from the message content
 template(name="TmplPerHostFile" type="string" string="/var/log/remote/%hostname%")
 {{if $rsyslog_omfile_split_files_per_host -}}
 template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%hostname%/secure")
@@ -11,6 +24,7 @@ template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%host
 template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%hostname%/console")
 template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%hostname%/firewall")
 template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%hostname%/messages")
+{{- end}}
 {{- end}}
 
 ruleset(name="out_file") {

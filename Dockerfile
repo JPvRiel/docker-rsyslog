@@ -1,8 +1,14 @@
 FROM centos:7
-LABEL application="rsyslog" \
-  maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>' \
-  version='8.30.0-1' \
-  release-date='2017-10-20'
+ARG VERSION
+LABEL org.label-schema.schema-version=1.0.0-rc1 \
+  org.label-schema.name="rsyslog" \
+  org.label-schema.description="RSyslog container with pre-canned use-cases controlled by setting environment variables" \
+  org.label-schema.version="${VERSION}" \
+  org.label-schema.url="http://www.rsyslog.com" \
+  org.label-schema.vcs-url="https://github.com/JPvRiel/docker-rsyslog" \
+  org.label-schema.distribution-scope=public \
+  maintainer='Jean-Pierre van Riel <jp.vanriel@gmail.com>'
+# Base CentOS image has a nubmer of labels we don't overwrite and this may cause confusion
 
 ENV container=docker
 
@@ -168,3 +174,7 @@ COPY usr/local/bin/entrypoint.sh usr/local/bin/rsyslog_healthcheck.sh usr/local/
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 HEALTHCHECK CMD /usr/local/bin/rsyslog_healthcheck.sh
+
+# Add build-date at the end to avoid invalidating the docker build cache
+ARG BUILD_DATE
+LABEL org.label-schema.build-date="${BUILD_DATE}"

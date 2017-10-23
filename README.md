@@ -180,18 +180,40 @@ ruleset(name="forward_kafka")
 
 # Build
 
-Match the `rsyslog_version` to the version of rsyslogd the container is based on.
+## Makefile Build
 
-Build command example
+If your user has docker socket permissions, e.g.:
+
+```
+make build
+```
+
+Else if you need to elevate privilege, e.g.:
+
+```
+sudo -E make build
+```
+
+Where `-E` helps pass on `http_proxy` env vars, etc.
+
+The build argument `DISABLE_YUM_MIRROR=true` can help if you have a caching proxy (e.g. squid) and don't want the mirror selection process in yum to break proxy caching. However, if default mirrors are down, then build fails.
+
+Changes to `build.env` should invalidate the build cache. Docker build caching for a given version and release number.
+
+## Manual Build Examples
+
+The tagging convention followed is to match the `RSYSLOG_VERSION` to the version of rsyslogd the container is based on and add a release number thereafter. This is manually set to reflect the upstream stable RPM release. E.g. `export RSYSLOG_VERSION=8.30.0`
+
+Build command example:
 
 ```bash
-docker build -t jpvriel/rsyslog:$rsyslog_version -t jpvriel/rsyslog:latest .
+docker build -t jpvriel/rsyslog:${RSYSLOG_VERSION}-1 -t jpvriel/rsyslog:latest .
 ```
 
 Building from behind a caching proxy (assuming proxy env vars are appropriately set) when you don't want yum mirror plug-ins to invalidate your proxy cache:
 
 ```bash
-sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:$rsyslog_version -t jpvriel/rsyslog:latest .
+sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy -t jpvriel/rsyslog:${RSYSLOG_VERSION}-1 -t jpvriel/rsyslog:latest .
 ```
 
 ## Pre-bundled X509 test certificate and private key
@@ -212,6 +234,18 @@ Note, there is a runtime `rsyslog_global_ca_file` env var to set the CA for rsys
 However, should you need to embed a CA for other reasons (e.g. building via a corporate TLS intercepting proxy), you embed your own CA at build time by placing your own CA certificates in `etc/pki/ca-trust/source/anchors`.
 
 ## SUT test suite
+
+### Makefile Test
+
+Similar to build, e.g.:
+
+```
+sudo -E make test
+```
+
+If the test fails, make aborts and the test containers are not cleaned up which allows investigating the failure. If successful, the test environment is torn down. Also, `make test_clean` is run before testing to ensure a previous failed test run doesn't interfere.
+
+### Manually Invoking Tests
 
 The "system under test" suite was written with python behave.
 
@@ -248,6 +282,8 @@ cleanup
 ```
 docker-compose -f docker-compose.test.yml down -v
 ```
+
+_N.B.!_: failing to cleanup causes stale volumes and test components which search those volumes could operate off stale test values! Always clean between tests.
 
 ### Building test dependencies
 
@@ -430,8 +466,8 @@ Done:
 
 Not yet done:
 - Re-factor test suite
-  - Simplify and depend on less containers one async support in behave allows better network test cases
-  - Watch out for pre-existing files in volumes from prior runs
+  - Simplify and depend on less containers one async support in behave allows better network test cases (using tmpfs shared volumes is the current work-arround)
+  - Watch out for pre-existing files in volumes from prior runs (testing via Makefile avoids this pitfall)
 - More rsyslog -> kafka optimisation, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
 
 Maybe someday:

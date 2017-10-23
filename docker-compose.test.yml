@@ -6,6 +6,11 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-behave.test
+      args:
+        - http_proxy
+        - https_proxy
+        - ftp_proxy
+        - no_proxy
     hostname: behave
     mem_limit: 512m
     env_file:
@@ -26,10 +31,18 @@ services:
   # Note: sut depends on this running and creating files with outputs using a shared volume
   # TODO: not sure if there is a better way for sut to be able to see and check output
   test_syslog_server_config:
-    image: jpvriel/rsyslog
+    image: jpvriel/rsyslog:${VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VERSION
+        - BUILD_DATE
+        - http_proxy
+        - https_proxy
+        - ftp_proxy
+        - no_proxy
+        - DISABLE_YUM_MIRROR
     env_file:
       - ./test/test_syslog_server.env
     entrypoint: bash -c '/usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1; echo -n $$? > /tmp/config_check/rsyslog_n1_exit_code.txt'
@@ -43,6 +56,11 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-syslog_client_centos7.test
+      args:
+        - http_proxy
+        - https_proxy
+        - ftp_proxy
+        - no_proxy
     hostname: test_syslog_client_centos7
     mem_limit: 256m
     depends_on:
@@ -53,6 +71,11 @@ services:
     build:
       context: test
       dockerfile: Dockerfile-syslog_client_ubuntu1604.test
+      args:
+        - http_proxy
+        - https_proxy
+        - ftp_proxy
+        - no_proxy
     hostname: test_syslog_client_ubuntu1604
     mem_limit: 256m
     volumes:
@@ -105,10 +128,18 @@ services:
 
   # Main syslog server (the test object / target)
   test_syslog_server:
-    image: jpvriel/rsyslog
+    image: jpvriel/rsyslog:${VERSION:-latest}
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - VERSION
+        - BUILD_DATE
+        - http_proxy
+        - https_proxy
+        - ftp_proxy
+        - no_proxy
+        - DISABLE_YUM_MIRROR
     hostname: test_syslog_server
     mem_limit: 32m
     stop_grace_period: 15s
