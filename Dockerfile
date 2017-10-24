@@ -94,7 +94,7 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
 
 # Inputs and parsing inputs
 ENV rsyslog_support_metadata_formats='off' \
-  rsyslog_mmpstrucdata='on' \
+  rsyslog_mmpstrucdata='off' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
   rsyslog_pmrfc3164_remove_msgFirstSpace='off' \
   rsyslog_global_parser_permitslashinprogramname='off' \

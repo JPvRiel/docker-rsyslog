@@ -34,7 +34,7 @@ The container also supports advanced debug scenarios.
 
 The convention is `<rsyslogd version>-<docker image release build number>`.
 
-E.g. `8.29.0-3` means the output of `rsyslogd -v` shows `rsyslogd 8.16.0`, and it's the 3rd image released for that upstream version.
+E.g. `8.29.0-3` means the output of `rsyslogd -v` shows `rsyslogd 8.29.0`, and it's the 3rd image released for that upstream version.
 
 # Usage
 
@@ -123,8 +123,12 @@ If the array is quoted as an environment variable, e.g. `a='["o1","o2"]'`, the d
 - Using an `.env` file with square just brackets and unquoted seems to pass the array into rsyslog rainerscript without mangling it (via confd and golang text templates used in the background).
 - For bash, `[` are `]` are special pattern character and `export a=["o1","o2"]; echo $a` results in `[o1,o2]` as output. Python also seems to end up interpreting the environment variables in this way.
 - Docker / docker-compose has the nasty unexpected behaviour that quotes in the supplied `.env` file are not interpolated, but instead literally included! This breaks rsyslog config because `env_var='value'` in the `.env` file gets injected as `setting="'value'"` into rsyslog config instead of the expected `setting="value"`.
+
+See:
   - [Inconsistent env var parsing from docker-compose.yml](https://github.com/docker/compose/issues/2854)
   - [strange interpretation/parsing of .env file](https://github.com/docker/compose/issues/3702)
+
+More details about some env vars to setup the container at runtime are discussed in the "Optional Output Modules" section.
 
 ## Volumes and files the container requires
 
@@ -143,7 +147,7 @@ If not provided with valid files in those volumes, a default signed cert is used
 
 ### Volume for rsyslog output files
 
-If enabling and using file output, a named volume is recommended for `/var/log/remote`. E.g, on my docker setup, the files get written out the hosts docker volume storage at `/var/lib/docker/volumes/syslog_log/_data/<transport>/<hostname>` where sub-directories help distinguish and split the syslog collection methods (UDP vs TCP vs secure or not, etc) and hosts. `<transport>` can be `udp`, `tcp`, `tcp_secure`, `relp` and `relp_secure`. The files within each directory are split further into:
+If enabling and using file output, a named volume is recommended for `/var/log/remote`. E.g, on my docker setup, the files get written out the hosts named docker volume storage at `/var/lib/docker/volumes/syslog_log/_data/<hostname>`. Instead of logging all events to a single file, this can be split further into `<hostname>/<filename based on facility or message content>`:
 
 | Filename | Use | Filter |
 | - | - | - |
@@ -153,9 +157,11 @@ If enabling and using file output, a named volume is recommended for `/var/log/r
 | firewall | Firewall execution actions | From Kernel facility and starting with keyworlds that common firewall messages use |
 | console | Alert messages usually broadcast on the console | facility 14 |
 
-The default traditional file output template applied is, but it can be modified to something better like `RSYSLOG_SyslogProtocol23Format` (RFC5424) via the `rsyslog_omfile_template` env var.
+The default traditional file output template applied is, but it can be modified to something better like `RSYSLOG_SyslogProtocol23Format` (RFC5424) or any other [built-in rsyslog templates](http://www.rsyslog.com/doc/v8-stable/configuration/templates.html#reserved-template-names) via the `rsyslog_omfile_template` env var.
 
 ### Optional config file volumes
+
+_Experimental : not tested_
 
 For more advanced custom configuration, template config via env vars would be too tedious (given RainerScript and rsyslog options are so vast), so dedicated configuration file volumes can be used instead for custom filering or output in the folling sub-folders:
 
@@ -165,15 +171,19 @@ For more advanced custom configuration, template config via env vars would be to
 ## Optional Output Modules
 
 Pre-defined support for some common forwarding use cases:
-- kafka
-- syslog forwarding / relay
-- JSON forwarding / relay
+- Kafka (JSON output, can be changed)
+- syslog forwarding / relay (RFC5424 output, can be changed)
+- JSON forwarding / relay (A few pre-canned JSON templates supplied)
 
 ### Kafka Output
 
+The Kafka output wraps the key config items for [omkafka](http://www.rsyslog.com/doc/master/configuration/modules/omkafka.html) so refer to RSyslog's documentation and look out for `rsyslog_omkafka` related `ENV` instructions in the `Dockerfile` to get a sense of options that can be set.
+
 ### Extra Output Modules
 
-If a forwarding use case isn't covered as above, then
+_Experimental : not tested_
+
+If a forwarding use case isn't covered as above, then:
 1. Set `rsyslog_forward_extra_enabled=true`
 1. Use `/etc/rsyslog.d/output/extra` with your own config file which must specify `rsyslog_forward_extra` (See `50-ruleset.conf` that expects to call this ruleset).
 
@@ -181,7 +191,7 @@ E.g. `/etc/rsyslog.d/output/extra/mongo.conf`
 
 ```
 module(load="ommongodb")
-ruleset(name="forward_kafka")
+ruleset(name="forward_ommongodb")
 {
   action(
     server="mymonddb"
@@ -193,7 +203,27 @@ ruleset(name="forward_kafka")
 
 ## Template examples
 
-Examples below assume options set as:
+For each pre-canned output, a template can be set (i.e. `grep -E 'rsyslog_.*__template' Dockerfile` to get an idea of default templates used).
+
+By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options are off. They can help add meta-data and make structured data elements parsable as JSON. For JSON output, recommended combinations are:
+- `TmplJSON` and `rsyslog_support_metadata_formats=off`, or
+- `TmplJSONRawMeta` or `TmplRFC5424Meta` require `rsyslog_support_metadata_formats=on`, otherwise these templates won't work.
+
+The table shows compatible template and options.
+
+| Templates | Use | rsyslog_support_metadata_formats | rsyslog_mmpstrucdata |
+| - | - | - | - |
+| `TmplRFC5424` | RFC5424 (same as `RSYSLOG_SyslogProtocol23Format`) | NA, omitted | NA, not a JSON format |
+| `TmplRFC5424Meta` | RFC5424 with extra structured meta-data element | Yes, prepended to SD-Elements | NA, not a JSON format |
+| `TmplRSyslogJSON` | RSyslog's internal JSON representation | Yes, appears in `$!` root object | Yes, adds `rfc5424-sd` to `$!` |
+| `TmplJSON` | Simplified smaller JSON message | No, omits fields for meta-data | Yes |
+| `TmplJSONRawMeta` | More complete well structured JSON message | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
+
+`rsyslog_support_metadata_formats` is also needed add logic that builds in some extra validation steps in order to output the meta-data with more accurate information about the origin of the message. RSyslog readily parses almost any valid text as a hostname with RFC3164, even when the message looks like it's ignoring the conventions and it's unlikely a valid hostname - as per this issue: [pmrfc3164 blindly swallows the first word of an invalid syslog header as the hostname](https://github.com/rsyslog/rsyslog/issues/1789).
+
+Refer to `etc/confd/templates/60-output_format.conf.tmpl` and `https://github.com/JPvRiel/docker-rsyslog/blob/master/README_related.md#rsyslog-meta-data` for more details and motivation behind this feature.
+
+The following template output examples are based on enabling these extra features:
 
 ```
 rsyslog_support_metadata_formats=on
@@ -356,7 +386,9 @@ Note, there is a runtime `rsyslog_global_ca_file` env var to set the CA for rsys
 
 However, should you need to embed a CA for other reasons (e.g. building via a corporate TLS intercepting proxy), you embed your own CA at build time by placing your own CA certificates in `etc/pki/ca-trust/source/anchors`.
 
-## SUT test suite
+## System Under Test (SUT)
+
+Follows docker convention to use an `sut` service to test. Depends on several other containers like `zookeeper` and `kafka` images in order to test component intergeneration (e.g. `omkafka`).
 
 ### Makefile Test
 
@@ -378,7 +410,7 @@ To build just the `sut` service:
 docker-compose -f docker-compose.test.yml build sut
 ```
 
-Use `--build-arg http_proxy=$http_proxy` etc if you have to do this via a corporate proxy.
+Reminder, use `--build-arg http_proxy` etc if you have to do this via a proxy.
 
 Run the full test suite to regression test:
 
@@ -400,7 +432,7 @@ docker-compose -f docker-compose.test.yml up
 
 The above will have a lot of output... An alternative is to look at `docker logs <service name>`
 
-cleanup
+Cleanup:
 
 ```
 docker-compose -f docker-compose.test.yml down -v
