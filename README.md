@@ -5,15 +5,28 @@ An RSyslog container able to:
 - Accept multiple syslog input formats (RFC3164 and RFC5424).
 - Accept multiple transports (UDP, TCP or RELP).
 - Accept multiple security options (TLS or not).
-- Optionally append useful metadata.
+- Optionally append useful metadata with `rsyslog_support_metadata_formats=on`.
 - Split and output files to a volume.
-- Forward the messages to other systems for a few built-in use cases, either:
+
+Forward the messages to other systems for a few built-in use cases, either:
 
   - Downstream syslog servers expecting RFC3164 or RFC5424 (e.g. a SIEM product).
   - Downstream analytic tools that can handle JSON (e.g. logstash).
   - Kafka (e.g. data analytic platforms like Hadoop).
 
+Legacy formats/templates can easily be set (i.e. `RSYSLOG_TraditionalForwardFormat` or `RSYSLOG_TraditionalFileFormat`). However several additional output templates can be set per output:
+  - RFC5424
+    - `TmplRFC5424`
+    - `TmplRFC5424Meta` which appends a extra structured data field with more info about how the message was received
+  - JSON output templates
+    - `TmplRSyslogJSON` is the native rsyslog message object
+    - `TmplJSON` is a streamlined option
+    - `TmplJSONRawMeta` includes meta-data about how the message was received and the raw message
+  - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`
+
 - Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
+
+See the `ENV` instructions with `rsyslog_` environment name prefixes in the `Dockerfile` to review default settings and options further.
 
 The container also supports advanced debug scenarios.
 
@@ -175,6 +188,116 @@ ruleset(name="forward_kafka")
     serverport=27017
     ...
   )
+}
+```
+
+## Template examples
+
+Examples below assume options set as:
+
+```
+rsyslog_support_metadata_formats=on
+rsyslog_mmpstrucdata=on
+```
+
+### TmplRFC5424Meta
+
+Meta-data about message origin pre-pended to the structured data element list:
+
+```
+<14>1 2017-09-19T23:43:29+00:00 behave test - - [syslog-relay@16543 timegenerated="2017-10-24T00:43:55.323108+00:00" fromhost="dockerrsyslog_sut_run_1.dockerrsyslog_default" fromhost-ip="172.18.0.9" myhostname="test_syslog_server" inputname="imptcp" format="RFC5424" pri-valid="true" header-valid="true" tls="false" authenticated-client="false"][test@16543 key1="value1" key2="value2"] Well formed RFC5424 with structured data
+```
+
+### TmplJSON
+
+Message missing structured data (e.g. null `-` or RFC3164 message) with more minimal output. Takes hostname from rsyslog parser without any sanity checks.
+
+```json
+{
+  "syslogfacility": 1,
+  "syslogfacility-text": "user",
+  "syslogseverity": 6,
+  "syslogseverity-text": "info",
+  "timestamp": "2017-09-19T23:43:29+00:00",
+  "hostname": "behave",
+  "app-name": "test",
+  "procid": "99999",
+  "msgid": "-",
+  "structured-data": null,
+  "msg": "Well formed RFC5424 with PID and no structured data"
+}
+```
+
+### TmplJSONRawMeta
+
+Message with RFC5424 structured data and custom meta-data about message origin. Some basic sanity checks performed to avoid outputting bogus hostnames from malformed RFC3164 messages. `structured-data` is converted to a JSON object.
+
+```json
+{
+  "syslogfacility": 1,
+  "syslogfacility-text": "user",
+  "syslogseverity": 6,
+  "syslogseverity-text": "info",
+  "timestamp": "2017-09-19T23:43:29+00:00",
+  "hostname": "behave",
+  "app-name": "test",
+  "procid": "-",
+  "msgid": "-",
+  "structured-data": {
+    "test@16543": {
+      "key1": "value1",
+      "key2": "value2"
+    }
+  },
+  "rawmsg": "<14>1 2017-09-19T23:43:29+00:00 behave test - - [test@16543 key1=\"value1\" key2=\"value2\"] Well formed RFC5424 with structured data",
+  "syslog-relay": {
+    "timegenerated": "2017-10-24T00:00:10.561635+00:00",
+    "fromhost": "dockerrsyslog_sut_run_1.dockerrsyslog_default",
+    "fromhost-ip": "172.18.0.9",
+    "myhostname": "test_syslog_server",
+    "inputname": "imptcp",
+    "format": "RFC5424",
+    "pri-valid": true,
+    "header-valid": true,
+    "tls": false,
+    "authenticated-client": false
+  }
+}
+```
+
+### TmplRSyslogJSON
+
+Message with RFC5424 structured data and using the native rsyslog `%jsonmesg%` output
+
+```json
+{
+  "msg": "Well formed RFC5424 with structured data",
+  "rawmsg": "<14>1 2017-09-19T23:43:29+00:00 behave test - - [test@16543 key1=\"value1\" key2=\"value2\"] Well formed RFC5424 with structured data",
+  "timereported": "2017-09-19T23:43:29+00:00",
+  "hostname": "behave",
+  "syslogtag": "test",
+  "inputname": "imptcp",
+  "fromhost": "gateway",
+  "fromhost-ip": "172.17.0.1",
+  "pri": "14",
+  "syslogfacility": "1",
+  "syslogseverity": "6",
+  "timegenerated": "2017-10-23T22:50:12.997829+00:00",
+  "programname": "test",
+  "protocol-version": "1",
+  "structured-data": "[test@16543 key1=\"value1\" key2=\"value2\"]",
+  "app-name": "test",
+  "procid": "-",
+  "msgid": "-",
+  "uuid": null,
+  "$!": {
+    "rfc5424-sd": {
+      "test@16543": {
+        "key1": "value1",
+        "key2": "value2"
+      }
+    }
+  }
 }
 ```
 
@@ -460,6 +583,7 @@ Done:
 - File output
 - Using confd to template config via env vars
 - Add metadata to a message about peer connection (helps with provenance) - avoid spoofed syslog messages, or bad info from poorly configured clients.
+- Structured data as JSON fields (mmstructdata, with null case)
 - Gracefull entrypoint script exit and debugging by passing signals to rsyslogd.
 - Kafka and syslog forwarding.
 - JSON output

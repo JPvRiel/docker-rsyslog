@@ -94,6 +94,7 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
 
 # Inputs and parsing inputs
 ENV rsyslog_support_metadata_formats='off' \
+  rsyslog_mmpstrucdata='on' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
   rsyslog_pmrfc3164_remove_msgFirstSpace='off' \
   rsyslog_global_parser_permitslashinprogramname='off' \
@@ -120,12 +121,12 @@ ENV rsyslog_omfile_enabled='on' \
   rsyslog_omkafka_topic='syslog' \
   rsyslog_omkafka_dynatopic='off' \
   rsyslog_omkafka_topicConfParam='' \
-  rsyslog_omkafka_template='TmplRFC5424Format' \
+  rsyslog_omkafka_template='TmplJSON' \
   rsyslog_omfwd_syslog_enabled='off' \
   rsyslog_omfwd_syslog_host='' \
   rsyslog_omfwd_syslog_port=514 \
   rsyslog_omfwd_syslog_protocol='tcp' \
-  rsyslog_omfwd_syslog_template='TmplRFC5424Format' \
+  rsyslog_omfwd_syslog_template='TmplRFC5424' \
   rsyslog_omfwd_json_enabled=off \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
@@ -138,7 +139,7 @@ ENV rsyslog_omfile_enabled='on' \
 # Several globals are defined via rsyslog_global_* inlcuding reporting stats
 #
 # rsyslog_support_metadata_formats and the appropriate template choice must both be used to allow including validation checks on syslog headers, hostnames and tags for RFC3164. The metadata template choices are:
-# - TmplRFC5424FormatMeta
+# - TmplRFC5424Meta
 # - TmplJSONRawMeta
 #
 # Notes for the pre-canned outputs (kafka, JSON, syslog)

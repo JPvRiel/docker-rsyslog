@@ -7,10 +7,11 @@
 # - RSYSLOG_SyslogProtocol23Format
 
 {{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
 
 # Standard example of RFC5424
 # Note, RSYSLOG_SyslogProtocol23Format is the built-in reserved template name for a draft of RFC5424, so the above is more or less identical to that
-template(name="TmplRFC5424Format" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %hostname% %app-name% %procid% %msgid% %structured-data% %msg%\n")
+template(name="TmplRFC5424" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %hostname% %app-name% %procid% %msgid% %structured-data% %msg%\n")
 
 {{if $rsyslog_support_metadata_formats -}}
 # RFC5424 with syslog relay and own custom meta-data pre-pended to the structured data element
@@ -18,30 +19,45 @@ template(name="TmplRFC5424Format" type="string" string="<%pri%>1 %timestamp:::da
 # Regex needed to deal with structured data being null '-' and needing to append/replace null.
 # `%structured-data:R,ERE,0,BLANK:[[].*--end%` avoids appending a null charceter '-' if there wasn't any pre-existing structured data.
 # See http://www.rsyslog.com/doc/v8-stable/configuration/nomatch.html
-template(name="TmplRFC5424FormatMeta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname-valid% %app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$.format%\" pri-valid=\"%$.pri-valid%\" header-valid=\"%$.header-valid%\" tls=\"%$.tls%\" authenticated-client=\"%$.authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
+template(name="TmplRFC5424Meta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname-valid% %app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$.format%\" pri-valid=\"%$.pri-valid%\" header-valid=\"%$.header-valid%\" tls=\"%$.tls%\" authenticated-client=\"%$.authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
 {{- end}}
 
-# JSON templates / WIP / TODO
+# JSON templates
 
 # Output the full native rsyslog JSON message object
-template(name="TmplRSyslogJSONFull" type="string" string="%jsonmesg%\n")
+template(name="TmplRSyslogJSON" type="string" string="%jsonmesg%\n")
 
 # Output a subset of the native rsyslog JSON message fields
+{{if $rsyslog_mmpstrucdata -}}
 template(
   name="TmplJSON"
   type="string"
-  option.json="on"
+  string="{\"syslogfacility\":%syslogfacility%,%syslogfacility-text:::jsonf%,\"syslogseverity\":%syslogseverity%,%syslogseverity-text:::jsonf%,%timestamp:::date-rfc3339,jsonf%,%hostname:::jsonf%,%app-name:::jsonf%,%procid:::jsonf%,%msgid:::jsonf%,\"structured-data\":%$!rfc5424-sd%,%msg:::jsonf%}"
+)
+{{- else}}
+template(
+  name="TmplJSON"
+  type="string"
   string="{\"syslogfacility\":%syslogfacility%,%syslogfacility-text:::jsonf%,\"syslogseverity\":%syslogseverity%,%syslogseverity-text:::jsonf%,%timestamp:::date-rfc3339,jsonf%,%hostname:::jsonf%,%app-name:::jsonf%,%procid:::jsonf%,%msgid:::jsonf%,%structured-data:::jsonf%,%msg:::jsonf%}"
 )
+{{- end}}
 
 {{if $rsyslog_support_metadata_formats -}}
 # JSON output with syslog relay and own custom meta-data pre-pended to the structured data element
 # RFC3164 assumed hostname guesses are replaced with local var $.hostname = $fromhost instead of standard $hostname property when headers are not provided by the source
+# Rainerscript only supports setting quoted variables and jsonf outputs a quoted value forcing a string JSON type. To get integer or boolean JSON types requires manually building a JSON field, i.e. otherwise { "boolean": true } gets quoted as { "boolean": "true" }
+# While bool and int JSON types are used, as per RFC5424, `-` represents null instead of converting to the JSON `null` value
+{{if $rsyslog_mmpstrucdata -}}
 template(
   name="TmplJSONRawMeta"
   type="string"
-  # Rainerscript only supports setting quoted variables and jsonf outputs a quoted value forcing a string JSON type. To get integer or boolean JSON types requires manually building a JSON field, i.e. otherwise { "boolean": true } gets quoted as { "boolean": "true" }
-  # While bool and int JSON types are used, as per RFC5424, `-` represents null instead of converting to the JSON `null` value
+  string="{\"syslogfacility\":%syslogfacility%,%syslogfacility-text:::jsonf%,\"syslogseverity\":%syslogseverity%,%syslogseverity-text:::jsonf%,%timestamp:::date-rfc3339,jsonf%,%$.hostname-valid:::jsonf:hostname%,%app-name:::jsonf%,%procid:::jsonf%,%msgid:::jsonf%,\"structured-data\":%$!rfc5424-sd%,%rawmsg:::jsonf%,\"syslog-relay\":{%timegenerated:::date-rfc3339,jsonf%,%fromhost:::jsonf%,%fromhost-ip:::jsonf%,%$myhostname:::jsonf:myhostname%,%inputname:::jsonf%,%$.format:::jsonf%,\"pri-valid\":%$.pri-valid%,\"header-valid\":%$.header-valid%,\"tls\":%$.tls%,\"authenticated-client\":%$.authenticated-client%}}"
+)
+{{- else}}
+template(
+  name="TmplJSONRawMeta"
+  type="string"
   string="{\"syslogfacility\":%syslogfacility%,%syslogfacility-text:::jsonf%,\"syslogseverity\":%syslogseverity%,%syslogseverity-text:::jsonf%,%timestamp:::date-rfc3339,jsonf%,%$.hostname-valid:::jsonf:hostname%,%app-name:::jsonf%,%procid:::jsonf%,%msgid:::jsonf%,%structured-data:::jsonf%,%rawmsg:::jsonf%,\"syslog-relay\":{%timegenerated:::date-rfc3339,jsonf%,%fromhost:::jsonf%,%fromhost-ip:::jsonf%,%$myhostname:::jsonf:myhostname%,%inputname:::jsonf%,%$.format:::jsonf%,\"pri-valid\":%$.pri-valid%,\"header-valid\":%$.header-valid%,\"tls\":%$.tls%,\"authenticated-client\":%$.authenticated-client%}}"
 )
+{{- end}}
 {{- end}}

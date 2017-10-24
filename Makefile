@@ -24,5 +24,5 @@ test: clean_test build
 	docker-compose -f docker-compose.test.yml run --rm sut
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 
-push: test
-	docker-compose -f docker-compose.yml push
+#push: test
+#	docker-compose -f docker-compose.yml push

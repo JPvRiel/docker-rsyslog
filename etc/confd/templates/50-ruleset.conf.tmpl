@@ -1,6 +1,7 @@
 # Rules and actions to apply when a specific kind of input is received
 
 {{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
 {{$rsyslog_input_filtering_enabled := getenv "rsyslog_input_filtering_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" "true" -}}
@@ -22,6 +23,9 @@ ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   set $.tls = "false";
   set $.authenticated-client = "false";
   {{- end}}
+  {{if $rsyslog_mmpstrucdata -}}
+  action(type="mmpstrucdata")
+  {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
@@ -32,6 +36,9 @@ ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "false";
   set $.authenticated-client = "false";
+  {{- end}}
+  {{if $rsyslog_mmpstrucdata -}}
+  action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
@@ -44,6 +51,9 @@ ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]
   set $.tls = "true";
   set $.authenticated-client = "false";
   {{- end}}
+  {{if $rsyslog_mmpstrucdata -}}
+  action(type="mmpstrucdata")
+  {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
@@ -54,6 +64,9 @@ ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "false";
   set $.authenticated-client = "false";
+  {{- end}}
+  {{if $rsyslog_mmpstrucdata -}}
+  action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
@@ -67,6 +80,9 @@ ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"
   set $.tls = "true";
   set $.authenticated-client = "false";
   {{- end}}
+  {{if $rsyslog_mmpstrucdata -}}
+  action(type="mmpstrucdata")
+  {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
   {{- end}}
@@ -77,6 +93,9 @@ ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "cus
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "true";
   set $.authenticated-client = "true";
+  {{- end}}
+  {{if $rsyslog_mmpstrucdata -}}
+  action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   call input_filter
@@ -89,6 +108,13 @@ ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "cus
 # Rules to output and forward / relay messages placed in output/*.conf and called below
 
 ruleset(name="output") {
+
+  {{if $rsyslog_mmpstrucdata -}}
+  # Guard against $!rfc5424-sd not existing
+  if ($structured-data == "-") then {
+    set $!rfc5424-sd = "null";
+  }
+  {{- end}}
 
   {{if $rsyslog_support_metadata_formats -}}
   # append more meta-data
