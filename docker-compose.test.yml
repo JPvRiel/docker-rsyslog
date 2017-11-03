@@ -47,6 +47,7 @@ services:
       - ./test/test_syslog_server.env
     entrypoint: bash -c '/usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1; echo -n $$? > /tmp/config_check/rsyslog_n1_exit_code.txt'
     volumes:
+      - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - config_check:/tmp/config_check
     mem_limit: 256m
 
@@ -158,6 +159,7 @@ services:
       timeout: 5s
       retries: 3
     volumes:
+      - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - syslog_log:/var/log/remote
 
 

@@ -161,12 +161,36 @@ The default traditional file output template applied is, but it can be modified 
 
 ### Optional config file volumes
 
-_Experimental : not tested_
+For more advanced custom configuration, template config via env vars would be too tedious (given RainerScript and rsyslog options are so vast), so dedicated configuration file volumes can be used instead for custom filering or output in the folling sub-directories:
 
-For more advanced custom configuration, template config via env vars would be too tedious (given RainerScript and rsyslog options are so vast), so dedicated configuration file volumes can be used instead for custom filering or output in the folling sub-folders:
-
-- `/etc/rsyslog.d/filter`
+- `/etc/rsyslog.d/input/filters`
+- `/etc/rsyslog.d/output/filters`
 - `/etc/rsyslog.d/output/extra`
+
+Placing a `*.conf` in the `input/filters` or `output/filters` sub-directory is included and applied globally to either (to all of) the inputs or outputs. Per-input, or per-output filters can also be included in additonal sub-directories named the same as the respective ruleset. E.g.
+- `/etc/rsyslog.d/input/filters/remote_in_udp/*.conf` will _only_ apply to the `remote_in_udp` ruleset.
+- `/etc/rsyslog.d/output/filters/fwd_syslog/*.conf` will _only_ apply to the `fwd_syslog` ruleset.
+
+When including filters, the filters need to make use of conditional expressions to match and then discard the unwanted message with the `stop` keyword.
+
+Example of a simple black-list (exclude) approach:
+
+```
+if $fromhost-ip == '192.168.0.1' then { stop }
+```
+
+Example of a white-list approach:
+
+```
+if (
+  $syslogfacility == '4' or
+  $syslogfacility == '10' or
+  $syslogfacility == '13' or
+  $syslogfacility == '14'
+) then { continue } else { stop }
+```
+
+Including extra outputs is _Experimental (not tested)_
 
 ## Optional Output Modules
 
@@ -619,6 +643,7 @@ Done:
 - Gracefull entrypoint script exit and debugging by passing signals to rsyslogd.
 - Kafka and syslog forwarding.
 - JSON output
+- Filtering
 
 Not yet done:
 - Re-factor test suite

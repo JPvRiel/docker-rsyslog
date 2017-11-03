@@ -1,6 +1,6 @@
 test
 util
 build.env
-*.yml
+docker-compose*.yml
 Makefile
 *.md

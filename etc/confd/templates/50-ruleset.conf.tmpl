@@ -1,8 +1,9 @@
 # Rules and actions to apply when a specific kind of input is received
 
 {{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
-{{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
+{{$rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
 {{$rsyslog_input_filtering_enabled := getenv "rsyslog_input_filtering_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_output_filtering_enabled := getenv "rsyslog_output_filtering_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" "true" -}}
@@ -27,7 +28,8 @@ ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
-  call input_filter
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_udp/*.conf
   {{- end}}
   call output
 }
@@ -41,7 +43,8 @@ ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
-  call input_filter
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp/*.conf
   {{- end}}
   call output
 }
@@ -55,7 +58,8 @@ ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]
   action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
-  call input_filter
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp_secure/*.conf
   {{- end}}
   call output
 }
@@ -69,7 +73,8 @@ ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
-  call input_filter
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  $IncludeConfig /etc/rsyslog.d/input/remote_in_relp/*.conf
   {{- end}}
   call output
 }
@@ -84,7 +89,8 @@ ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"
   action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
-  call input_filter
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure/*.conf
   {{- end}}
   call output
 }
@@ -98,7 +104,8 @@ ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "cus
   action(type="mmpstrucdata")
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
-  call input_filter
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure_client_auth/*.conf
   {{- end}}
   call output
 }
@@ -156,8 +163,16 @@ ruleset(name="output") {
   }
   {{- end}}
 
+  {{if $rsyslog_output_filtering_enabled -}}
+  # global output filter
+  $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
+  {{- end}}
+
   # Standard outputs "pre-bundled
   {{if $rsyslog_omfile_enabled -}}
+  {{if $rsyslog_output_filtering_enabled -}}
+
+  {{- end}}
   call out_file
   {{- end}}
   {{if $rsyslog_omkafka_enabled -}}
@@ -172,7 +187,7 @@ ruleset(name="output") {
   {{if $rsyslog_forward_extra -}}
   # Optional extra output config inlcude
   # Add as volume via /etc/rsyslog.d/output/extra
-  call output_extra
+  $IncludeConfig /etc/rsyslog.d/output/extra/*.conf
   {{- end}}
 
 }

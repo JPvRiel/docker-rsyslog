@@ -8,7 +8,6 @@ Feature: Accept syslog messages in various formats
   Background: Syslog service is available
     Given a valid rsyslog configuration
       And a server "test_syslog_server"
-      And a server "test_syslog_server"
       And an environment variable file "test_syslog_server.env"
 
   @slow
@@ -18,9 +17,9 @@ Feature: Accept syslog messages in various formats
     Then the pattern should be found
 
     Examples:
-      | file                                          | regex                                   |
-      | /var/log/remote/test_syslog_client_centos7    | CentOS Linux 7.* was running rsyslogd.* |
-      | /var/log/remote/test_syslog_client_ubuntu1604 | Ubuntu 16\.04.* was running rsyslogd.*  |
+      | file | regex |
+      | /var/log/remote/test_syslog_client_centos7 | CentOS Linux 7.* was running rsyslogd.* |
+      | /var/log/remote/test_syslog_client_ubuntu1604 | Ubuntu 16\.04.* was running rsyslogd.* |
 
   # - Positive testing well formed message samples
 

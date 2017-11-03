@@ -2,8 +2,9 @@
 # Note further, it would be prudent to setup logrotate for /var/log/remote/*
 # See 50-ruleset.conf for the parent ruleset that calls this
 
-{{ $rsyslog_omfile_split_files_per_host := getenv "rsyslog_omfile_split_files_per_host" | toLower | eq "on" "true" -}}
+{{$rsyslog_omfile_split_files_per_host := getenv "rsyslog_omfile_split_files_per_host" | toLower | eq "on" "true" -}}
 {{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
+{{$rsyslog_output_filtering_enabled := getenv "rsyslog_output_filtering_enabled" | toLower | eq "on" "true" -}}
 
 {{if $rsyslog_support_metadata_formats -}}
 # Avoid using invalid hostnames if possible (meta-data enabled)
@@ -28,6 +29,10 @@ template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%hostna
 {{- end}}
 
 ruleset(name="out_file") {
+
+  {{if $rsyslog_output_filtering_enabled -}}
+  $IncludeConfig /etc/rsyslog.d/output/filters/out_file/*.conf
+  {{- end}}
 
   {{if not $rsyslog_omfile_split_files_per_host -}}
   # In the simple case, we use the hostname as the filename and place all logs in that file

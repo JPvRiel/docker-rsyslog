@@ -1,10 +1,15 @@
 # Syslog output (if enabled, else blank)
 {{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_output_filtering_enabled := getenv "rsyslog_output_filtering_enabled" | toLower | eq "on" "true" -}}
 
 {{if $rsyslog_omfwd_syslog_enabled -}}
 # omfwd module is loaded by deafault / built-in?
 ruleset(name="fwd_syslog")
 {
+  {{if $rsyslog_output_filtering_enabled -}}
+  $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+  {{- end}}
+
   action(
     type="omfwd"
     Target="{{ getenv "rsyslog_omfwd_syslog_host" }}"

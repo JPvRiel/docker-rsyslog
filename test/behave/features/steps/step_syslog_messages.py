@@ -104,12 +104,24 @@ def step_impl(context, regex, timeout):
 def step_impl(context):
     if not context.re_match:
         logging.error(
-            "Cannot match regex pattern \"{0:s}\" in file \"{1:s}\"".format(
+            "Couldn't match regex pattern \"{0:s}\" in file \"{1:s}\"".format(
                 context.re.pattern,
                 context.log_file
             )
         )
     assert_that(context.re_match, not_none())
+
+
+@then('the pattern should NOT be found')
+def step_impl(context):
+    if context.re_match:
+        logging.error(
+            "Should NOT have matched regex pattern \"{0:s}\" in file \"{1:s}\"".format(
+                context.re.pattern,
+                context.log_file
+            )
+        )
+    assert_that(context.re_match, none())
 
 
 @then('a JSON entry should contain "{json_element}"')

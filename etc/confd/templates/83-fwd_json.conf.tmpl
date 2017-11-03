@@ -1,9 +1,14 @@
 # JSON output (if enabled, else blank)
 {{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" "true" -}}
+{{$rsyslog_output_filtering_enabled := getenv "rsyslog_output_filtering_enabled" | toLower | eq "on" "true" -}}
 
 {{if $rsyslog_omfwd_json_enabled -}}
 ruleset(name="fwd_json")
 {
+  {{if $rsyslog_output_filtering_enabled -}}
+  $IncludeConfig /etc/rsyslog.d/output/filters/fwd_json/*.conf
+  {{- end}}
+
   action(
     type="omfwd"
     Target="{{ getenv "rsyslog_omfwd_json_host" }}"
