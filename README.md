@@ -10,19 +10,20 @@ An RSyslog container able to:
 
 Forward the messages to other systems for a few built-in use cases, either:
 
-  - Downstream syslog servers expecting RFC3164 or RFC5424 (e.g. a SIEM product).
-  - Downstream analytic tools that can handle JSON (e.g. logstash).
-  - Kafka (e.g. data analytic platforms like Hadoop).
+- Downstream syslog servers expecting RFC3164 or RFC5424 (e.g. a SIEM product).
+- Downstream analytic tools that can handle JSON (e.g. logstash).
+- Kafka (e.g. data analytic platforms like Hadoop).
 
 Legacy formats/templates can easily be set (i.e. `RSYSLOG_TraditionalForwardFormat` or `RSYSLOG_TraditionalFileFormat`). However several additional output templates can be set per output:
-  - RFC5424
-    - `TmplRFC5424`
-    - `TmplRFC5424Meta` which appends a extra structured data field with more info about how the message was received
-  - JSON output templates
-    - `TmplRSyslogJSON` is the native rsyslog message object
-    - `TmplJSON` is a streamlined option
-    - `TmplJSONRawMeta` includes meta-data about how the message was received and the raw message
-  - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`
+
+- RFC5424
+  - `TmplRFC5424`
+  - `TmplRFC5424Meta` which appends a extra structured data field with more info about how the message was received
+- JSON output templates
+  - `TmplRSyslogJSON` is the native rsyslog message object
+  - `TmplJSON` is a streamlined option
+  - `TmplJSONRawMeta` includes meta-data about how the message was received and the raw message
+- Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`
 
 - Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
 
@@ -69,15 +70,18 @@ Provide 3 files for TLS setup placed in the `syslog_tls` and mounted as a volume
 - your own trusted CA, e.g. `ca.pem`
 (file names can be modified via ENV vars at runtime if need be)
 
-Run docker mounting volumes
+Run docker mounting volumes and ensuring `TZ` is set/passed
 
 ```bash
 docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/rsyslog \
+ -e TZ \
  --name syslog jpvriel/rsyslog:latest
 ```
+
+_NB!_ when rsyslog starts, it depends on `TZ` to be set to properly and efficiently deal with log source timestamps that lack timezone info. It'll then be able to assume and use localtime for templates that output timestamps that include time zone information.
 
 ### Compose way
 
@@ -125,8 +129,9 @@ If the array is quoted as an environment variable, e.g. `a='["o1","o2"]'`, the d
 - Docker / docker-compose has the nasty unexpected behaviour that quotes in the supplied `.env` file are not interpolated, but instead literally included! This breaks rsyslog config because `env_var='value'` in the `.env` file gets injected as `setting="'value'"` into rsyslog config instead of the expected `setting="value"`.
 
 See:
-  - [Inconsistent env var parsing from docker-compose.yml](https://github.com/docker/compose/issues/2854)
-  - [strange interpretation/parsing of .env file](https://github.com/docker/compose/issues/3702)
+
+- [Inconsistent env var parsing from docker-compose.yml](https://github.com/docker/compose/issues/2854)
+- [strange interpretation/parsing of .env file](https://github.com/docker/compose/issues/3702)
 
 More details about some env vars to setup the container at runtime are discussed in the "Optional Output Modules" section.
 
