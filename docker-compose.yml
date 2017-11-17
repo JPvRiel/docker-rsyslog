@@ -13,6 +13,8 @@ services:
         - ftp_proxy
         - no_proxy
         - DISABLE_YUM_MIRROR
+    environment:
+      - TZ
     volumes:
       - syslog_log:/var/log/remote
       - syslog_work:/var/lib/rsyslog
