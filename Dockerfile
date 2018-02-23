@@ -39,22 +39,23 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
+ARG RSYSLOG_VERSION='8.33.0'
 RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
-  rsyslog \
-  rsyslog-gnutls \
+  rsyslog-${RSYSLOG_VERSION} \
+  rsyslog-gnutls-${RSYSLOG_VERSION} \
 	adisconbuild-librdkafka1 \
-  rsyslog-kafka \
-  rsyslog-relp \
+  rsyslog-kafka-${RSYSLOG_VERSION} \
+  rsyslog-relp-${RSYSLOG_VERSION} \
   lsof \
   && yum clean all
 RUN rm -r /etc/rsyslog.d/ \
   && rm /etc/rsyslog.conf
 
 # Install confd
-ENV CONFD_VER='0.13.0'
+ARG CONFD_VER='0.15.0'
 #ADD https://github.com/kelseyhightower/confd/releases/download/v${CONFD_VER}/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
-COPY usr/local/bin/confd-0.13.0-linux-amd64 /usr/local/bin/confd
+COPY usr/local/bin/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
   # Use bundled file to avoid downloading all the time
 RUN chmod +x /usr/local/bin/confd && \
   mkdir -p /etc/confd/conf.d && \

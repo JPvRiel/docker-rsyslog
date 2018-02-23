@@ -639,6 +639,8 @@ rsyslog can accept and convert RFC3164 legacy input, but with some conversion ca
 
 # Status
 
+Note, recently (~Jan 2018) the rsyslog project has started to work on an official container and added better environment viable support that could make the confd templaing uncessary, so some refactoring should be looked into.
+
 Done:
 - Multiple inputs
 - File output

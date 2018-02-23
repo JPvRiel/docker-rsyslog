@@ -28,7 +28,7 @@ Feature: Process timestamps with or without timezone information
 
     Examples:
       | message | regex | json |
-      | <14>Sep 19 23:43:29 behave test[99999]: RFC3164 without timezone info | .*?RFC3164 without timezone info.* | { "timestamp": "2017-09-19T23:43:29+02:00" } |
+      | <14>Jan 1 02:43:29 behave test[99999]: RFC3164 without timezone info | .*?RFC3164 without timezone info.* | { "timestamp": "2018-01-01T02:43:29+02:00" } |
 
     @slow
     Scenario Outline: Process and retain timezone info
