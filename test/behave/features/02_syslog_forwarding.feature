@@ -14,9 +14,10 @@ Feature: Foward syslog messages
     Given "rsyslog_omkafka_enabled" environment variable is "on"
       And "rsyslog_omkafka_broker" environment variable is set
       And "rsyslog_omkafka_topic" environment variable is set
+      And "rsyslog_omkafka_confParam" environment variable is set
       And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
-      And a "tls_x509/certs/behave.cert.pem" certificate file
-      And a "tls_x509/private/behave.key.pem" private key file
+      #And a "tls_x509/certs/behave.cert.pem" certificate file
+      #And a "tls_x509/private/behave.key.pem" private key file
     When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format
     Then the kafka topic should have the the message within "60" seconds
 

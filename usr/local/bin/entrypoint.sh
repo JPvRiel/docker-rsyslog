@@ -22,7 +22,7 @@ function report_error(){
 
 # Setup hanlder functions and traps to pass on signals to the rsyslog process
 function sigterm_handler() {
-  rsyslog_pid=$(cat /var/run/rsyslogd.pid)
+  rsyslog_pid=$(cat "$rsyslog_pid_file")
   report_info 'Terminating rsyslog process.'
   kill -SIGTERM "$rsyslog_pid"
 }
@@ -30,17 +30,23 @@ function sigterm_handler() {
 function sighup_handler() {
   # This is typically only needed for log rotate
   report_info 'HUP signal sento to rsyslog to close all open files and flush buffers'
-  kill -SIGHUP "$(cat /var/run/rsyslogd.pid)"
+  kill -SIGHUP "$(cat "$rsyslog_pid_file")"
 }
 
 function sigusr1_handler() {
   report_info 'Toggle rsyslog debug if enabled (only works if rsyslogd was started with debug enabled).'
-  kill -SIGUSR1 "$(cat /var/run/rsyslogd.pid)"
+  kill -SIGUSR1 "$(cat "$rsyslog_pid_file")"
 }
 
 trap 'sigterm_handler' SIGTERM SIGINT SIGQUIT
 trap 'sighup_handler' SIGHUP
 trap 'sigusr1_handler' SIGUSR1
+
+# Check if PID file is set
+if [[ -z "$rsyslog_pid_file" ]]; then
+  # Assume CentOS7 syslog 8 default
+  rsyslog_pid_file='/var/run/syslogd.pid'
+fi
 
 if [[ -n "${1}" ]]; then
   # Allow arguments to be passed to rsyslog
@@ -87,7 +93,7 @@ fi
 if [[ "$warn_insecure" == 'true' ]]; then
   report_warning 'Insecure built-in TLS key or certifcate in use. DO NOT run in produciton.'
 fi
-report_info "Using $rsyslog_server_key_file as the prviate key."
+report_info "Using $rsyslog_server_key_file as the private key."
 report_info "Using $rsyslog_server_cert_file as the certficate."
 
 # Apply config templates
@@ -110,7 +116,7 @@ fi
 # Rsyslog config problems occur often, so run a config check by default
 report_info 'Implicit config check.'
 if ! rsyslogd -N1; then
-  report_error 'Rsyslog configuration corrupt! Aborting. Run with -E to output a flattend configuration for inspection.'
+  report_warning 'Rsyslog configuration issue found. Run with -E to output a flattend configuration for inspection.'
   exit 1
 fi
 

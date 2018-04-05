@@ -101,6 +101,7 @@ services:
     volumes:
       - ./test/tls_x509/certs/test_ca.jks:/usr/local/etc/ssl/test/test_ca.jks
       - ./test/tls_x509/private/test_kafka.pfx:/usr/local/etc/ssl/test/test_kafka.pfx
+      - ./test/kafka/config/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf
 
   # To test syslog relay/forwarding
   # Simple netcat to file: https://github.com/appropriate/docker-nc

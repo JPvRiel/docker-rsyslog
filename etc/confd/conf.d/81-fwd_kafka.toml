@@ -1,3 +1,4 @@
 [template]
 src = "81-fwd_kafka.conf.tmpl"
 dest = "/etc/rsyslog.d/output/81-fwd_kafka.conf"
+mode = "0640"

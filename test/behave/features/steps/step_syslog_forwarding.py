@@ -5,7 +5,8 @@ import socket
 import logging
 import logging.handlers
 
-import pykafka
+from kafka import KafkaConsumer
+from kafka.errors import KafkaError
 from behave import *
 from hamcrest import *
 
@@ -86,25 +87,26 @@ def step_impl(context, timeout):
 def step_impl(context, timeout):
     message_found = None
     try:
-        tls_config = pykafka.SslConfig(
-            cafile=getattr(context, 'ca_file'),
-            certfile=getattr(context, 'cert_file', None),
-            keyfile=getattr(context, 'key_file', None)
-        )
         # work arround pain where docker-compose incldues literal quotes within
         # enviroment variables. E.g. var="foo" gets passed as '"foo"' instead
         # of just 'foo'
         broker_list = ','.join(
             ast.literal_eval(context.env['rsyslog_omkafka_broker'])
         )
-        client = pykafka.client.KafkaClient(
-            hosts=broker_list,
-            ssl_config=tls_config
+        # use kafka.consumer (but always re-read all messages to try match)
+        consumer = KafkaConsumer(
+            context.env['rsyslog_omkafka_topic'],
+            auto_offset_reset='earliest',
+            enable_auto_commit=False,
+            bootstrap_servers=broker_list,
+            consumer_timeout_ms=int(timeout) * 1000,
+            sasl_mechanism='PLAIN',
+            sasl_plain_username='test',
+            sasl_plain_password='test-secret',
+            security_protocol='SASL_SSL',
+            ssl_cafile=getattr(context, 'ca_file')
         )
-        topic = client.topics[b'test_syslog']
-        consumer = topic.get_simple_consumer(
-            consumer_timeout_ms=int(timeout) * 1000
-        )
+        # Read and print all messages from test topic
         for kafka_message in consumer:
             if kafka_message is not None:
                 if context.message in kafka_message.value.decode():

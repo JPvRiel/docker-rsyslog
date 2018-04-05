@@ -208,6 +208,8 @@ Pre-defined support for some common forwarding use cases:
 
 The Kafka output wraps the key config items for [omkafka](http://www.rsyslog.com/doc/master/configuration/modules/omkafka.html) so refer to RSyslog's documentation and look out for `rsyslog_omkafka` related `ENV` instructions in the `Dockerfile` to get a sense of options that can be set.
 
+In terms of kafka security, only the `SASL/PLAIN` with the `SASL_SSL` security protocol has been tested. In theory, SASL with Kerberos might be possible, but requires the rsyslog container to have keytab files mounted, etc.
+
 ### Extra Output Modules
 
 _Experimental : not tested_
@@ -382,9 +384,11 @@ The build argument `DISABLE_YUM_MIRROR=true` can help if you have a caching prox
 
 Changes to `build.env` should invalidate the build cache. Docker build caching for a given version and release number.
 
+Note however, that `make build` focuses on the Dockerfile for the rsyslog server and doesn't trigger rebuilds of other test container dependencies (such as python behave, kafka, etc)
+
 ## Manual Build Examples
 
-The tagging convention followed is to match the `RSYSLOG_VERSION` to the version of rsyslogd the container is based on and add a release number thereafter. This is manually set to reflect the upstream stable RPM release. E.g. `export RSYSLOG_VERSION=8.30.0`
+The tagging convention followed is to match the `RSYSLOG_VERSION` to the version of rsyslogd the container is based on and add a release number thereafter. This is manually set to reflect the upstream stable RPM release. E.g. `export RSYSLOG_VERSION=8.33.1`
 
 Build command example:
 
@@ -483,7 +487,7 @@ Ubuntu test client:
 docker-compose -f docker-compose.test.yml build --build-arg http_proxy=$http_proxy --build-arg https_proxy=$https_proxy --build-arg no_proxy=$no_proxy test_syslog_client_ubuntu1604
 ```
 
-There are also standard logstash, kafka and zookeeper images needed for testing.
+There are also kafka and zookeeper images needed for testing.
 
 # Debug and additional validation steps
 
@@ -600,6 +604,35 @@ E.g. or exec on an already running container
 docker container exec -it syslog /bin/bash
 ```
 
+Via the test suite and `make test`, the rsyslog server container can fail to start properly and exits before much opportunity to debug issues. A way to try debug after the fact is to create an image from it, run the image and override the entrypoint.
+
+```
+docker commit dockerrsyslog_test_syslog_server_config_1 dockerrsyslog_test_syslog_server_config_1_debug
+docker container run --rm -it \
+ --env-file test/test_syslog_server.env \
+ -v "$(pwd)/test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/" \
+ -v dockerrsyslog_syslog_log:/var/log/remote \
+ --name debug_test_syslog \
+ --entrypoint /bin/bash \
+ dockerrsyslog_test_syslog_server_config_1_debug
+```
+
+Once in the container, do debugging, e.g.
+- Inspect all rsyslog env vars with `env | grep rsyslog_` (note use of `--env-file` when running).
+- Filter env vars to a list of what's enabled or disabled: `env | grep -E "=(on)|(off)"`
+- Check config `rsyslogd -N1`
+- See how the env vars and config templates expaned out into config: `/usr/local/bin/rsyslog_config_expand.py`
+- Run the entrypoint `/usr/local/bin/entrypoint.sh`
+- Iterativly disable or change options that may be causing the issue, e.g. `export rsyslog_input_filtering_enabled=off` and rerun the entrypoint script.
+
+For example, the error `rsyslogd: optimizer error: we see a NOP, how come? [v8.33.1 try http://www.rsyslog.com/e/2175 ]` was hard to debug (due to no config line referenced by the error message). By following the above debug approach and toggling `rsyslog_output_filtering_enabled` between on and off, as well as enabling and disabling included filter config files, I was able to discover that the `continue` keyword conflicted with the rainerscript optimiser checking code.
+
+Then cleanup the debug image:
+
+```
+docker image rm dockerrsyslog_test_syslog_server_config_1_debug
+```
+
 ## Debugging a work in progress (WIP) test case
 
 When you just run `sut` via compose, the output from other containers is hard to see.
@@ -648,7 +681,7 @@ Done:
 - Add metadata to a message about peer connection (helps with provenance) - avoid spoofed syslog messages, or bad info from poorly configured clients.
 - Structured data as JSON fields (mmstructdata, with null case)
 - Gracefull entrypoint script exit and debugging by passing signals to rsyslogd.
-- Kafka and syslog forwarding.
+- Kafka and syslog forwarding (with SASL_SSL protocol)
 - JSON output
 - Filtering
 
