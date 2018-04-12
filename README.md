@@ -77,11 +77,11 @@ docker container run --rm -it \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/rsyslog \
- -e TZ \
+ -e TZ='Africa/Johannesburg' \
  --name syslog jpvriel/rsyslog:latest
 ```
 
-_NB!_ when rsyslog starts, it depends on `TZ` to be set to properly and efficiently deal with log source timestamps that lack timezone info. It'll then be able to assume and use localtime for templates that output timestamps that include time zone information.
+_NB!_ when rsyslog starts, `TZ` should be set to properly so it can efficiently deal with log source timestamps that lack timezone info. It'll then be able to assume and use localtime for templates that output timestamps that include time zone information. Newer versions of RSyslog handle `TZ` being unset more gracefully. See [rsyslog assumes UTC if TZ env var is not set and misses using the actual system's localtime](https://github.com/rsyslog/rsyslog/issues/2054) is closed as of v8.33.
 
 ### Compose way
 
@@ -495,7 +495,7 @@ There are also kafka and zookeeper images needed for testing.
 
 Configuration passing mistakes and issues are all too common with rsyslog.
 
-The entry-point script always validates config by default (Implicit config check). An explicit check can be done by using `-N1`. And a special python script assembles and outputs the full rsyslog configuration if you use `-E`. For example:
+An explicit check can be done by using `-N1`. And a special python script assembles and outputs the full rsyslog configuration if you use `-E`. For example:
 
 ```
 docker container run --rm -it \
@@ -633,7 +633,7 @@ Then cleanup the debug image:
 docker image rm dockerrsyslog_test_syslog_server_config_1_debug
 ```
 
-## Debugging a work in progress (WIP) test case
+## Debugging a work in progress (WIP) test scenarios
 
 When you just run `sut` via compose, the output from other containers is hard to see.
 
@@ -645,6 +645,61 @@ Some advice here is:
 - Use `docker-compose -f docker-compose.test.yml down` and `docker system prune --filter 'dangling=true'` between test runs to ensure you don't end up searching on log files within volume data for previous test runs...
 
 You may need to adapt according to how dockerd logging is configured.
+
+For behave failures, the following can help:
+- To avoid a work in progress scenario tagged with the `@wip` fixture, use `--tags=-wip`, e.g. `docker-compose -f docker-compose.test.yml run sut behave behave/features --tags=-wip`.
+- Use `--exclude PATTERN` with the behave command to skip problematic feature files.
+
+## Sanity check kafka
+
+Kafka configuration via docker with TLS and SASL security options is fairly complex. Docker compose will create a user defined docker network, and zookeeper/kafka can be accessed within that network via their docker hostname (docker network alias). It can help to use the kafka console producer and consumers within containers and the same docker network to sanity check the kafka test dependencies. The SASL_SSL protocol is run on port 9092, but a PLAINTEXT protocol run on port 9091 can help sanity check basic function without being encumbered by security config parameters.
+
+Run kafka test broker
+
+```
+$ docker-compose -f docker-compose.test.yml up -d test_kafka
+```
+
+Tail the output for the broker
+
+```
+$ docker logs -f docker-rsyslog_test_kafka_1
+```
+
+### Checking with PLAINTEXT protocol
+
+Run console producer on the insecure port
+
+```
+$ docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-producer.sh --broker-list test_kafka:9091 --batch-size 1 --topic test
+```
+
+Run console consumer on the insecure port
+
+```
+$ docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test_kafka:9091 --topic test --from-beginning
+```
+
+And then type messages in the producer checking if they are echoed in the consumer.
+
+### Checking with SASL_SSL protocol
+
+TLS and SASL config needs to be provided to the container. This can be done by bind mounting files with the correct properties/config, e.g.in the properties file:
+
+```
+ssl.truststore.location=/tmp/test_ca.jks
+ssl.truststore.password=changeit
+security.protocol=SASL_SSL
+sasl.mechanism=PLAIN
+sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="test" password="test-secret"
+```
+
+Alternatively, specify the settings via `--consumer-property`, e.g.:
+```
+$ docker run -it --rm --net=docker-rsyslog_default -v "$PWD/test/tls_x509/certs/test_ca.jks":/tmp/test_ca.jks:ro wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test_kafka:9091 --consumer-property ssl.truststore.location=/tmp/test_ca.jks ssl.truststore.password=changeit security.protocol=SASL_SSL sasl.mechanism=PLAIN sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="test" password="test-secret"';' --topic test --from-beginning
+```
+
+And as before, checking if messages are echoed in the consumer.
 
 # Known limitations
 

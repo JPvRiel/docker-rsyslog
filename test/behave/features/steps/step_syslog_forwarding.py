@@ -96,9 +96,9 @@ def step_impl(context, timeout):
         # use kafka.consumer (but always re-read all messages to try match)
         consumer = KafkaConsumer(
             context.env['rsyslog_omkafka_topic'],
+            bootstrap_servers=broker_list,
             auto_offset_reset='earliest',
             enable_auto_commit=False,
-            bootstrap_servers=broker_list,
             consumer_timeout_ms=int(timeout) * 1000,
             sasl_mechanism='PLAIN',
             sasl_plain_username='test',
@@ -108,10 +108,9 @@ def step_impl(context, timeout):
         )
         # Read and print all messages from test topic
         for kafka_message in consumer:
-            if kafka_message is not None:
-                if context.message in kafka_message.value.decode():
-                    message_found = kafka_message.value.decode()
-                    break
+            if context.message in kafka_message.value.decode():
+                message_found = kafka_message.value.decode()
+                break
     except Exception as e:
         logging.error(
             "Unable to search for the message on kafka broker(s) \"{0:s}\" "

@@ -21,7 +21,6 @@ Feature: Foward syslog messages
     When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format
     Then the kafka topic should have the the message within "60" seconds
 
-
   @slow
   Scenario: Messages are forwarded to another server in syslog format
     Given "rsyslog_omfwd_syslog_enabled" environment variable is "on"
