@@ -10,6 +10,7 @@ module(load="mmpstrucdata")
 # Globals
 global(
   parser.permitSlashInProgramname = "{{ getenv "rsyslog_global_parser_permitslashinprogramname" }}"
+  parser.escapecontrolcharactertab = "{{ getenv "rsyslog_global_parser_escapecontrolcharactertab" }}"
   preserveFQDN = "{{ getenv "rsyslog_global_preservefqdn" }}"
   maxMessageSize = "{{ getenv "rsyslog_global_maxmessagesize" }}"
   action.reportSuspension = "{{ getenv "rsyslog_global_action_reportSuspension" }}"

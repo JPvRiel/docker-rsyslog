@@ -725,6 +725,10 @@ The other forwarding/relay outputs default to using more modern RFC5424 or JSON 
 
 rsyslog can accept and convert RFC3164 legacy input, but with some conversion caveats, such as guessing the timezone of the client matches that of the server, and lazy messages without conventional syslog headers are poorly assumed to map into host and process name fields.
 
+## Non-printable characters
+
+RSyslog has a safe default of escaping non-printable characters, which, unfortunatly includes tab characters. Some products expect and use tab characters to delimit fields, so while rsyslog escapes tabs as `#11` by default, I decided to change this behaviour and allow tabs. Set the env var `rsyslog_global_parser_escapecontrolcharactertab="on"` to revert to default behaviour of espacing tabs.
+
 # Status
 
 Note, recently (~Jan 2018) the rsyslog project has started to work on an official container and added better environment viable support that could make the confd templaing uncessary, so some refactoring should be looked into.
