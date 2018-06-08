@@ -1,6 +1,8 @@
 # Overview
 
-An RSyslog container able to:
+An RSyslog container intended to transfer syslog input into kafka with a JSON format (because rsyslog is way better than logstash syslog inputs). It's been made fairly adaptable for some other use cases too.
+
+Able to:
 
 - Accept multiple syslog input formats (RFC3164 and RFC5424).
 - Accept multiple transports (UDP, TCP or RELP).
@@ -30,6 +32,8 @@ Legacy formats/templates can easily be set (i.e. `RSYSLOG_TraditionalForwardForm
 See the `ENV` instructions with `rsyslog_` environment name prefixes in the `Dockerfile` to review default settings and options further.
 
 The container also supports advanced debug scenarios.
+
+About a year since starting this project, upstream rsyslog has started publishing [official rsyslog impages](https://hub.docker.com/u/rsyslog/) which in future will likely be better maintained and hopefully cover similar use cases.
 
 # Version
 
@@ -731,7 +735,7 @@ RSyslog has a safe default of escaping non-printable characters, which, unfortun
 
 # Status
 
-Note, recently (~Jan 2018) the rsyslog project has started to work on an official container and added better environment viable support that could make the confd templaing uncessary, so some refactoring should be looked into.
+Note, recently (~Jan 2018) the rsyslog project has started to work on an official container and added better environment viable support that could make the confd templaing uncessary, so some refactoring and merging efforts into upstream should be looked into.
 
 Done:
 - Multiple inputs

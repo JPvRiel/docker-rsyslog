@@ -1,6 +1,11 @@
 # Collect stats
 module(load="impstats" interval="{{ getenv "rsyslog_module_impstats_interval" }}" log.syslog="on")
 
+# Load extra parser modules which the peoples might want to use in the parser chain - will waste a bit of memory, but keeps logic simpler
+module(load="pmlastmsg")
+module(load="pmaixforwardedfrom")
+module(load="pmciscoios")
+
 {{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
 {{if $rsyslog_mmpstrucdata -}}
 # Parse RFCR424 structured data

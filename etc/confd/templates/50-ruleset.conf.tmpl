@@ -19,7 +19,7 @@ parser(
   remove.msgFirstSpace="{{ getenv "rsyslog_pmrfc3164_remove_msgFirstSpace" }}"
 )
 
-ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
+ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "false";
   set $.authenticated-client = "false";
@@ -34,7 +34,7 @@ ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   call output
 }
 
-ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
+ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "false";
   set $.authenticated-client = "false";
@@ -49,7 +49,7 @@ ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
   call output
 }
 
-ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
+ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "true";
   set $.authenticated-client = "false";
@@ -64,7 +64,7 @@ ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]
   call output
 }
 
-ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
+ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "false";
   set $.authenticated-client = "false";
@@ -80,7 +80,7 @@ ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
 }
 
 # NB: rsyslog limitation seems to block RELP TLS without client authentication
-ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
+ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "true";
   set $.authenticated-client = "false";
@@ -95,7 +95,7 @@ ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "custom.rfc3164"
   call output
 }
 
-ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "custom.rfc3164"]) {
+ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
   set $.tls = "true";
   set $.authenticated-client = "true";

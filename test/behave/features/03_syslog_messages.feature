@@ -44,6 +44,27 @@ Feature: Accept syslog messages in various formats
     | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - Well formed RFC5424 with PID | .*Well formed RFC5424 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
     | <14>1 2017-09-19T23:43:29+00:00 behave test - - [test@16543 key1="value1" key2="value2"] Well formed RFC5424 with structured data | .*Well formed RFC5424 with structured data.* | { "structured-data": { "test@16543": { "key1": "value1", "key2": "value2" } } } |
 
+
+  @slow
+  Scenario Outline: Parser chain should compensate for common non-standard messages
+  Given a protocol "TCP" and port "514"
+    And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
+    And "rsyslog_parser" environment variable is "["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]"
+    And a file "/tmp/json_relay/nc.out"
+  When connecting
+    And sending the raw message "<message>"
+    And waiting "1" seconds
+    And searching lines for the pattern "<regex>" over "30" seconds
+  Then a connection should be complete
+    And the pattern should be found
+    And a JSON entry should contain "<json>"
+
+  Examples:
+    | message | regex | json |
+    | <38>Sep 19 23:43:29 Message forwarded from claimedhostname: procnamewithoutid: AIX extraneous forwarded from message without process ID | .*?AIX extraneous forwarded from message without process ID.* | { "hostname": "claimedhostname", "app-name": "procnamewithoutid", "procid" : "-" } |
+    | <38>Sep 19 23:43:29 Message forwarded from claimedhostname: procnamewithid[99]: AIX extraneous forwarded from message with process ID | .*?AIX extraneous forwarded from message with process ID.* | { "hostname": "claimedhostname", "app-name": "procnamewithid", "procid" : "99" } |
+
+
   # - Negative testing with RFC3164 "malformed" message samples
 
   @slow

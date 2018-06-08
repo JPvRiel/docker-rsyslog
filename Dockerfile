@@ -47,13 +47,14 @@ RUN yum --setopt=timeout=120 -y update && \
 	adisconbuild-librdkafka1 \
   rsyslog-kafka-${RSYSLOG_VERSION} \
   rsyslog-relp-${RSYSLOG_VERSION} \
+  rsyslog-pmciscoios-${RSYSLOG_VERSION} \
   lsof \
   && yum clean all
 RUN rm -rf /etc/rsyslog.d/ \
   && rm -f /etc/rsyslog.conf
 
 # Install confd
-ARG CONFD_VER='0.15.0'
+ARG CONFD_VER='0.16.0'
 #ADD https://github.com/kelseyhightower/confd/releases/download/v${CONFD_VER}/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
 COPY usr/local/bin/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
   # Use bundled file to avoid downloading all the time
@@ -103,6 +104,7 @@ ENV rsyslog_support_metadata_formats='off' \
   rsyslog_global_preservefqdn='on' \
   rsyslog_global_maxmessagesize=65536 \
   rsyslog_input_filtering_enabled='on' \
+  rsyslog_parser='["rsyslog.rfc5424", "custom.rfc3164"]' \
   rsyslog_output_filtering_enabled='on' \
   rsyslog_module_impstats_interval='300' \
   rsyslog_global_action_reportSuspension='on' \
