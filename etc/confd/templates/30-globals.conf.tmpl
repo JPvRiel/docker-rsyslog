@@ -5,6 +5,7 @@ module(load="impstats" interval="{{ getenv "rsyslog_module_impstats_interval" }}
 module(load="pmlastmsg")
 module(load="pmaixforwardedfrom")
 module(load="pmciscoios")
+module(load="pmnull")
 
 {{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
 {{if $rsyslog_mmpstrucdata -}}
@@ -22,5 +23,4 @@ global(
   senders.keepTrack = "{{ getenv "rsyslog_global_senders_keeptrack" }}"
   senders.timeoutAfter = "{{ getenv "rsyslog_global_senders_timeoutafter" }}"
   senders.reportGoneAway = "{{ getenv "rsyslog_global_senders_reportgoneaway" }}"
-
 )

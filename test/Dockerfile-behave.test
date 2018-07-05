@@ -8,7 +8,8 @@ RUN pip install behave && \
     pip install pyhamcrest && \
     pip install jmespath && \
     pip install rfc5424-logging-handler && \
-    pip install kafka-python
+    pip install kafka-python && \
+    pip install confluent-kafka
 
 VOLUME /tmp/test
 WORKDIR /tmp/test

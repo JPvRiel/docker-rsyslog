@@ -39,7 +39,7 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.35.0'
+ARG RSYSLOG_VERSION='8.36.0'
 RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
@@ -69,14 +69,15 @@ COPY etc/confd /etc/confd
 COPY etc/rsyslog.conf /etc/rsyslog.conf
 COPY etc/rsyslog.d/input/ /etc/rsyslog.d/input/
 COPY etc/rsyslog.d/output/ /etc/rsyslog.d/output/
-# Directories intended as optional v0lume mounted config
+# Directories intended as optional volume mounted config
 RUN mkdir -p \
-  /etc/rsyslog.d/filter \
-  /etc/rsyslog.d/output/forward_extra
+  /etc/rsyslog.d/input/filters \
+  /etc/rsyslog.d/output/filters \
+  /etc/rsyslog.d/extra
 # Note:
-# - rsyslog.d/output/extra is a volume used for unforseen custom outputs
-# - rsyslog.d/filter is a volume used for unforseen custom input filters
-# - filters that apply to a specific forwarder should rather be done within that forwarders ruleset
+# - rsyslog.d/input/filters is a volume used for addtional input filters that fit into pre-defined templated inputs
+# - rsyslog.d/output/filters is a volume used for addtional output filters that fit into pre-defined templated outputs
+# - rsyslog.d/extra is a volume used for unforseen custom config
 
 # Copy a default self-signed cert and key - this is INSECURE and for testing/build purposes only
 # - To help handle cases when the rsyslog tls volume doesn't have expected files present
@@ -140,7 +141,7 @@ ENV rsyslog_omfile_enabled='on' \
   rsyslog_om_action_queue_size=2097152 \
   rsyslog_om_action_queue_discardmark=1048576 \
   rsyslog_om_action_queue_discardseverity=6 \
-  rsyslog_forward_extra_enabled='off'
+  rsyslog_call_fwd_extra_rule='off'
 # Several globals are defined via rsyslog_global_* inlcuding reporting stats
 #
 # rsyslog_support_metadata_formats and the appropriate template choice must both be used to allow including validation checks on syslog headers, hostnames and tags for RFC3164. The metadata template choices are:
@@ -157,17 +158,18 @@ ENV rsyslog_omfile_enabled='on' \
 # - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: https://github.com/kelseyhightower/confd/issues/611
 # - rsyslog_om_action_queue_discardseverity=6 implies info and debug messages get discarded
 #
-# Additonal output config will probably be highly varied, so instead of trying to template/pre-can it, we allow for that config to be red from a volume and managed by simply picking up from a `output_extra` ruleset. rsyslog_forward_extra_enabled='on' to enable.
-
+# Additonal output config will probably be highly varied, so instead of trying to template/pre-can it, we allow for that config to be red in
+# As above, extra optional volumes with config that can be supplied at runtime
+# - /etc/rsyslog.d/input/filters
+# - /etc/rsyslog.d/output/filters
+# - /etc/rsyslog.d/extra
+#
+# rsyslog_call_fwd_extra_rule makes the config expect input the user to add a ruleset named fwd_extra somewhere in /etc/rsyslog.d/extra/*.conf
 
 # Volumes required
 VOLUME /var/log/remote \
   /var/lib/rsyslog \
   /etc/pki/rsyslog
-
-# Extra optional volumes with config that can be supplied at runtime to inject custom needs
-# - /etc/rsyslog.d/output/extra
-# - /etc/rsyslog.d/filter
 
 # Ports to expose
 # Note: UDP=514, TCP=514, TCP Secure=6514, RELP=2514, RELP Secure=7514, RELP Secure with strong client auth=8514

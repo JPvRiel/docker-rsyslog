@@ -1,13 +1,16 @@
 # Output templates
-# Built-in templates at http://www.rsyslog.com/doc/v8-stable/configuration/templates.html
+# Built-in templates at https://www.rsyslog.com/doc/v8-stable/configuration/templates.html#reserved-template-names
 # E.g.
 # - RSYSLOG_TraditionalFileFormat
 # - RSYSLOG_FileFormat
 # - RSYSLOG_TraditionalForwardFormat
 # - RSYSLOG_SyslogProtocol23Format
 
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
 {{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
+
+# Simple raw message template (might be useful for passing on messages unprocessed)
+template(name="RawMsg" type="string" string="%rawmsg%\n")
 
 # Standard example of RFC5424
 # Note, RSYSLOG_SyslogProtocol23Format is the built-in reserved template name for a draft of RFC5424, so the above is more or less identical to that

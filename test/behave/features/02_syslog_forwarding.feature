@@ -19,14 +19,14 @@ Feature: Foward syslog messages
       #And a "tls_x509/certs/behave.cert.pem" certificate file
       #And a "tls_x509/private/behave.key.pem" private key file
     When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format
-    Then the kafka topic should have the the message within "60" seconds
+    Then the env configured kafka topic should have the the message within "60" seconds
 
   @slow
   Scenario: Messages are forwarded to another server in syslog format
     Given "rsyslog_omfwd_syslog_enabled" environment variable is "on"
       And "rsyslog_omfwd_syslog_host" environment variable is set
       And "rsyslog_omfwd_syslog_port" environment variable is set
-      And a file "/tmp/syslog_relay/nc.out"
+      And a file "/tmp/syslog_relay/nc.out" exists
     When sending the syslog message "Testing syslog forwarding" in "RFC3164" format
       And waiting "1" seconds
       And searching lines for the pattern "Testing syslog forwarding" over "30" seconds
@@ -37,7 +37,7 @@ Feature: Foward syslog messages
     Given "rsyslog_omfwd_json_enabled" environment variable is "on"
       And "rsyslog_omfwd_json_host" environment variable is set
       And "rsyslog_omfwd_json_port" environment variable is set
-      And a file "/tmp/json_relay/nc.out"
+      And a file "/tmp/json_relay/nc.out" exists
     When sending the syslog message "Testing JSON forwarding" in "RFC3164" format
       And waiting "1" seconds
       And searching lines for the pattern "Testing JSON forwarding" over "30" seconds

@@ -11,20 +11,14 @@ from behave import *
 from hamcrest import *
 
 
-@given('a file "{log_file}"')
-def step_impl(context, log_file):
-    assert_that(os.path.isfile(log_file) or stat.S_ISFIFO(os.stat(log_file).st_mode), equal_to(True))
-    context.log_file = log_file
-
-
 @when('sending the raw message "{message}"')
 def step_impl(context, message):
     context.sending_format = 'raw'
     context.message = message
     context.message_sent = None
     try:
-        logging.info("Sending message \"{0:s}\" to {1:s}:{2:d} in "
-            "{3:s} format".format(
+        logging.info(
+            'Sending message "{0:s}" to {1:s}:{2:d} in {3:s} format'.format(
                 context.message,
                 context.server_name,
                 context.port,
@@ -35,8 +29,7 @@ def step_impl(context, message):
         context.message_sent = True
     except Exception as e:
         logging.error(
-            "Unable to send the message \"{0:s}\" to \"{1:s}\". Exception: "
-            "{2:s}".format(
+            'Unable to send the message "{}" to "{}". Exception:\n{}'.format(
                 context.message,
                 context.server_name,
                 str(e)
@@ -54,7 +47,7 @@ def step_impl(context, regex, timeout):
         context.re = re.compile(regex, re.IGNORECASE)
     except Exception as e:
         logging.error(
-            "Cannot compile regex pattern \"{0:s}\". Exception: {1:s}".format(
+            'Cannot compile regex pattern "{}". Exception:\n{}'.format(
                 regex,
                 str(e)
             )
@@ -88,8 +81,8 @@ def step_impl(context, regex, timeout):
         search_complete = True
     except Exception as e:
         logging.error(
-            "Unable to search \"{0:s}\" file for pattern \"{1:s}\". Exception: "
-            "{2:s}".format(
+            'Unable to search "{}" file for pattern "{}". Exception:\n{}'
+            ''.format(
                 context.log_file,
                 context.re.pattern,
                 str(e)
@@ -104,7 +97,7 @@ def step_impl(context, regex, timeout):
 def step_impl(context):
     if not context.re_match:
         logging.error(
-            "Couldn't match regex pattern \"{0:s}\" in file \"{1:s}\"".format(
+            'Couldn\'t match regex pattern "{}" in file "{}"'.format(
                 context.re.pattern,
                 context.log_file
             )
@@ -116,7 +109,7 @@ def step_impl(context):
 def step_impl(context):
     if context.re_match:
         logging.error(
-            "Should NOT have matched regex pattern \"{0:s}\" in file \"{1:s}\"".format(
+            'Should NOT have matched regex pattern "{}" in file "{}"'.format(
                 context.re.pattern,
                 context.log_file
             )
@@ -132,8 +125,8 @@ def step_impl(context, json_element):
         json_find = json.loads(json_element)
     except Exception as e:
         logging.error(
-            "Unable to load JSON element \"{0:s}\" on line \"{1:s}\". Exception: "
-            "{2:s}".format(
+            'Unable to load JSON element "{}" on line {}. Exception:\n{}'
+            ''.format(
                 json_element,
                 context.matched_line,
                 str(e)
@@ -142,7 +135,8 @@ def step_impl(context, json_element):
         raise e
     assert_that(json_obj, not_none)
     assert_that(json_obj, has_entries(json_find))
-    # hamcrest cannot handle nested dict objects, but niether does the python built-in comparitor
+    # hamcrest cannot handle nested dict objects, but niether does the python
+    # built-in comparitor
     #json_sub_match = json_find.items() <= json_obj.items()
     #if not json_sub_match:
     #    logging.error(
@@ -164,8 +158,8 @@ def step_impl(context, path, value):
         json_obj = json.loads(context.matched_line)
     except Exception as e:
         logging.error(
-            "Unable to load JSON element \"{0:s}\" on line \"{1:s}\". Exception: "
-            "{2:s}".format(
+            'Unable to load JSON element "{}" on line {}. Exception:\n{}'
+            ''.format(
                 json_element,
                 context.matched_line,
                 str(e)
@@ -174,10 +168,10 @@ def step_impl(context, path, value):
     assert_that(json_obj, not_none)
     try:
         match = jmespath.search(path, json_obj)
-    except:
+    except Exception as e:
         logging.error(
-            "Unable to use jmespath \"{0:s}\" to search JSON object \"{1:s}\". Exception: "
-            "{2:s}".format(
+            'Unable to use jmespath "{}" to search JSON object "{}. '
+            'Exception:\n{}'.format(
                 path,
                 context.matched_line,
                 str(e)

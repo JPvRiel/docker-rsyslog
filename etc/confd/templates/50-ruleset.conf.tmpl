@@ -8,7 +8,7 @@
 {{$rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" "true" -}}
 {{$rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" "true" -}}
-{{$rsyslog_forward_extra := getenv "rsyslog_forward_extra" | toLower | eq "on" "true" -}}
+{{$rsyslog_call_fwd_extra_rule := getenv "rsyslog_call_fwd_extra_rule" | toLower | eq "on" "true" -}}
 
 # Customise the settings of the built-in RFC3164 to use extra options to better handle malformed messages
 # - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
@@ -184,10 +184,10 @@ ruleset(name="output") {
   {{if $rsyslog_omfwd_json_enabled -}}
   call fwd_json
   {{- end}}
-  {{if $rsyslog_forward_extra -}}
-  # Optional extra output config inlcude
-  # Add as volume via /etc/rsyslog.d/output/extra
-  $IncludeConfig /etc/rsyslog.d/output/extra/*.conf
+
+  # Add extra output ruleset call for extra conf
+  {{if $rsyslog_call_fwd_extra_rule -}}
+  call fwd_extra
   {{- end}}
 
 }

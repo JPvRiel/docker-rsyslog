@@ -34,7 +34,7 @@ def step_impl(context, server_name):
         hostname_resolvable = True
     except socket.error as e:
         logging.error(
-            "Failed to get host {0:s}. Exception: {1:s}".format(
+            'Failed to get host {}. Exception:\n{}'.format(
                 server_name,
                 str(e)
             )

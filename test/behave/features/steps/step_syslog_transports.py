@@ -36,7 +36,7 @@ def step_impl(context):
         context.socket.settimeout(5.0)
         context.socket.connect((context.server_name, context.port))
         if context.trans_proto == 'UDP':
-            # For UDP, given it's connectionless, we have to try send some data.
+            # For UDP, given it's connectionless, we have to try send some data
             # Python will not block and will immediatly return success
             # Typically, s.recv(1024) could be used to detect ICMP port
             # unreachable, but UDP syslog servers don't send back any data, so
@@ -54,7 +54,7 @@ def step_impl(context):
             context.connected = True
         else:
             logging.error(
-                "Failed to open port {0:s}/{1:d}. Exception: {2:s}".format(
+                'Failed to open port {0:s}/{1:d}. Exception:\n{2:s}'.format(
                     context.trans_proto,
                     context.port,
                     str(e)
@@ -72,30 +72,12 @@ def step_impl(context):
         context.connected = False
     except Exception as e:
         logging.error(
-            "Failed to close port {0:s}/{1:d}. Exception: {2:s}".format(
+            'Failed to close port {0:s}/{1:d}. Exception:\n{2:s}'.format(
                 context.trans_proto,
                 context.port,
                 str(e)
             )
         )
-
-
-@given('a "{ca_file}" certificate authority file')
-def step_impl(context, ca_file):
-    assert_that(os.path.isfile(ca_file), equal_to(True))
-    context.ca_file = ca_file
-
-
-@given('a "{cert_file}" certificate file')
-def step_impl(context, cert_file):
-    assert_that(os.path.isfile(cert_file), equal_to(True))
-    context.cert_file = cert_file
-
-
-@given('a "{key_file}" private key file')
-def step_impl(context, key_file):
-    assert_that(os.path.isfile(key_file), equal_to(True))
-    context.key_file = key_file
 
 
 @when('connecting with TLS')
@@ -106,44 +88,42 @@ def step_impl(context):
     context.socket_tls = None
     context.connected_tls = None
     try:
+        # default enables cert validation with system CA files
+        # default enables hostname checking
         tls_context = ssl.create_default_context()
-            # default enables cert validation with system CA files
-            # default enables hostname checking
         tls_context.load_verify_locations(context.ca_file)
         if 'key_file' in context and 'cert_file' in context:
             tls_context.load_cert_chain(
-                certfile = context.cert_file,
-                keyfile = context.key_file
+                certfile=context.cert_file,
+                keyfile=context.key_file
             )
         context.socket_tls = tls_context.wrap_socket(
             socket.socket(),
-            server_hostname = context.server_name
+            server_hostname=context.server_name
         )
         context.socket_tls.connect((context.server_name, context.port))
         context.connected_tls = True
     except Exception as e:
         if isinstance(e, ssl.CertificateError):
-            logging.error(
-                "Certificate error. Exception: "
-                "{0:s}".format(str(e))
-            )
+            logging.error('Certificate error. Exception:\n{}'.format(str(e)))
         elif isinstance(e, ssl.SSLError):
-            logging.error("SSL error. Library: {0:s}. Reason: {1:s}. "
-                "Exception: {2:s}".format(
+            logging.error(
+                'SSL error. Library: {}. Reason: {}. Exception:\n{}'.format(
                     str(e.library),
                     str(e.reason),
                     str(e)
                 )
             )
         elif isinstance(e, socket.error):
-            logging.error("Failed to open connection on port {0:d}."
-                "Exception: {1:s}".format(
+            logging.error(
+                'Failed to open connection on port {0:d}. Exception:\n{1:s}'
+                ''.format(
                     context.port,
                     str(e)
                 )
             )
         else:
-            logging.error("Exception: {0:s}".format(str(e)))
+            logging.error('Exception:\n{}'.format(str(e)))
         context.connected_tls = False
 
 
@@ -157,8 +137,8 @@ def step_impl(context):
         context.connected_tls = False
     except Exception as e:
         logging.error(
-            "Failed to close TLS connection on port {0:d}. Exception: "
-            "{1:s}".format(
+            'Failed to close TLS connection on port {0:d}. Exception:\n{1:s}'
+            ''.format(
                 context.port,
                 str(e)
             )

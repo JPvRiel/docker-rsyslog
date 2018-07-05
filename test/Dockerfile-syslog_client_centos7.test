@@ -10,7 +10,7 @@ ENV container=docker
 # Disable fast mirror plugin to better leverage upstream proxy caching (or use specific repos)
 # Switch yum config to use a consitant base url (useful if not caching docker build, but relying on an upstream proxy)
 ARG DISABLE_YUM_MIRROR=false
-RUN [ "$DISABLE_YUM_MIRROR" == true ] && \
+RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
   sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf && \
   sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/CentOS-Base.repo

@@ -16,7 +16,7 @@ Forward the messages to other systems for a few built-in use cases, either:
 - Downstream analytic tools that can handle JSON (e.g. logstash).
 - Kafka (e.g. data analytic platforms like Hadoop).
 
-Legacy formats/templates can easily be set (i.e. `RSYSLOG_TraditionalForwardFormat` or `RSYSLOG_TraditionalFileFormat`). However several additional output templates can be set per output:
+Legacy formats/templates can easily be set via [pre-defined rsyslog template names](https://www.rsyslog.com/doc/v8-stable/configuration/templates.html) (i.e. `RSYSLOG_TraditionalForwardFormat` or `RSYSLOG_TraditionalFileFormat`). However several additional output templates can be set per output:
 
 - RFC5424
   - `TmplRFC5424`
@@ -25,7 +25,10 @@ Legacy formats/templates can easily be set (i.e. `RSYSLOG_TraditionalForwardForm
   - `TmplRSyslogJSON` is the native rsyslog message object
   - `TmplJSON` is a streamlined option
   - `TmplJSONRawMeta` includes meta-data about how the message was received and the raw message
-- Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`
+  - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`
+- A raw template `RawMsg` can be useful to bypass most rsyslog parsing and simply relay that data as is.
+  - One might also then skip parsing with `parser="rsyslog.pmnull"` for a given ruleset.
+  - Note that some network devices and solaris don't provide syslog header names so the orginal log source identity can end up being lost).
 
 - Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
 
@@ -214,19 +217,75 @@ The Kafka output wraps the key config items for [omkafka](http://www.rsyslog.com
 
 In terms of kafka security, only the `SASL/PLAIN` with the `SASL_SSL` security protocol has been tested. In theory, SASL with Kerberos might be possible, but requires the rsyslog container to have keytab files mounted, etc.
 
-### Extra Output Modules
+### Extra Input and/or Output Modules
 
-_Experimental : not tested_
+_Beta : partially tested_
 
-If a forwarding use case isn't covered as above, then:
-1. Set `rsyslog_forward_extra_enabled=true`
-1. Use `/etc/rsyslog.d/output/extra` with your own config file which must specify `rsyslog_forward_extra` (See `50-ruleset.conf` that expects to call this ruleset).
+If an input or forwarding use case isn't covered as above, then:
+1. Use `/etc/rsyslog.d/extra/` with your own config files
+1. Add your own inputs and, if desired, intergrate them with pre-existing filters and output rulesets.
+  1. Incorporate `$IncludeConfig /etc/rsyslog.d/input/filters/*.conf` into your own input processing ruleset to apply "global" input filters.
+  1. Set your input module to use `ruleset="output"`, or if you first need to do your own custom adaptation (e.g. filters and enrichment) the use `call output` in your own own input processing ruleset. This approach will retainin the pre-bundled outputs and output filters.
+1. Add your own oututs. If desired, intergrate them with pre-existing inputs, input filters and global output filters, via the `rsyslog_call_fwd_extra_rule` option:
+  1. Set evn var `rsyslog_call_fwd_extra_rule=true` which enables `call fwd_extra` at the end of the master `output` ruleset grouping.
+  2. If you enable the env var, but fail to define a ruleset called `fwd_extra` in your extra config, the rsyslog config will become  invalid.
 
-E.g. `/etc/rsyslog.d/output/extra/mongo.conf`
+More detail?
+
+- See `test/etc/rsyslog.d/extra/91_extra_test.conf`
+- See `50-ruleset.conf` template to understand more details about the pre-bundled rulesets that handle inputs and outpus.
+
+E.g. to have a standalone setup that goes from some kafka input to a mongodb output without touching or being touched by the other "pre-canned" rulesets:
+
+`/etc/rsyslog.d/extra/99_extra.conf`
+```
+module(load="imkafka")
+module(load="ommongodb")
+
+input(
+  type="imkafka"
+  topic="mytopic"
+  broker=["host1:9092","host2:9092","host3:9092"]
+  consumergroup="default"
+  ruleset="extra"
+)
+
+ruleset(name="extra" parser="rsyslog.rfc3164") {
+  action(
+    server="mymonddb"
+    serverport=27017
+    ...
+  )
+}
+```
+
+E.g. to create an extra input and plug it into the pre-canned output, use `call output` within your own input ruleset to call the standard output (implies global output filters apply):
+
+`/etc/rsyslog.d/extra/49_input_extra.conf`
+```
+module(load="imkafka")
+input(
+  type="imkafka"
+  topic="mytopic"
+  broker=["host1:9092","host2:9092","host3:9092"]
+  consumergroup="default"
+  ruleset="kafka_in_extra_topic"
+)
+
+# apply global input filters
+ruleset(name="kafka_in_extra_topic" parser="rsyslog.rfc3164") {
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  call output
+}
+```
+
+E.g. to create an extra output which intergates with the "pre-canned" pipeline that will already call `fwd_extra` at the end of the normal output ruleset (implies global output filters apply):
+
+`/etc/rsyslog.d/extra/89_fwd_extra.conf`
 
 ```
 module(load="ommongodb")
-ruleset(name="forward_ommongodb")
+ruleset(name="fwd_extra")
 {
   action(
     server="mymonddb"
@@ -672,16 +731,16 @@ $ docker logs -f docker-rsyslog_test_kafka_1
 
 ### Checking with PLAINTEXT protocol
 
-Run console producer on the insecure port
+Assuming a topic has already been setup, run console producer on the insecure port
 
 ```
-$ docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-producer.sh --broker-list test_kafka:9091 --batch-size 1 --topic test
+$ docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-producer.sh --broker-list test_kafka:9091 --batch-size 1 --topic test_syslog
 ```
 
 Run console consumer on the insecure port
 
 ```
-$ docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test_kafka:9091 --topic test --from-beginning
+$ docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test_kafka:9091 --topic test_syslog --from-beginning
 ```
 
 And then type messages in the producer checking if they are echoed in the consumer.
@@ -704,6 +763,32 @@ $ docker run -it --rm --net=docker-rsyslog_default -v "$PWD/test/tls_x509/certs/
 ```
 
 And as before, checking if messages are echoed in the consumer.
+
+### Checking kafka from the host (not stuck in another container)
+
+Instead of running with the kafka container, you can try your own kafka install or lib on your docker host, but it's complicated by two things:
+- kafka is picky and requires you to use an advertised hostname when connecting? I.e. can't just connect using an IP?
+- Docker networking has it's own isolated and embeded DNS resolver not exposed to your host, so your host can't (by default) use conatiner dns aliases
+
+While you can find the kafka IP as follows, connections to kafka by IP don't work well:
+
+```
+$ docker container inspect --format '{{ range .NetworkSettings.Networks }}{{ .IPAddress }}{{ end }}' docker-rsyslog_test_kafka_1
+```
+
+### Useful docker inspect format tricks
+
+If you want to double check a proper env var was set for the rsyslog or kafka container:
+
+```
+$ docker container inspect --format '{{ range .Config.Env }}{{ println . }}{{ end }}' docker-rsyslog_test_kafka_1
+```
+
+If you want to poke at ports and servies for each container, it would help to know the network range and IPs:
+
+```
+$ docker network inspect --format '{{ range .Containers }}{{ .Name }} = {{.IPv4Address}}{{ println }}{{ end }}' docker-rsyslog_default
+```
 
 # Known limitations
 
@@ -753,8 +838,13 @@ Not yet done:
   - Simplify and depend on less containers one async support in behave allows better network test cases (using tmpfs shared volumes is the current work-arround)
   - Watch out for pre-existing files in volumes from prior runs (testing via Makefile avoids this pitfall)
 - More rsyslog -> kafka optimisation, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
+- expose enhancments in env config like
+  - `imptcp` socket backlog setting
+  - `impstats` counters for `omkafka`
+
 
 Maybe someday:
+- hasing template for checks on integrity, e.g. `fmhash`?
 - Filter/send rsyslog performance metrics to stdout (omstdout)
 - All syslog output to omstdout (would we even need this?)
 - More test cases

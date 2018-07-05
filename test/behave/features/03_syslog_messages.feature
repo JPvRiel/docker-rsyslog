@@ -12,7 +12,7 @@ Feature: Accept syslog messages in various formats
 
   @slow
   Scenario Outline: Messages are received from syslog clients
-    Given a file "<file>"
+    Given a file "<file>" exists
     When searching lines for the pattern "<regex>" over "30" seconds
     Then the pattern should be found
 
@@ -27,7 +27,7 @@ Feature: Accept syslog messages in various formats
   Scenario Outline: Well formed messages mapped into JSON fields
   Given a protocol "TCP" and port "514"
     And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
-    And a file "/tmp/json_relay/nc.out"
+    And a file "/tmp/json_relay/nc.out" exists
   When connecting
     And sending the raw message "<message>"
     And waiting "1" seconds
@@ -50,7 +50,7 @@ Feature: Accept syslog messages in various formats
   Given a protocol "TCP" and port "514"
     And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
     And "rsyslog_parser" environment variable is "["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]"
-    And a file "/tmp/json_relay/nc.out"
+    And a file "/tmp/json_relay/nc.out" exists
   When connecting
     And sending the raw message "<message>"
     And waiting "1" seconds
@@ -71,7 +71,7 @@ Feature: Accept syslog messages in various formats
   Scenario Outline: Malformed RFC3164 messages do not create bogus field values
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
-      And a file "/tmp/json_relay/nc.out"
+      And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
       And waiting "1" seconds

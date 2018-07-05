@@ -17,7 +17,7 @@ Feature: Process timestamps with or without timezone information
     Scenario Outline: Local timezone applies to messages that omit timezone info
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
-      And a file "/tmp/json_relay/nc.out"
+      And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
       And waiting "1" seconds
@@ -34,7 +34,7 @@ Feature: Process timestamps with or without timezone information
     Scenario Outline: Process and retain timezone info
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
-      And a file "/tmp/json_relay/nc.out"
+      And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
       And waiting "1" seconds
