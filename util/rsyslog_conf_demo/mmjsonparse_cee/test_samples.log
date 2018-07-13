@@ -1,0 +1,13 @@
+@cee: { "json": "JSON with cee cookie and no header"}
+{ "json": "plain JSON with no header" }
+<14>Sep 19 23:43:29 behave test[3] Well formed RFC3164 which is not a JSON message
+<14>Sep 19 23:43:29 behave test[4]: @cee: { "json": "Well formed RFC3164 with process tag which is a JSON cee message" }
+<14>Sep 19 23:43:29 behave @cee: { "json": "Well formed RFC3164 without process tag which is a JSON cee message" }
+<14>1 2017-09-19T23:43:29+00:00 behave test 6 - - Well formed RFC5424 which is not a JSON message
+<14>1 2017-09-19T23:43:29+00:00 behave test 7 - - @cee: { "json": "Well formed RFC5424 without structured data followed by a JSON message with a cee cookie" }
+<14>1 2017-09-19T23:43:29+00:00 behave test 8 - - @cee:{ "json": "Well formed RFC5424 without structured data followed by a JSON message with a cee cookie that has no preceding space" }
+<14>1 2017-09-19T23:43:29+00:00 behave @cee 9 - - { "json": "Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name" }
+<14>1 2017-09-19T23:43:29+00:00 behave test 10 - - { "json": "Well formed RFC5424 without structured data followed by a JSON message without a cee cookie" }
+<14>1 2017-09-19T23:43:29+00:00 behave test 11 - - { "json": { "nested": "Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie" } }
+<14>1 2017-09-19T23:43:29+00:00 behave test 12 - [test@16543 random="some value"] @cee: { "json": "Well formed RFC5424 with structured data followed by a JSON message with cee cookie" }
+<14>1 2017-09-19T23:43:29+00:00 behave test 13 - [test@16543 random="some other value"] { "json": "Well formed RFC5424 with structured data followed by a JSON message without cee cookie" }

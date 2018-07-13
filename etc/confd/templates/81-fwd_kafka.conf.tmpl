@@ -11,6 +11,7 @@ ruleset(name="fwd_kafka")
   {{- end}}
 
   action(
+    name="fwd_kafka_topic_{{ getenv "rsyslog_omkafka_topic" }}"
     type="omkafka"
     broker={{ getenv "rsyslog_omkafka_broker" }}
     {{if getenv "rsyslog_omkafka_confParam" | ne "" -}}

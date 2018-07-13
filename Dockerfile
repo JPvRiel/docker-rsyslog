@@ -48,6 +48,7 @@ RUN yum --setopt=timeout=120 -y update && \
   rsyslog-kafka-${RSYSLOG_VERSION} \
   rsyslog-relp-${RSYSLOG_VERSION} \
   rsyslog-pmciscoios-${RSYSLOG_VERSION} \
+  rsyslog-mmjsonparse-${RSYSLOG_VERSION} \
   lsof \
   && yum clean all
 RUN rm -rf /etc/rsyslog.d/ \
@@ -96,18 +97,22 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
   rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
 
 # Inputs and parsing inputs
-ENV rsyslog_support_metadata_formats='off' \
-  rsyslog_mmpstrucdata='off' \
+ENV rsyslog_global_maxmessagesize=65536 \
+  rsyslog_parser='["rsyslog.rfc5424", "custom.rfc3164"]' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
-  rsyslog_pmrfc3164_remove_msgFirstSpace='off' \
-  rsyslog_global_parser_permitslashinprogramname='off' \
+  rsyslog_pmrfc3164_remove_msgFirstSpace='on' \
+  rsyslog_global_parser_permitslashinprogramname='on' \
   rsyslog_global_parser_escapecontrolcharactertab='off' \
   rsyslog_global_preservefqdn='on' \
-  rsyslog_global_maxmessagesize=65536 \
+  rsyslog_mmpstrucdata='on' \
+  rsyslog_mmjsonparse='on' \
+  rsyslog_mmjsonparse_without_cee='off' \
+  rsyslog_support_metadata_formats='off' \
   rsyslog_input_filtering_enabled='on' \
-  rsyslog_parser='["rsyslog.rfc5424", "custom.rfc3164"]' \
-  rsyslog_output_filtering_enabled='on' \
-  rsyslog_module_impstats_interval='300' \
+  rsyslog_module_impstats_interval='60' \
+  rsyslog_module_impstats_resetcounters='on' \
+  rsyslog_module_impstats_format='cee' \
+  rsyslog_impstats_ruleset='output' \
   rsyslog_global_action_reportSuspension='on' \
   rsyslog_global_senders_keeptrack='on' \
   rsyslog_global_senders_timeoutafter='86400' \
@@ -118,7 +123,8 @@ ENV rsyslog_support_metadata_formats='off' \
 
 # Outputs
 # See 60-output_format.conf.tmpl
-ENV rsyslog_omfile_enabled='on' \
+ENV rsyslog_output_filtering_enabled='on' \
+  rsyslog_omfile_enabled='on' \
   rsyslog_omfile_split_files_per_host='off' \
   rsyslog_omfile_template='RSYSLOG_TraditionalFileFormat' \
   rsyslog_omkafka_enabled='off' \

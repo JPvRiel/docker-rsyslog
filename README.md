@@ -4,7 +4,7 @@ An RSyslog container intended to transfer syslog input into kafka with a JSON fo
 
 Able to:
 
-- Accept multiple syslog input formats (RFC3164 and RFC5424).
+- Accept multiple syslog input formats (RFC3164 and RFC5424). Also accept structured logs (with `@cee` tag to indicate JSON paylod).
 - Accept multiple transports (UDP, TCP or RELP).
 - Accept multiple security options (TLS or not).
 - Optionally append useful metadata with `rsyslog_support_metadata_formats=on`.
@@ -18,14 +18,16 @@ Forward the messages to other systems for a few built-in use cases, either:
 
 Legacy formats/templates can easily be set via [pre-defined rsyslog template names](https://www.rsyslog.com/doc/v8-stable/configuration/templates.html) (i.e. `RSYSLOG_TraditionalForwardFormat` or `RSYSLOG_TraditionalFileFormat`). However several additional output templates can be set per output:
 
-- RFC5424
-  - `TmplRFC5424`
-  - `TmplRFC5424Meta` which appends a extra structured data field with more info about how the message was received
-- JSON output templates
-  - `TmplRSyslogJSON` is the native rsyslog message object
-  - `TmplJSON` is a streamlined option
-  - `TmplJSONRawMeta` includes meta-data about how the message was received and the raw message
-  - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`
+- RFC5424:
+  - `TmplRFC5424` (same as `RSYSLOG_SyslogProtocol23Format`).
+  - `TmplRFC5424Meta` which appends a extra structured data element fields with more info about how the message was received.
+- JSON output templates:
+  - `TmplRSyslogJSON` is the full native rsyslog message object (might duplicate fields, but also useful to debug with).
+  - `TmplJSON` is a JSON output option for a subset of common syslog fields and the msg (without syslog header)
+  - `TmplJSONRawMeta` includes meta-data about how the message was received, and the full raw message (orginal syslog headers).
+  - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`.
+  - Optionally parse JSON message payloads with `rsyslog_mmjsonparse=on` (as a default, usually preceeded by `@cee` cookie).
+    - Use `rsyslog_mmjsonparse_without_cee=on` to try parse messages as JSON without the cookie.
 - A raw template `RawMsg` can be useful to bypass most rsyslog parsing and simply relay that data as is.
   - One might also then skip parsing with `parser="rsyslog.pmnull"` for a given ruleset.
   - Note that some network devices and solaris don't provide syslog header names so the orginal log source identity can end up being lost).
@@ -232,7 +234,7 @@ If an input or forwarding use case isn't covered as above, then:
 
 More detail?
 
-- See `test/etc/rsyslog.d/extra/91_extra_test.conf`
+- See `test/etc/rsyslog.d/extra/91_extra_test.conf` for examples of adding custom extra config.
 - See `50-ruleset.conf` template to understand more details about the pre-bundled rulesets that handle inputs and outpus.
 
 E.g. to have a standalone setup that goes from some kafka input to a mongodb output without touching or being touched by the other "pre-canned" rulesets:
@@ -297,7 +299,7 @@ ruleset(name="fwd_extra")
 
 ## Template examples
 
-For each pre-canned output, a template can be set (i.e. `grep -E 'rsyslog_.*__template' Dockerfile` to get an idea of default templates used).
+For each pre-canned output, a template can be set. Some advanced templates have flags to enable/include them (i.e. `grep -E 'rsyslog_.*__template' Dockerfile` to get an idea of the options).
 
 By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options are off. They can help add meta-data and make structured data elements parsable as JSON. For JSON output, recommended combinations are:
 - `TmplJSON` and `rsyslog_support_metadata_formats=off`, or
@@ -423,6 +425,21 @@ Message with RFC5424 structured data and using the native rsyslog `%jsonmesg%` o
     }
   }
 }
+```
+
+## Rsyslog processing stats (impstats)
+
+As per [formats
+Tutorial: Sending impstats Metrics to Elasticsearch Using Rulesets and Queues](https://www.rsyslog.com/tutorial-sending-impstats-metrics-to-elasticsearch-using-rulesets-and-queues/), it can be useful to track how many messages rsyslog processes. Also:
+-  [details of impstats module fields made in elasticsearch](https://github.com/rsyslog/rsyslog/issues/1796) helps ask for clarification about various stats produced.
+- [rsyslog statistic counter](https://www.rsyslog.com/doc/master/configuration/rsyslog_statistic_counter.html) details some meaning for stats and which modules support stats.
+- `omkafka` supports impstats since version 8.35.
+
+By default, in `Dockerfile`, various stats env vars set the following:
+- `rsyslog_module_impstats_interval='60'` causes stats to be produced ever minute
+- `rsyslog_module_impstats_resetcounters='on'` resets many counters, but at the cost of some accuracy (see doc for `impstats`)
+- `rsyslog_module_impstats_format='json'` is the format set (instead of the legacy key value pair format used)
+- `rsyslog_impstats_ruleset='output'` sets the ruleset to send the stats output to, wherby `output` is the normal 'master' output ruleset the will cause stats to be output/forwarded to all configured output modules. This can be changed to a single select 'pre-bundled' output ruleset if it was already enabled (e.g. `out_file`, `fwd_kafka`, `fwd_syslog` or `fwd_json`), or otherwise, a custom independant output can be defined via the extra config mechanism.
 ```
 
 # Build
@@ -576,7 +593,7 @@ Output will have `##` comment tags to help highlight and show when `$IncludeConf
 ##< start of include directive: $IncludeConfig /etc/rsyslog.d/*.conf
 ##^ expanding file: /etc/rsyslog.d/30-globals.conf
  1: # Collect stats
- 2: module(load="impstats" interval="300" log.syslog="on")
+ 2: module(load="impstats" interval="60")
 ...
 ##> end of expand directive: $IncludeConfig /etc/rsyslog.d/*.conf
 ```
@@ -794,7 +811,7 @@ $ docker network inspect --format '{{ range .Containers }}{{ .Name }} = {{.IPv4A
 
 ## TLS/SSL config
 
-RSyslog appears to use GNU TLS and TLS libraries in ways which don't readily allow TLS client authentication to be optionally set.
+RSyslog appears to use GNU TLS and TLS libraries in ways which don't readily allow TLS client authentication to be optionally set. Recent versions of rsyslog are beginning to add openssl support, but it was still "beta" at the time of testing.
 
 For `imtcp`:
 
@@ -805,6 +822,12 @@ For `imrelp`:
 
 - TLS settings can apply per input.
 - While there's no documented setting for optional TLS client authentication, it is possible to have two listeners on two different ports, one allowing anonymous clients, and a 2nd requiring client certificates
+
+## JSON formats
+
+As per the offical [CEE](http://cee.mitre.org/) site, CEE sponsership was halted and not that many systems adopted CEE. Rsyslog accepts JSON formatted messages is they are preceeded with an `@cee` cookie, but in testing, this doesn't appear to work well if the message also has RFC5424 structured data preceeding the cookie.
+
+As per issue [#2827](https://github.com/rsyslog/rsyslog/issues/2827), rsyslog didn't have a simple way to set or manage non-string based JSON types such as booleans, numbers or null, which adds to the complexity of 'hand-crafted' output templates.
 
 ## Legacy formats
 
@@ -818,6 +841,12 @@ rsyslog can accept and convert RFC3164 legacy input, but with some conversion ca
 
 RSyslog has a safe default of escaping non-printable characters, which, unfortunatly includes tab characters. Some products expect and use tab characters to delimit fields, so while rsyslog escapes tabs as `#11` by default, I decided to change this behaviour and allow tabs. Set the env var `rsyslog_global_parser_escapecontrolcharactertab="on"` to revert to default behaviour of espacing tabs.
 
+## Complexity with golang confd templates, rainerscript, and syslog templates
+
+While the approach taken attempted to expose/simply running an rsyslog container by just setting a couple of environment variables, a lot of underlying complexity (and maintainer burden) occurs because:
+- Confd and golang text templates dynamically change the rsyslog configuration files, so configuration errors reported by rsyslogd are hard to track back (hence the `-E` option for the container to see the expanded rsyslog configuration result with line numbers)
+- rsyslog rainerscript syntax for assinging values to variables does not appear to support boolean true or false types, nor does it support a null type. As a resulty, trying to populate JSON template output with such types requires literal strings represent and be explicitly output as such without using native built-in json output templating, otherwise, rsyslogd will quote the JSON values as "true", "false" or "null" (which is not intended). This makes creating the desired JSON templates a verbose excercise of hand picking various elements with such types. Instead, coercing types downstream (e.g. via logstash or elasticsearch index templates) might be a simpler solution that allows for simpler rsyslog templates.
+
 # Status
 
 Note, recently (~Jan 2018) the rsyslog project has started to work on an official container and added better environment viable support that could make the confd templaing uncessary, so some refactoring and merging efforts into upstream should be looked into.
@@ -830,22 +859,25 @@ Done:
 - Structured data as JSON fields (mmstructdata, with null case)
 - Gracefull entrypoint script exit and debugging by passing signals to rsyslogd.
 - Kafka and syslog forwarding (with SASL_SSL protocol)
+- JSON input (with limitations)
 - JSON output
 - Filtering
 
 Not yet done:
+- Use mmfields module to handle LEEF and CEF extraction to JSON?
 - Re-factor test suite
   - Simplify and depend on less containers one async support in behave allows better network test cases (using tmpfs shared volumes is the current work-arround)
   - Watch out for pre-existing files in volumes from prior runs (testing via Makefile avoids this pitfall)
 - More rsyslog -> kafka optimisation, e.g. see: [How TrueCar Uses Kafka for High Volume Logging Part 2](https://www.drivenbycode.com/how-truecar-uses-kafka-for-high-volume-logging-part-2/)
 - expose enhancments in env config like
   - `imptcp` socket backlog setting
-  - `impstats` counters for `omkafka`
-
+  - confirm `impstats` counters for `omkafka`
+- performance tunning hooks for the main queue and the other output action queues as per https://www.rsyslog.com/performance-tuning-elasticsearch/ example.
 
 Maybe someday:
+- support and process events via snmptrapd?
 - hasing template for checks on integrity, e.g. `fmhash`?
-- Filter/send rsyslog performance metrics to stdout (omstdout)
+- Filter/send rsyslog performance metrics to stdout (omstdout) - is this needed?
 - All syslog output to omstdout (would we even need this?)
 - More test cases
   - Unit test for stopping and starting the server container to check that persistent queues in /var/lib/rsyslog function as intended

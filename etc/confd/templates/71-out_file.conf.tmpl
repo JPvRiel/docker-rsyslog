@@ -8,13 +8,13 @@
 
 {{if $rsyslog_support_metadata_formats -}}
 # Avoid using invalid hostnames if possible (meta-data enabled)
-template(name="TmplPerHostFile" type="string" string="/var/log/remote/%$.hostname-valid%")
+template(name="TmplPerHostFile" type="string" string="/var/log/remote/%$.hostname%")
 {{if $rsyslog_omfile_split_files_per_host -}}
-template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%$.hostname-valid%/secure")
-template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%$.hostname-valid%/audit")
-template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%$.hostname-valid%/console")
-template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%$.hostname-valid%/firewall")
-template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%$.hostname-valid%/messages")
+template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%$.hostname%/secure")
+template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%$.hostname%/audit")
+template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%$.hostname%/console")
+template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%$.hostname/firewall")
+template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%$.hostname%/messages")
 {{- end}}
 {{- else}}
 # The hostname property in rsyslog is taken without any checks from the message content
@@ -37,7 +37,7 @@ ruleset(name="out_file") {
   {{if not $rsyslog_omfile_split_files_per_host -}}
   # In the simple case, we use the hostname as the filename and place all logs in that file
   action(
-       name="remote_in_file_hostname"
+       name="out_file_remote_in_file_hostname"
        type="omfile"
        template="{{ getenv "rsyslog_omfile_template" }}"
        dynaFile="TmplPerHostFile"
@@ -62,7 +62,7 @@ ruleset(name="out_file") {
 	)
   ) then
   {  action(
-       name="remote_in_file_auth"
+       name="out_file_remote_in_file_auth"
        type="omfile"
        template="{{ getenv "rsyslog_omfile_template" }}"
        dynaFile="TmplPerHostFirewallFile"
@@ -86,7 +86,7 @@ ruleset(name="out_file") {
     ) then
     {
       action(
-        name="remote_in_file_auth"
+        name="out_file_remote_in_file_auth"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
         dynaFile="TmplPerHostAuthFile"
@@ -106,7 +106,7 @@ ruleset(name="out_file") {
     if ($syslogfacility == '13') then
     {
       action(
-        name="remote_in_file_audit"
+        name="out_file_remote_in_file_audit"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
         dynaFile="TmplPerHostAuditFile"
@@ -126,7 +126,7 @@ ruleset(name="out_file") {
     if ($syslogfacility == '14') then
     {
       action(
-        name="remote_in_file_console"
+        name="out_file_remote_in_file_console"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
         dynaFile="TmplPerHostConsoleFile"
@@ -151,7 +151,7 @@ ruleset(name="out_file") {
     then
     {
       action(
-        name="remote_in_file_messages"
+        name="out_file_remote_in_file_messages"
         type="omfile"
         template="{{ getenv "rsyslog_omfile_template" }}"
         dynaFile="TmplPerHostMsgFile"

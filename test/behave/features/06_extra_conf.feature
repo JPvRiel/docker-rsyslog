@@ -14,7 +14,7 @@ Feature: Accommodate extra custom configuration
       And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
 
 
-  @slow @wip
+  @slow
   Scenario: Extra independent input and outputs can be added
     When producing the kafka message "extra misc message input via kafka" to the topic "extra_syslog" at broker(s) "test_kafka:9092"
       And a file "/var/log/remote/extra_kafka_input.log" exists by "60" second timeout
@@ -22,7 +22,7 @@ Feature: Accommodate extra custom configuration
     Then the pattern should be found
 
 
-  @slow @wip
+  @slow
   Scenario: Extra integrated output can be added
     Given "rsyslog_call_fwd_extra_rule" environment variable is "on"
     When sending the syslog message "testing extra integrated output" in "RFC3164" format

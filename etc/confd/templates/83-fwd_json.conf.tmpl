@@ -10,6 +10,7 @@ ruleset(name="fwd_json")
   {{- end}}
 
   action(
+    name="fwd_json_target_{{ getenv "rsyslog_omfwd_json_host" }}"
     type="omfwd"
     Target="{{ getenv "rsyslog_omfwd_json_host" }}"
     Port="{{ getenv "rsyslog_omfwd_json_port" }}"

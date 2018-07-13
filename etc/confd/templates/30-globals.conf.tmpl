@@ -1,5 +1,11 @@
-# Collect stats
-module(load="impstats" interval="{{ getenv "rsyslog_module_impstats_interval" }}" log.syslog="on")
+# Collect stats - rsyslog docs warn to load this module first before others (but might only be applicable to legacy config)
+module(
+  load="impstats"
+  interval="{{ getenv "rsyslog_module_impstats_interval" }}"
+  resetCounters="{{ getenv "rsyslog_module_impstats_resetcounters" }}"
+  Format="{{ getenv "rsyslog_module_impstats_format" }}"
+  ruleset="{{ getenv "rsyslog_impstats_ruleset" }}"
+)
 
 # Load extra parser modules which the peoples might want to use in the parser chain - will waste a bit of memory, but keeps logic simpler
 module(load="pmlastmsg")
@@ -7,6 +13,10 @@ module(load="pmaixforwardedfrom")
 module(load="pmciscoios")
 module(load="pmnull")
 
+{{ $rsyslog_mmjsonparse := getenv "rsyslog_mmjsonparse" | toLower | eq "on" "true" -}}
+{{if $rsyslog_mmjsonparse -}}
+module(load="mmjsonparse")
+{{- end}}
 {{ $rsyslog_mmpstrucdata := getenv "rsyslog_mmpstrucdata" | toLower | eq "on" "true" -}}
 {{if $rsyslog_mmpstrucdata -}}
 # Parse RFCR424 structured data

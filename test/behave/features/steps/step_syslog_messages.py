@@ -59,7 +59,7 @@ def step_impl(context, regex, timeout):
     try:
         time_start = time.time()
         time_end = time_start + float(timeout)
-        f = open(context.log_file, 'r')
+        f = open(context.log_file, encoding='utf-8', mode='r')
         # set non-blocking in case of reading a fifo
         #fd = f.fileno()
         #fl = fcntl.fcntl(fd, fcntl.F_GETFL)
@@ -125,7 +125,7 @@ def step_impl(context, json_element):
         json_find = json.loads(json_element)
     except Exception as e:
         logging.error(
-            'Unable to load JSON element "{}" on line {}. Exception:\n{}'
+            'Unable to load JSON element \'{}\' for line \'{}\'. Exception:\n{}'
             ''.format(
                 json_element,
                 context.matched_line,
@@ -158,7 +158,7 @@ def step_impl(context, path, value):
         json_obj = json.loads(context.matched_line)
     except Exception as e:
         logging.error(
-            'Unable to load JSON element "{}" on line {}. Exception:\n{}'
+            'Unable to load JSON element \'{}\' for line \'{}\'. Exception:\n{}'
             ''.format(
                 json_element,
                 context.matched_line,
@@ -178,11 +178,15 @@ def step_impl(context, path, value):
             )
         )
         raise e
-    # hanle cases where value may be a number or boolean
+    # hanle cases where value may be a number or boolean, but also allow for forcing literal
     if value == "true":
         implicit_value = True
+    elif value == "'true'":
+        implicit_value = 'true'
     elif value == "false":
         implicit_value = False
+    elif value == "'false'":
+        implicit_value = 'false'
     elif value.isdecimal():
         # caution, doesn't handle negative numbers or fractions
         implicit_value = int(value)
