@@ -26,8 +26,8 @@ parser(
 
 ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!syslog-relay!tls = "false";
-  set $!syslog-relay!authenticated-client = "false";
+  set $.syslog-relay!tls = "false";
+  set $.syslog-relay!authenticated-client = "false";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
@@ -38,8 +38,8 @@ ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
 
 ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!syslog-relay!tls = "false";
-  set $!syslog-relay!authenticated-client = "false";
+  set $.syslog-relay!tls = "false";
+  set $.syslog-relay!authenticated-client = "false";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
@@ -50,8 +50,8 @@ ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
 
 ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!syslog-relay!tls = "true";
-  set $!syslog-relay!authenticated-client = "false";
+  set $.syslog-relay!tls = "true";
+  set $.syslog-relay!authenticated-client = "false";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
@@ -62,8 +62,8 @@ ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
 
 ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!syslog-relay!tls = "false";
-  set $!syslog-relay!authenticated-client = "false";
+  set $.syslog-relay!tls = "false";
+  set $.syslog-relay!authenticated-client = "false";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
@@ -75,8 +75,8 @@ ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
 # NB: rsyslog limitation seems to block RELP TLS without client authentication
 ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!syslog-relay!tls = "true";
-  set $!syslog-relay!authenticated-client = "false";
+  set $.syslog-relay!tls = "true";
+  set $.syslog-relay!authenticated-client = "false";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
@@ -87,8 +87,8 @@ ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
 
 ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
-  set $!syslog-relay!tls = "true";
-  set $!syslog-relay!authenticated-client = "true";
+  set $.syslog-relay!tls = "true";
+  set $.syslog-relay!authenticated-client = "true";
   {{- end}}
   {{if $rsyslog_input_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
@@ -124,7 +124,7 @@ ruleset(name="output") {
   action(type="mmjsonparse" name="mmjsonparse_cee")
   if $parsesuccess == "OK" then {
     {{if $rsyslog_support_metadata_formats -}}
-    set $!syslog-relay!json-msg-parsed = "true";
+    set $.syslog-relay!json-msg-parsed = "true";
     {{- end}}
   } else {
     {{if $rsyslog_mmjsonparse_without_cee -}}
@@ -133,20 +133,20 @@ ruleset(name="output") {
     action(type="mmjsonparse" name="mmjsonparse_without_cee" cookie="")
     if $parsesuccess == "OK" then {
       {{if $rsyslog_support_metadata_formats -}}
-      set $!syslog-relay!json-msg-parsed = "true";
+      set $.syslog-relay!json-msg-parsed = "true";
       {{- end}}
     } else {
       # remove duplicated $!msg field (will use $msg in templates instead)
       unset $!msg;
       {{if $rsyslog_support_metadata_formats -}}
-      set $!syslog-relay!json-msg-parsed = "false";
+      set $.syslog-relay!json-msg-parsed = "false";
       {{- end}}
     }
     {{- else}}
     # remove duplicated $!msg field (will use $msg in templates instead)
     unset $!msg;
     {{if $rsyslog_support_metadata_formats -}}
-    set $!syslog-relay!json-msg-parsed = "false";
+    set $.syslog-relay!json-msg-parsed = "false";
     {{- end}}
     {{- end}}
   }
@@ -157,19 +157,22 @@ ruleset(name="output") {
   # "syslog-relay"
   # Note:
   # - Copying properties is less efficient.
-  # - But this simplified manageing JSON templates.
-  # - `$!` can be output without needing to know exectly which JSON fields are
-  #   present or not allowinig more dynamic attributes for messages.
-  set $!syslog-relay!timegenerated = format_time($timegenerated, "date-rfc3339");
-  set $!syslog-relay!fromhost = $fromhost;
-  set $!syslog-relay!fromhost-ip = $fromhost-ip;
-  set $!syslog-relay!myhostname = $$myhostname;
-  set $!syslog-relay!inputname = $inputname;
+  # - But this could simplify manually constructing JSON output with complex templates...
+  # - `$!` can be output without needing to know exectly which JSON fields are present or not allowinig more dynamic attributes for messages.
+  # There are issues formatting nested JSON output and items commented out due to limitations
+  # - Instead, explicit / manual templating for JSON is the current workarround
+  # - See https://github.com/rsyslog/rsyslog/issues/2873
+  # - See https://github.com/rsyslog/rsyslog/issues/2827
+  #set $.syslog-relay!timegenerated = format_time($timegenerated, "date-rfc3339");
+  #set $.syslog-relay!fromhost = $fromhost;
+  #set $.syslog-relay!fromhost-ip = $fromhost-ip;
+  #set $.syslog-relay!myhostname = $$myhostname;
+  #set $.syslog-relay!inputname = $inputname;
   if ($protocol-version == "1") then {
-    set $!syslog-relay!format = "RFC5424";
+    set $.syslog-relay!format = "RFC5424";
     # when rsyslog parses a message as version 1 / RFC5424, it implies parsing worked
-    set $!syslog-relay!pri-valid = "true";
-    set $!syslog-relay!header-valid = "true";
+    set $.syslog-relay!pri-valid = "true";
+    set $.syslog-relay!header-valid = "true";
     set $.hostname = $hostname;
   } else {
     # assume protocol-version == 0
@@ -177,11 +180,11 @@ ruleset(name="output") {
     # 0-191 are valid priority encodings, set to 192 > 191 to indicate invalid
     set $.pri-test = cnum(re_extract($rawmsg, "^<([0-9]{1,3})>", 0, 0, "192"));
     if ($.pri-test > 191) then {
-      set $!syslog-relay!format = "RFC3164_malformed";
-      set $!syslog-relay!pri-valid = "false";
+      set $.syslog-relay!format = "RFC3164_malformed";
+      set $.syslog-relay!pri-valid = "false";
       set $.hostname = $fromhost;
     } else {
-      set $!syslog-relay!pri-valid = "true";
+      set $.syslog-relay!pri-valid = "true";
     }
     # Check syslog header (date and hostname)
     # - See https://github.com/rsyslog/rsyslog/issues/1789
@@ -189,18 +192,19 @@ ruleset(name="output") {
     # - Also use a trick to see if rsyslog assumed the first word was the hostname after failing to parse a syslog header date
     if (not re_match($rawmsg-after-pri, "^[A-Z][a-z]{2}") or $rawmsg-after-pri startswith $hostname) then {
       # rsyslog assumed first word of malformed message was the hostname, so no valid header
-      set $!syslog-relay!format = "RFC3164_malformed";
-      set $!syslog-relay!header-valid = "false";
+      set $.syslog-relay!format = "RFC3164_malformed";
+      set $.syslog-relay!header-valid = "false";
       set $.hostname = $fromhost;
       # If we wanted to correct a misaligned $msg due to a bad header...
       #set $.msg = $rawmsg-after-pri;
     } else {
-      set $!syslog-relay!format = "RFC3164";
+      set $.syslog-relay!format = "RFC3164";
       # above checks not 100% precise to avoid perfomance cost, so only reasonably confident a good header was found
-      set $!syslog-relay!header-valid = "true";
+      set $.syslog-relay!header-valid = "true";
       set $.hostname = $hostname;
       #set $.msg = $msg;
     }
+    # TODO check for valid app-name and processs ID values?
   }
   {{- end}}
 

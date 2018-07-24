@@ -27,7 +27,7 @@ template(name="TmplRFC5424" type="string" string="<%pri%>1 %timestamp:::date-rfc
 # Regex needed to deal with structured data being null '-' and needing to append/replace null.
 # `%structured-data:R,ERE,0,BLANK:[[].*--end%` avoids appending a null charceter '-' if there wasn't any pre-existing structured data.
 # See http://www.rsyslog.com/doc/v8-stable/configuration/nomatch.html
-template(name="TmplRFC5424Meta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$!syslog-relay!format%\" pri-valid=\"%$!syslog-relay!pri-valid%\" header-valid=\"%$!syslog-relay!header-valid%\" tls=\"%$!syslog-relay!tls%\" authenticated-client=\"%$!syslog-relay!authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
+template(name="TmplRFC5424Meta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$.syslog-relay!format%\" pri-valid=\"%$.syslog-relay!pri-valid%\" header-valid=\"%$.syslog-relay!header-valid%\" json-msg-parsed=\"%$.syslog-relay!json-msg-parsed%\" tls=\"%$.syslog-relay!tls%\" authenticated-client=\"%$.syslog-relay!authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
 {{- end}}
 
 # JSON templates
@@ -39,8 +39,11 @@ template(name="TmplRFC5424Meta" type="string" string="<%pri%>1 %timestamp:::date
 # Output the full native rsyslog JSON message object
 template(name="TmplRSyslogJSON" type="string" string="%jsonmesg%\n")
 
-# Output a subset of the native rsyslog JSON message fields (no extra metsadata or validations)
-# Note, the json $! tree output will output enclosing brakets { } which breaks JSON parsing, so strip these by removing first 2 charceters '{ ' and allowing the end closing braket to occur
+# Output a subset of the native rsyslog JSON message fields
+# Note:
+# - JSON $! tree output will output empty enclosing brakets { } if $! doesn't have any JSON values set which will cause invalid JSON, so strip these by removing first 2 charceters '{ ' and allowing the end closing braket to occur in case this is indeed empty.
+# - Handle cases where metadata or structured data is to be added
+# - if metadata is enabled, RFC3164 assumed hostname parsing that might be incorrect are replaced with local var $.hostname = $fromhost instead of standard $hostname property when headers are detected as non-conformant
 template(name="TmplJSON" type="list") {
   constant(value="{ ")
   property(name="syslogfacility" format="jsonf")
@@ -65,21 +68,42 @@ template(name="TmplJSON" type="list") {
   constant(value=", ")
   property(name="msgid" format="jsonf")
   constant(value=", ")
+  {{if $rsyslog_support_metadata_formats -}}
+  constant(value="\"syslog-relay\": { ")
+  property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
+  constant(value=", ")
+  property(name="fromhost" format="jsonf")
+  constant(value=", ")
+  property(name="fromhost-ip" format="jsonf")
+  constant(value=", ")
+  property(name="$myhostname" format="jsonf")
+  constant(value=", ")
+  property(name="inputname" format="jsonf")
+  constant(value=", \"format\":\"")
+  property(name="$.syslog-relay!format" format="jsonr")
+  constant(value="\", \"pri-valid\":")
+  property(name="$.syslog-relay!pri-valid")
+  constant(value=", \"header-valid\":")
+  property(name="$.syslog-relay!header-valid")
+  constant(value=", \"json-msg-parsed\":")
+  property(name="$.syslog-relay!json-msg-parsed")
+  constant(value=", \"tls\":")
+  property(name="$.syslog-relay!tls")
+  constant(value=", \"authenticated-client\":")
+  property(name="$.syslog-relay!authenticated-client")
+  constant(value=" }, ")
+  {{- end}}
   {{if not $rsyslog_mmpstrucdata -}}
   property(name="structured-data" format="jsonf")
   constant(value=", ")
   {{- end}}
   property(name="msg" format="jsonf")
   constant(value=", ")
-  property(name="$!" dateFormat="rfc3339" position.from="2")
+  property(name="$!" position.from="2")
   constant(value="\n")
 }
 
-{{if $rsyslog_support_metadata_formats -}}
-# JSON output with syslog relay and own custom meta-data pre-pended to the structured data element
-# Assumes rsyslog_mmpstrucdata and rsyslog_mmjsonparse also in use, or else those values should template out as null
-# RFC3164 assumed hostname parsing that might be incorrect are replaced with local var $.hostname = $fromhost instead of standard $hostname property when headers are detected as non-conformant
-template(name="TmplJSONRawMeta" type="list") {
+template(name="TmplJSONRawMsg" type="list") {
   constant(value="{ ")
   property(name="syslogfacility" format="jsonf")
   constant(value=", ")
@@ -91,7 +115,11 @@ template(name="TmplJSONRawMeta" type="list") {
   constant(value=", ")
   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
   constant(value=", ")
+  {{if $rsyslog_support_metadata_formats -}}
   property(name="$.hostname" outname="hostname" format="jsonf")
+  {{- else}}
+  property(name="hostname" format="jsonf")
+  {{- end}}
   constant(value=", ")
   property(name="app-name" format="jsonf")
   constant(value=", ")
@@ -99,13 +127,37 @@ template(name="TmplJSONRawMeta" type="list") {
   constant(value=", ")
   property(name="msgid" format="jsonf")
   constant(value=", ")
+  {{if $rsyslog_support_metadata_formats -}}
+  constant(value="\"syslog-relay\": { ")
+  property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
+  constant(value=", ")
+  property(name="fromhost" format="jsonf")
+  constant(value=", ")
+  property(name="fromhost-ip" format="jsonf")
+  constant(value=", ")
+  property(name="$myhostname" format="jsonf")
+  constant(value=", ")
+  property(name="inputname" format="jsonf")
+  constant(value=", \"format\":\"")
+  property(name="$.syslog-relay!format" format="jsonr")
+  constant(value="\", \"pri-valid\":")
+  property(name="$.syslog-relay!pri-valid")
+  constant(value=", \"header-valid\":")
+  property(name="$.syslog-relay!header-valid")
+  constant(value=", \"json-msg-parsed\":")
+  property(name="$.syslog-relay!json-msg-parsed")
+  constant(value=", \"tls\":")
+  property(name="$.syslog-relay!tls")
+  constant(value=", \"authenticated-client\":")
+  property(name="$.syslog-relay!authenticated-client")
+  constant(value=" }, ")
+  {{- end}}
   {{if not $rsyslog_mmpstrucdata -}}
   property(name="structured-data" format="jsonf")
   constant(value=", ")
   {{- end}}
   property(name="rawmsg" format="jsonf")
   constant(value=", ")
-  property(name="$!" dateFormat="rfc3339" position.from="2")
+  property(name="$!" position.from="2")
   constant(value="\n")
 }
-{{- end}}

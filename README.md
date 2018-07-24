@@ -23,8 +23,8 @@ Legacy formats/templates can easily be set via [pre-defined rsyslog template nam
   - `TmplRFC5424Meta` which appends a extra structured data element fields with more info about how the message was received.
 - JSON output templates:
   - `TmplRSyslogJSON` is the full native rsyslog message object (might duplicate fields, but also useful to debug with).
-  - `TmplJSON` is a JSON output option for a subset of common syslog fields and the msg (without syslog header)
-  - `TmplJSONRawMeta` includes meta-data about how the message was received, and the full raw message (orginal syslog headers).
+  - `TmplJSON` is a JSON output option for a subset of common syslog fields and the parsed msg portion (the message after the syslog header pieces)
+  - `TmplJSONRawMsg` includes the full raw message inlcuding orginal syslog headers - potentially useful as provenance / evidence on exactly how the message was transfered from a source
   - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`.
   - Optionally parse JSON message payloads with `rsyslog_mmjsonparse=on` (as a default, usually preceeded by `@cee` cookie).
     - Use `rsyslog_mmjsonparse_without_cee=on` to try parse messages as JSON without the cookie.
@@ -303,7 +303,7 @@ For each pre-canned output, a template can be set. Some advanced templates have 
 
 By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options are off. They can help add meta-data and make structured data elements parsable as JSON. For JSON output, recommended combinations are:
 - `TmplJSON` and `rsyslog_support_metadata_formats=off`, or
-- `TmplJSONRawMeta` or `TmplRFC5424Meta` require `rsyslog_support_metadata_formats=on`, otherwise these templates won't work.
+- `TmplJSONRawMsg` or `TmplRFC5424Meta` require `rsyslog_support_metadata_formats=on`, otherwise these templates won't work.
 
 The table shows compatible template and options.
 
@@ -313,7 +313,7 @@ The table shows compatible template and options.
 | `TmplRFC5424Meta` | RFC5424 with extra structured meta-data element | Yes, prepended to SD-Elements | NA, not a JSON format |
 | `TmplRSyslogJSON` | RSyslog's internal JSON representation | Yes, appears in `$!` root object | Yes, adds `rfc5424-sd` to `$!` |
 | `TmplJSON` | Simplified smaller JSON message | No, omits fields for meta-data | Yes |
-| `TmplJSONRawMeta` | More complete well structured JSON message | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
+| `TmplJSONRawMsg` | More complete well structured JSON message | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
 
 `rsyslog_support_metadata_formats` is also needed add logic that builds in some extra validation steps in order to output the meta-data with more accurate information about the origin of the message. RSyslog readily parses almost any valid text as a hostname with RFC3164, even when the message looks like it's ignoring the conventions and it's unlikely a valid hostname - as per this issue: [pmrfc3164 blindly swallows the first word of an invalid syslog header as the hostname](https://github.com/rsyslog/rsyslog/issues/1789).
 
@@ -354,7 +354,7 @@ Message missing structured data (e.g. null `-` or RFC3164 message) with more min
 }
 ```
 
-### TmplJSONRawMeta
+### TmplJSONRawMsg
 
 Message with RFC5424 structured data and custom meta-data about message origin. Some basic sanity checks performed to avoid outputting bogus hostnames from malformed RFC3164 messages. `structured-data` is converted to a JSON object.
 

@@ -193,3 +193,33 @@ def step_impl(context, path, value):
     else:
         implicit_value = value
     assert_that(match, equal_to(implicit_value))
+
+
+@then('a JSON jmespath "{path}" field should match the "{regex_within_json_field}" pattern')
+def step_impl(context, path, regex_within_json_field):
+    json_obj = None
+    try:
+        json_obj = json.loads(context.matched_line)
+    except Exception as e:
+        logging.error(
+            'Unable to load JSON element \'{}\' for line \'{}\'. Exception:\n{}'
+            ''.format(
+                json_element,
+                context.matched_line,
+                str(e)
+            )
+        )
+    assert_that(json_obj, not_none)
+    try:
+        match = jmespath.search(path, json_obj)
+    except Exception as e:
+        logging.error(
+            'Unable to use jmespath "{}" to search JSON object "{}. '
+            'Exception:\n{}'.format(
+                path,
+                context.matched_line,
+                str(e)
+            )
+        )
+        raise e
+    assert_that(match, matches_regexp(regex_within_json_field))

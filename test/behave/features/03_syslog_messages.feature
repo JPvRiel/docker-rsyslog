@@ -25,10 +25,10 @@ Feature: Accept syslog messages in various formats
 
   # - Positive testing well formed message samples
 
-  @slow
+  @slow @wip
   Scenario Outline: Well formed messages mapped into JSON fields
     Given a protocol "TCP" and port "514"
-      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
+      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
       And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
@@ -50,7 +50,7 @@ Feature: Accept syslog messages in various formats
   @slow @wip
     Scenario Outline: Parse JSON messages when they occur
     Given a protocol "TCP" and port "514"
-      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
+      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
       And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
@@ -73,10 +73,10 @@ Feature: Accept syslog messages in various formats
       | <14>1 2017-09-19T23:43:29+00:00 behave test 11 - [test@16543 random="some other value"] { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } | .*?11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie.* | { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } |
 
 
-  @slow
+  @slow @wip
   Scenario Outline: Parser chain should compensate for common non-standard messages
     Given a protocol "TCP" and port "514"
-      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
+      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
       And "rsyslog_parser" environment variable is "["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]"
       And a file "/tmp/json_relay/nc.out" exists
     When connecting
@@ -98,7 +98,7 @@ Feature: Accept syslog messages in various formats
   @slow
   Scenario Outline: Malformed RFC3164 messages do not create bogus field values
     Given a protocol "TCP" and port "514"
-      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
+      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
       And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
@@ -111,14 +111,14 @@ Feature: Accept syslog messages in various formats
   Examples:
     | message | regex | path  | value |
     | Sep 19 23:43:29 lies Poor form RFC3164 with no priority | .*?RFC3164 with no priority.* | hostname | lies |
-    | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | 'false' |
-    | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | 'false' |
+    | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | false |
+    | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | false |
 
 
-  @slow @wip
+  @slow
   Scenario Outline: Don't parse messages which are not JSON
     Given a protocol "TCP" and port "514"
-      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMeta"
+      And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
       And a file "/tmp/json_relay/nc.out" exists
     When connecting
       And sending the raw message "<message>"
@@ -130,5 +130,5 @@ Feature: Accept syslog messages in various formats
 
     Examples:
       | message | regex | path  | value |
-      | <14>Sep 19 23:43:29 behave test[3]: 3 Well formed RFC31614 which is not a JSON message | .*?3 Well formed RFC3164 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | 'false' |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 5 - - 5 Well formed RFC5424 which is not a JSON message | .*?5 Well formed RFC5424 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | 'false' |
+      | <14>Sep 19 23:43:29 behave test[3]: 3 Well formed RFC3164 which is not a JSON message | .*?3 Well formed RFC3164 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |
+      | <14>1 2017-09-19T23:43:29+00:00 behave test 5 - - 5 Well formed RFC5424 which is not a JSON message | .*?5 Well formed RFC5424 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |

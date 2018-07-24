@@ -152,7 +152,7 @@ ENV rsyslog_output_filtering_enabled='on' \
 #
 # rsyslog_support_metadata_formats and the appropriate template choice must both be used to allow including validation checks on syslog headers, hostnames and tags for RFC3164. The metadata template choices are:
 # - TmplRFC5424Meta
-# - TmplJSONRawMeta
+# - TmplJSONRawMsg
 #
 # Notes for the pre-canned outputs (kafka, JSON, syslog)
 # - each pre-canned output can have it's own template applied, e.g.
