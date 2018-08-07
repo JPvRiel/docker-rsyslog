@@ -178,7 +178,7 @@ def step_impl(context, path, value):
             )
         )
         raise e
-    # hanle cases where value may be a number or boolean, but also allow for forcing literal
+    # handle cases where value may be a number or boolean, but also allow for forcing literal
     if value == "true":
         implicit_value = True
     elif value == "'true'":
@@ -223,3 +223,30 @@ def step_impl(context, path, regex_within_json_field):
         )
         raise e
     assert_that(match, matches_regexp(regex_within_json_field))
+
+
+@then('all lines in a file "{file}" should load as valid JSON')
+def step_impl(context, file):
+    context.all_valid_json = None
+    context.log_file = file
+    current_line = 0
+    try:
+        f = open(context.log_file, encoding='utf-8', mode='r')
+        for l in f:
+            current_line += 1
+            if len(l) > 0:
+                json.loads(l)
+        f.close()
+        context.all_valid_json = True
+    except Exception as e:
+        context.all_valid_json = False
+        logging.error(
+            'Unable to parse JSON "{}" file on line "{}". Exception:\n{}'
+            ''.format(
+                context.log_file,
+                current_line,
+                str(e)
+            )
+        )
+        raise e
+    assert_that(context.all_valid_json, equal_to(True))

@@ -25,7 +25,7 @@ Feature: Accept syslog messages in various formats
 
   # - Positive testing well formed message samples
 
-  @slow @wip
+  @slow
   Scenario Outline: Well formed messages mapped into JSON fields
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
@@ -47,7 +47,7 @@ Feature: Accept syslog messages in various formats
       | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - [test@16543 key1="value1" key2="value2"] Well formed RFC5424 with structured data | .*Well formed RFC5424 with structured data.* | { "rfc5424-sd": { "test@16543": { "key1": "value1", "key2": "value2" } } } |
 
 
-  @slow @wip
+  @slow
     Scenario Outline: Parse JSON messages when they occur
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
@@ -73,7 +73,7 @@ Feature: Accept syslog messages in various formats
       | <14>1 2017-09-19T23:43:29+00:00 behave test 11 - [test@16543 random="some other value"] { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } | .*?11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie.* | { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } |
 
 
-  @slow @wip
+  @slow
   Scenario Outline: Parser chain should compensate for common non-standard messages
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"

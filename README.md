@@ -439,7 +439,7 @@ By default, in `Dockerfile`, various stats env vars set the following:
 - `rsyslog_module_impstats_interval='60'` causes stats to be produced ever minute
 - `rsyslog_module_impstats_resetcounters='on'` resets many counters, but at the cost of some accuracy (see doc for `impstats`)
 - `rsyslog_module_impstats_format='json'` is the format set (instead of the legacy key value pair format used)
-- `rsyslog_impstats_ruleset='output'` sets the ruleset to send the stats output to, wherby `output` is the normal 'master' output ruleset the will cause stats to be output/forwarded to all configured output modules. This can be changed to a single select 'pre-bundled' output ruleset if it was already enabled (e.g. `out_file`, `fwd_kafka`, `fwd_syslog` or `fwd_json`), or otherwise, a custom independant output can be defined via the extra config mechanism.
+- `rsyslog_impstats_ruleset='syslog_stats'` sets the ruleset to send the stats output to, wherby stats are sent via normal syslog and the call to `output` will cause stats to be output/forwarded to all configured output modules. This can be changed to a single select 'pre-bundled' output ruleset if it was already enabled (e.g. `out_file`, `fwd_kafka`, `fwd_syslog` or `fwd_json`), or otherwise, a custom independant output can be defined via the extra config mechanism.
 ```
 
 # Build

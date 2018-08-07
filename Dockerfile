@@ -39,7 +39,7 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.36.0'
+ARG RSYSLOG_VERSION='8.37.0'
 RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
@@ -112,7 +112,7 @@ ENV rsyslog_global_maxmessagesize=65536 \
   rsyslog_module_impstats_interval='60' \
   rsyslog_module_impstats_resetcounters='on' \
   rsyslog_module_impstats_format='cee' \
-  rsyslog_impstats_ruleset='output' \
+  rsyslog_impstats_ruleset='syslog_stats' \
   rsyslog_global_action_reportSuspension='on' \
   rsyslog_global_senders_keeptrack='on' \
   rsyslog_global_senders_timeoutafter='86400' \

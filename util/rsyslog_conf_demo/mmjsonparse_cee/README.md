@@ -6,7 +6,7 @@ If `cookie=""` is set, I'd hope mmjsonparse fails early (i.e. if within a short 
 
 ### Actual behavior
 
-While Docs don't explicilty state all the features, both RFC5424 and RFC3164 messages over network transports work as expected, event with structured data elements preceeding the JSON.
+While Docs don't explicitly state all the features, both RFC5424 and RFC3164 messages over network transports work as expected, event with structured data elements preceding the JSON.
 
 What isn't clear is the potential performance overhead and if mmjsonparse fails fast when not finding any valid JSON structure if the `@cee` cookie is not in use. How far down the message does it search for JSON?
 

@@ -23,6 +23,7 @@ parser(
 )
 
 # Input related rulesets
+# Input filter rules are placed in filter/*.conf and should be conditions that drop (stop) messages from being processed futher
 
 ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
   {{if $rsyslog_support_metadata_formats -}}
@@ -97,7 +98,16 @@ ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parse
   call output
 }
 
-# Input filter rules are placed in filter/*.conf and should be conditions that drop (stop) messages from being processed futher
+ruleset(name="syslog_stats") {
+  {{if $rsyslog_support_metadata_formats -}}
+  # TODO
+  # - In future ommit setting these values and simply ommit from message when not relevant
+  # - Needed for now due to explicit templating because of issues like https://github.com/rsyslog/rsyslog/issues/2873
+  set $.syslog-relay!tls = "false";
+  set $.syslog-relay!authenticated-client = "false";
+  {{- end}}
+  call output
+}
 
 # Ouptut rulesets
 # Rules to output and forward / relay messages placed in output/*.conf and called below
@@ -126,6 +136,7 @@ ruleset(name="output") {
     {{if $rsyslog_support_metadata_formats -}}
     set $.syslog-relay!json-msg-parsed = "true";
     {{- end}}
+    continue
   } else {
     {{if $rsyslog_mmjsonparse_without_cee -}}
     # Also try parsing message as JSON without the @cee cookie
@@ -134,6 +145,8 @@ ruleset(name="output") {
     if $parsesuccess == "OK" then {
       {{if $rsyslog_support_metadata_formats -}}
       set $.syslog-relay!json-msg-parsed = "true";
+      {{- else}}
+      continue
       {{- end}}
     } else {
       # remove duplicated $!msg field (will use $msg in templates instead)

@@ -50,7 +50,7 @@ Feature: Process timestamps with or without timezone information
     | <14>1 2017-09-17T23:43:29.737941Z behave test 99999 - RFC5424 with UTC timezone | .*?RFC5424 with UTC timezone.* | { "timestamp": "2017-09-17T23:43:29.737941Z" } |
 
 
-  @slow @wip
+  @slow
   Scenario: timegenerated metadata field should be output in ISO8601 format
   Given a protocol "TCP" and port "514"
     And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
