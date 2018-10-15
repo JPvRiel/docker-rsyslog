@@ -42,7 +42,7 @@ trap 'sigterm_handler' SIGTERM SIGINT SIGQUIT
 trap 'sighup_handler' SIGHUP
 trap 'sigusr1_handler' SIGUSR1
 
-# Check if PID file is set
+# Check if PID file env var is set
 if [[ -z "$rsyslog_pid_file" ]]; then
   # Assume CentOS7 syslog 8 default
   rsyslog_pid_file='/var/run/syslogd.pid'
@@ -99,7 +99,7 @@ report_info "Using $rsyslog_server_cert_file as the certficate."
 # Apply config templates
 /usr/local/bin/confd -onetime -backend env -log-level warn
 
-# Config sanity check options - handle and augment config checking
+# Sanity check conifg options - handle and augment config checking features
 if [[ -n ${EXTRA_ARGS[*]} ]]; then
   for a in "${EXTRA_ARGS[@]}"; do
     if [[ "${a:0:2}" == '-E' ]]; then
@@ -120,6 +120,18 @@ if ! rsyslogd -N1; then
   exit 1
 fi
 
+# Check for stale PID files because rsyslog will refuse to start, but docker policy might be in the habit of just trying to restart a container after failure
+if [[ -f "$rsyslog_pid_file" ]]; then
+  old_pid=$(cat "$rsyslog_pid_file")
+  report_error "A previous PID file '$rsyslog_pid_file' already exists with PID $old_pid, indicating a restart after an abnormal exit."
+  if [ -n "$old_pid" -a -e /proc/$old_pid ]; then
+    report_error "PID $old_pid still appears to be active, so '$0' aborting"
+    exit 1
+  fi
+  report_warning "Removing stale PID file $rsyslog_pid_file"
+  rm -f "$rsyslog_pid_file"
+fi
+
 # Run rsyslog in the background
 if [[ -n ${EXTRA_ARGS[*]} ]]; then
   report_info "Running rsyslogd with extra arguments \"${EXTRA_ARGS[*]}\"."
@@ -133,7 +145,7 @@ fi
 # Notes:
 # - While one could simply exec rsyslogd and let it handle signals directly, do note that rsyslog source code makes use of fork() - and is therefore might create child processes.
 # - Rsyslog does accept and handle SIGCHLD to reap child processes, but most users (and docker stop) use SIGTERM.
-# - Hopefully no orphined defunct / 'zombie' processes should result when rsylog terminates (gracefully via TERM).
+# - Hopefully no orphined defunct / 'zombie' processes should result when rsylog terminates (cleanly via TERM).
 # - Regardless, wait again in case rsyslog managed to spawn child processes it didn't clean up, given pid 1 is meat to reap all children.
 # - Waiting within a loop is necessary becuse traping SIGUSR1 or SIGINT for rsyslog causes wait to return with exit code = 128 + <SIGNAL int>
 # - When wait returns with a non-zero exit code due to async signal hanlding, it needs to be wrapped in set +e, or else this script terminates due to set -e
@@ -149,6 +161,7 @@ if [[ -n $rsyslog_exit_status ]]; then
   # 128+15 = 143 (143 indicates processing was stoped via a SIGTERM signal)
   if [[ ! ($rsyslog_exit_status == 0 || $rsyslog_exit_status == 143) ]]; then
     report_error "rsyslog stopped abnormally! Exit code = $rsyslog_exit_status."
+    exit 1
   else
     report_info "rsyslog stopped normally. Exit code = $rsyslog_exit_status."
   fi

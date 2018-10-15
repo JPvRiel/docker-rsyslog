@@ -1,6 +1,7 @@
 *.DS_Store
 **/*key.pem
 test/behave/reports/**
+test/config_check
 
 !test/tls_x509/private/*.key.pem
 !test/tls_x509/certs/*.cert.pem

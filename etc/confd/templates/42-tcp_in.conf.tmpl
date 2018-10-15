@@ -13,27 +13,30 @@ global(
   #defaultNetstreamDriver="gtls"
 )
 
-# For plain TCP without TLS
-module(load="imptcp")
-# For TCP with TLS
+# For plain TCP without TLS (tailored for high performance on Linux)
+module(
+  load="imptcp"
+  threads="{{ getenv "rsyslog_module_imptcp_threads" }}"
+  processOnPoller="off"
+)
+# For TCP with TLS (imptcp does not support TLS)
 module(
   load="imtcp"
+  maxSessions="{{ getenv "rsyslog_module_imtcp_maxSessions" }}"
   streamDriver.name="gtls"
   streamDriver.mode="1"
     #This indicates TLS is enabled. 0 indicated disabled.
-  streamDriver.authMode="{{ getenv "rsyslog_module_imtcp_stream_driver_auth_mode" }}"
-  {{ if getenv "rsyslog_module_imtcp_stream_driver_auth_mode" | ne "anon" }}
-  permittedPeer={{ getenv "rsyslog_tls_permitted_peer" }}
+  streamDriver.authMode="{{ getenv "rsyslog_module_imtcp_streamDriver_authMode" }}"
+  {{ if getenv "rsyslog_module_imtcp_streamDriver_authMode" | ne "anon" }}
+  permittedPeer={{ getenv "rsyslog_tls_permittedPeer" }}
   {{ end }}
 )
 
-# provides plain TCP syslog reception
+# provides plain TCP syslog reception. Both port 514 and 601 (IANA offical registered number)
 input(type="imptcp" port="514" ruleset="remote_in_tcp")
+input(type="imptcp" port="601" ruleset="remote_in_tcp")
 
 # provides secure TCP syslog reception
-# Limitation:
-# - Not possbile to have client authentication optional. Forced to require it or not.
-# - https://github.com/rsyslog/rsyslog/issues/435
 input(
   type="imtcp"
   name="tcp_secure"

@@ -3,4 +3,7 @@ util
 build.env
 docker-compose*.yml
 Makefile
-*.md
+**/.md
+.git
+**/.gitignore
+**/.gitkeep

@@ -9,17 +9,18 @@ input(type="imrelp" name="imrepl" port="2514" ruleset="remote_in_relp" tls="off"
 # Limitation:
 # - even if tls.authMode is not set, RELP GnuTLS implimentation seems to default requesting a client certifcate
 # - might be fixed in future: https://github.com/rsyslog/rsyslog/issues/435
-#input(
-#  type="imrelp"
-#  name="imrelp_secure"
-#  port="7514"
-#  ruleset="remote_in_relp_secure"
-#  tls="on"
-#  tls.dhbits="2048"
-#  tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
-#  tls.myCert="{{ getenv "rsyslog_server_cert_file" }}"
-#  tls.myPrivKey="{{ getenv "rsyslog_server_key_file" }}"
-#)
+input(
+  type="imrelp"
+  name="imrelp_secure"
+  port="7514"
+  ruleset="remote_in_relp_secure"
+  tls="on"
+  tls.dhbits="2048"
+  tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
+  tls.myCert="{{ getenv "rsyslog_server_cert_file" }}"
+  tls.myPrivKey="{{ getenv "rsyslog_server_key_file" }}"
+  #tls.authMode="anon"
+)
 
 # provides secure RELP reception (with client needing to provide a CA signed cert)
 input(
@@ -32,7 +33,8 @@ input(
   tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
   tls.myCert="{{ getenv "rsyslog_server_cert_file" }}"
   tls.myPrivKey="{{ getenv "rsyslog_server_key_file" }}"
-  tls.authMode="name"
-    # Require client authentication with a valid CA signed cert (strong authentication)
-  tls.permittedPeer={{ getenv "rsyslog_tls_permitted_peer" }}
+  tls.authMode="{{ getenv "rsyslog_module_imrelp_authMode" }}"
+  {{ if getenv "rsyslog_module_imrelp_authMode" | ne "anon" }}
+  tls.permittedPeer={{ getenv "rsyslog_tls_permittedPeer" }}
+  {{ end }}
 )

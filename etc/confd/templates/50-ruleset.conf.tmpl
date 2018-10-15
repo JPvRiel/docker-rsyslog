@@ -20,6 +20,9 @@ parser(
   name="custom.rfc3164" type="pmrfc3164"
   force.tagEndingByColon="{{ getenv "rsyslog_pmrfc3164_force_tagEndingByColon" }}"
   remove.msgFirstSpace="{{ getenv "rsyslog_pmrfc3164_remove_msgFirstSpace" }}"
+  permit.squareBracketsInHostname="{{ getenv "rsyslog_pmrfc3164_permit_squareBracketsInHostname" }}"
+  permit.slashesInHostname="{{ getenv "rsyslog_pmrfc3164_permit_slashInHostname" }}"
+  permit.atSignsInHostname="{{ getenv "rsyslog_pmrfc3164_permit_atSignsInHostname" }}"
 )
 
 # Input related rulesets
@@ -240,8 +243,8 @@ ruleset(name="output") {
   call fwd_json
   {{- end}}
 
-  # Add extra output ruleset call for extra conf
   {{if $rsyslog_call_fwd_extra_rule -}}
+  # Add extra output ruleset call for extra conf
   call fwd_extra
   {{- end}}
 

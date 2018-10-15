@@ -20,11 +20,11 @@ ruleset(name="fwd_json")
     action.resumeRetryCount = "-1"
     queue.type = "LinkedList"
     queue.filename="fwd_json"
-    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxdiskspace" }}"
+    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
     queue.saveonshutdown="on"
     queue.size = "{{ getenv "rsyslog_om_action_queue_size" }}"
-    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardmark" }}"
-    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardseverity" }}"
+    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardMark" }}"
+    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
   )
 }
 {{- end}}

@@ -39,7 +39,7 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.37.0'
+ARG RSYSLOG_VERSION='8.38.0'
 RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
@@ -58,7 +58,8 @@ RUN rm -rf /etc/rsyslog.d/ \
 ARG CONFD_VER='0.16.0'
 #ADD https://github.com/kelseyhightower/confd/releases/download/v${CONFD_VER}/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
 COPY usr/local/bin/confd-${CONFD_VER}-linux-amd64 /usr/local/bin/confd
-  # Use bundled file to avoid downloading all the time
+# Use bundled file to avoid downloading all the time
+
 RUN chmod +x /usr/local/bin/confd && \
   mkdir -p /etc/confd/conf.d && \
   mkdir -p /etc/confd/templates
@@ -97,29 +98,37 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
   rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
 
 # Inputs and parsing inputs
-ENV rsyslog_global_maxmessagesize=65536 \
+ENV rsyslog_global_maxMessageSize='65536' \
   rsyslog_parser='["rsyslog.rfc5424", "custom.rfc3164"]' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
   rsyslog_pmrfc3164_remove_msgFirstSpace='on' \
-  rsyslog_global_parser_permitslashinprogramname='on' \
-  rsyslog_global_parser_escapecontrolcharactertab='off' \
-  rsyslog_global_preservefqdn='on' \
+  rsyslog_pmrfc3164_permit_squareBracketsInHostname='off' \
+  rsyslog_pmrfc3164_permit_slashInHostname='on' \
+  rsyslog_pmrfc3164_permit_atSignsInHostname='off' \
+  rsyslog_global_parser_permitSlashInProgramName='on' \
+  rsyslog_global_parser_escapeControlCharacterTab='off' \
+  rsyslog_global_preserveFQDN='on' \
   rsyslog_mmpstrucdata='on' \
   rsyslog_mmjsonparse='on' \
   rsyslog_mmjsonparse_without_cee='off' \
   rsyslog_support_metadata_formats='off' \
   rsyslog_input_filtering_enabled='on' \
   rsyslog_module_impstats_interval='60' \
-  rsyslog_module_impstats_resetcounters='on' \
+  rsyslog_module_impstats_resetCounters='on' \
   rsyslog_module_impstats_format='cee' \
   rsyslog_impstats_ruleset='syslog_stats' \
   rsyslog_global_action_reportSuspension='on' \
-  rsyslog_global_senders_keeptrack='on' \
-  rsyslog_global_senders_timeoutafter='86400' \
-  rsyslog_global_senders_reportgoneaway='on' \
-  rsyslog_module_imtcp_stream_driver_auth_mode='anon' \
-  rsyslog_tls_permitted_peer='["*"]'
-# Note 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode
+  rsyslog_global_senders_keepTrack='on' \
+  rsyslog_global_senders_timeoutAfter='86400' \
+  rsyslog_global_senders_reportGoneAway='on' \
+  rsyslog_module_imtcp_maxSessions='1000' \
+  rsyslog_module_imtcp_streamDriver_authMode='anon' \
+  rsyslog_module_imrelp_authMode='name' \
+  rsyslog_tls_permittedPeer='["*"]' \
+  rsyslog_module_imudp_threads='1' \
+  rsyslog_module_imptcp_threads='1'
+# Note:
+# - 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode does not apply to RELP, only TCP TLS
 
 # Outputs
 # See 60-output_format.conf.tmpl
@@ -131,7 +140,7 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omkafka_broker='' \
   rsyslog_omkafka_confParam='' \
   rsyslog_omkafka_topic='syslog' \
-  rsyslog_omkafka_dynatopic='off' \
+  rsyslog_omkafka_dynaTopic='off' \
   rsyslog_omkafka_topicConfParam='' \
   rsyslog_omkafka_template='TmplJSON' \
   rsyslog_omfwd_syslog_enabled='off' \
@@ -143,26 +152,26 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
-  rsyslog_om_action_queue_maxdiskspace=1073741824 \
+  rsyslog_om_action_queue_maxDiskSpace=1073741824 \
   rsyslog_om_action_queue_size=2097152 \
-  rsyslog_om_action_queue_discardmark=1048576 \
-  rsyslog_om_action_queue_discardseverity=6 \
+  rsyslog_om_action_queue_discardMark=1048576 \
+  rsyslog_om_action_queue_discardSeverity=6 \
   rsyslog_call_fwd_extra_rule='off'
 # Several globals are defined via rsyslog_global_* inlcuding reporting stats
 #
 # rsyslog_support_metadata_formats and the appropriate template choice must both be used to allow including validation checks on syslog headers, hostnames and tags for RFC3164. The metadata template choices are:
-# - TmplRFC5424Meta
+# - TmplRFC5424
 # - TmplJSONRawMsg
 #
 # Notes for the pre-canned outputs (kafka, JSON, syslog)
 # - each pre-canned output can have it's own template applied, e.g.
 # - rsyslog_om_action_queue_* is set for all outputs (sort of a global)
-# - rsyslog_om_action_queue_maxdiskspace=1073741824 ~ 1G
+# - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G
 # - E.g. if three outputs have ~ 1G file limit for the queue, 3G overall is needed
-# - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardmark need to be adjusted in line with rsyslog_om_action_queue_maxdiskspace
+# - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardMark need to be adjusted in line with rsyslog_om_action_queue_maxDiskSpace
 # - E.g. Assuming 512 byte messages, a 1G file can fit ~ 2 million messages, and start discarding at ~ 1 million messages
 # - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: https://github.com/kelseyhightower/confd/issues/611
-# - rsyslog_om_action_queue_discardseverity=6 implies info and debug messages get discarded
+# - rsyslog_om_action_queue_discardSeverity=6 implies info and debug messages get discarded
 #
 # Additonal output config will probably be highly varied, so instead of trying to template/pre-can it, we allow for that config to be red in
 # As above, extra optional volumes with config that can be supplied at runtime
@@ -178,8 +187,8 @@ VOLUME /var/log/remote \
   /etc/pki/rsyslog
 
 # Ports to expose
-# Note: UDP=514, TCP=514, TCP Secure=6514, RELP=2514, RELP Secure=7514, RELP Secure with strong client auth=8514
-EXPOSE 514/udp 514/tcp 6514/tcp 2514/tcp 7514/tcp 8514/tcp
+# Note: UDP=514, TCP=514, TCP=601, TCP Secure=6514, RELP=2514, RELP Secure=7514, RELP Secure with strong client auth=8514
+EXPOSE 514/udp 514/tcp 601/tcp 6514/tcp 2514/tcp 7514/tcp 8514/tcp
 
 #TODO: also, decide if we will accept the signal to reload config without restarting the container
 

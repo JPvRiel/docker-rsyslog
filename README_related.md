@@ -221,6 +221,10 @@ Well matched examples for our use-case (specifically wanting to output to kafka)
 - <https://github.com/sergeevii123/joker.logs/blob/master/docker-rsyslog-kafka.yml>
 - <https://github.com/djenriquez/rsyslog-omkafka>
 
+Recently, as of Oct 2018, [docker-rsyslog-bin](https://github.com/camptocamp/docker-rsyslog-bin/blob/master/docker-entrypoint.sh) from camptocamp seems to take a mature approach where:
+- Configuration is managed with an entrypoint wrapper script approach that allows other purpose specific entrypoint scripts to be called in order, e.g. like there's one to  cleanup stale rsyslog PID files.
+- The rsyslog config can to be externally generated and mounted into the container while an entrypoint script waits for it
+
 Some of the above images are lightweight and expect a DIY config supplied by the user, e.g.:
 - Don't define expected data volumes for rsyslog queues
 - Don't have pre-defined inputs for various protocols like RELP and TLS options

@@ -11,7 +11,7 @@ Feature: rsyslog outputs message stats
       And an environment variable file "test_syslog_server.env"
       # Implicit env var settings in default container config/Dockerfile
       #And "rsyslog_module_impstats_interval" environment variable is "60"
-      #And "rsyslog_module_impstats_resetcounters" environment variable is "on"
+      #And "rsyslog_module_impstats_resetCounters" environment variable is "on"
       #And "rsyslog_module_impstats_format" environment variable is "cee"
       #And "rsyslog_impstats_ruleset" environment variable is "syslog_stats"
 

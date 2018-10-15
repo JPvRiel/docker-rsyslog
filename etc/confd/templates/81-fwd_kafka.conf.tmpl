@@ -18,7 +18,7 @@ ruleset(name="fwd_kafka")
     confParam={{ getenv "rsyslog_omkafka_confParam" }}
     {{- end}}
     topic="{{ getenv "rsyslog_omkafka_topic" }}"
-    dynatopic="{{ getenv "rsyslog_omkafka_dynatopic" }}"
+    dynatopic="{{ getenv "rsyslog_omkafka_dynaTopic" }}"
     partitions.auto="on"
     {{if getenv "topicConfParam" | ne "" -}}
     topicConfParam={{ getenv "rsyslog_omkafka_topicConfParam" }}
@@ -31,11 +31,11 @@ ruleset(name="fwd_kafka")
     # queue config
     queue.type = "LinkedList"
     queue.filename="fwd_kafka"
-    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxdiskspace" }}"
+    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
     queue.saveonshutdown="on"
     queue.size = "{{ getenv "rsyslog_om_action_queue_size" }}"
-    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardmark" }}"
-    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardseverity" }}"
+    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardMark" }}"
+    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
   )
 }
 {{- end}}

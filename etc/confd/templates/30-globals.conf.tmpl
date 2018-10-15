@@ -2,7 +2,7 @@
 module(
   load="impstats"
   interval="{{ getenv "rsyslog_module_impstats_interval" }}"
-  resetCounters="{{ getenv "rsyslog_module_impstats_resetcounters" }}"
+  resetCounters="{{ getenv "rsyslog_module_impstats_resetCounters" }}"
   Format="{{ getenv "rsyslog_module_impstats_format" }}"
   ruleset="{{ getenv "rsyslog_impstats_ruleset" }}"
 )
@@ -25,12 +25,14 @@ module(load="mmpstrucdata")
 
 # Globals
 global(
-  parser.permitSlashInProgramname = "{{ getenv "rsyslog_global_parser_permitslashinprogramname" }}"
-  parser.escapecontrolcharactertab = "{{ getenv "rsyslog_global_parser_escapecontrolcharactertab" }}"
-  preserveFQDN = "{{ getenv "rsyslog_global_preservefqdn" }}"
-  maxMessageSize = "{{ getenv "rsyslog_global_maxmessagesize" }}"
-  action.reportSuspension = "{{ getenv "rsyslog_global_action_reportSuspension" }}"
-  senders.keepTrack = "{{ getenv "rsyslog_global_senders_keeptrack" }}"
-  senders.timeoutAfter = "{{ getenv "rsyslog_global_senders_timeoutafter" }}"
-  senders.reportGoneAway = "{{ getenv "rsyslog_global_senders_reportgoneaway" }}"
+  parser.permitSlashInProgramName="{{ getenv "rsyslog_global_parser_permitSlashInProgramName" }}"
+  parser.escapeControlCharacterTab="{{ getenv "rsyslog_global_parser_escapeControlCharacterTab" }}"
+  preserveFQDN="{{ getenv "rsyslog_global_preserveFQDN" }}"
+  maxMessageSize="{{ getenv "rsyslog_global_maxMessageSize" }}"
+  action.reportSuspension="{{ getenv "rsyslog_global_action_reportSuspension" }}"
+  senders.keepTrack="{{ getenv "rsyslog_global_senders_keepTrack" }}"
+  senders.timeoutAfter="{{ getenv "rsyslog_global_senders_timeoutAfter" }}"
+  senders.reportGoneAway="{{ getenv "rsyslog_global_senders_reportGoneAway" }}"
+  shutdown.enable.ctlc="on"
+  processInternalMessages="on"
 )

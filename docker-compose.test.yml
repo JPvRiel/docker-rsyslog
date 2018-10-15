@@ -1,4 +1,4 @@
-version: '2.1'
+version: '2.2'
 services:
 
   sut:
@@ -28,7 +28,9 @@ services:
       - json_relay:/tmp/json_relay:ro
 
   # rsyslog config validation
-  # Note: sut depends on this running and creating files with outputs using a shared volume
+  # Note:
+  # - sut depends on this running and creating files with outputs using a shared volume
+  # - allows for testing/checking how config was built from env vars and confd templates
   # TODO: not sure if there is a better way for sut to be able to see and check output
   test_syslog_server_config:
     image: jpvriel/rsyslog:${VERSION:-latest}
@@ -45,7 +47,16 @@ services:
         - DISABLE_YUM_MIRROR
     env_file:
       - ./test/test_syslog_server.env
-    entrypoint: bash -c '/usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1; echo -n $$? > /tmp/config_check/rsyslog_n1_exit_code.txt'
+    # use $$ for a literal $ value in shellscript and avoid docker-compose interpolating $
+    entrypoint: |
+      bash -c '
+      /usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1
+      rsyslog_exit_code=$$?
+      echo -n $$rsyslog_exit_code > /tmp/config_check/rsyslog_n1_exit_code.txt
+      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/config_check/
+      /usr/local/bin/rsyslog_config_expand.py > /tmp/config_check/rsyslog_expanded_output.txt
+      exit $$rsyslog_exit_code
+      '
     volumes:
       - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - ./test/etc/rsyslog.d/extra/:/etc/rsyslog.d/extra/
@@ -148,8 +159,6 @@ services:
     stop_grace_period: 15s
     env_file:
       - ./test/test_syslog_server.env
-    #environment:
-    #  RSYSLOG_DEBUG: 'Debug'
     depends_on:
       # test cases need to relay / forward to the following
       - test_kafka

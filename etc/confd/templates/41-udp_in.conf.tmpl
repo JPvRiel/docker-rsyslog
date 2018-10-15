@@ -1,4 +1,11 @@
-module(load="imudp")
+module(
+  load="imudp"
+  threads="{{ getenv "rsyslog_module_imudp_threads" }}"
+)
 
 # provides UDP syslog resception
-input(type="imudp" port="514" ruleset="remote_in_udp")
+input(
+  type="imudp"
+  port="514"
+  ruleset="remote_in_udp"
+)

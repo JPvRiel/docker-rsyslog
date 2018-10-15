@@ -1,4 +1,5 @@
 import os
+import stat
 import time
 
 from behave import *
@@ -18,7 +19,7 @@ def step_impl(context, log_file, timeout):
         time.sleep(1)
         if time.time() > exists_timeout:
             break
-    assert_that(os.path.isfile(log_file) or os.stat.S_ISFIFO(os.stat(log_file).st_mode), equal_to(True))
+    assert_that(os.path.isfile(log_file) or stat.S_ISFIFO(os.stat(log_file).st_mode), equal_to(True))
     context.log_file = log_file
 
 

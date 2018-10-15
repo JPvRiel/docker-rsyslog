@@ -16,10 +16,11 @@ Feature: Accept syslog network connections for various syslog transports
     Then a connection should be complete
 
     Examples: Insecure transports
-      | transport protocol | port | use               |
-      | UDP                | 514  | legacy UDP syslog |
-      | TCP                | 514  | plain TCP syslog  |
-      | TCP                | 2514 | RELP syslog       |
+      | transport protocol | port | use                                    |
+      | UDP                | 514  | legacy UDP syslog (IANA official port) |
+      | TCP                | 514  | plain TCP syslog                       |
+      | TCP                | 601  | plain TCP syslog (IANA official port)  |
+      | TCP                | 2514 | RELP syslog                            |
 
   Scenario Outline: Establish TLS sessions without client authentication
     Given a protocol "<transport protocol>" and port "<port>"
@@ -30,9 +31,9 @@ Feature: Accept syslog network connections for various syslog transports
     Examples: Secure transports without client authentication
       | transport protocol | port | use                |
       | TCP                | 6514 | secure TCP syslog  |
-    #  | TCP                | 7514 | secure RELP syslog |
-    # Unfortunately, RELP TLS without client authentication doesn't seem possible
-    # https://github.com/rsyslog/rsyslog/issues/435
+      #| TCP                | 7514 | secure RELP syslog |
+      # Unfortunately, RELP TLS without client authentication doesn't seem possible
+      # https://github.com/rsyslog/rsyslog/issues/435
 
   Scenario Outline: Establish TLS sessions with client authentication
     Given a protocol "<transport protocol>" and port "<port>"

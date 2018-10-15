@@ -24,4 +24,7 @@ The test container shares the same self-signed cert via symlinks to the self-sig
 
 Requires rsyslogd >= 7.5
 
-This won't be supported on older distributions, and even CentOS 7, which only ships with rsyslogd 7.4.7. Ubuntu 16.04.3 ships with 8.16.0.
+This won't be supported on older distributions.
+
+-  Earlier versions of CentOS 7 only shiped with rsyslogd 7.4.7.
+-  Ubuntu 16.04.3 ships with 8.16.0.
