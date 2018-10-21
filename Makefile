@@ -7,8 +7,6 @@ define docker_tag_latest
 	docker tag jpvriel/rsyslog:$(VERSION) jpvriel/rsyslog:latest
 endef
 
-# Don't use docker-compose due cache coherence issues - docker build seems more reliable
-# See: https://github.com/docker/docker-py/issues/998
 build:
 	$(info ## build $(VERSION) ($(BUILD_DATE)).)
 	docker-compose -f docker-compose.yml build --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
@@ -38,10 +36,22 @@ clean_test:
 	$(info ## clean test.)
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 
-# A failed test won't run the next command to clean, so clean before in case
+# A failed test won't run the next command to clean, so clean before just in case
+# Assume sudo might be used due to the security risk of adding a normal user to the docker group, so chown the config check files copied into the test dir
 test: clean_test build
 	$(info ## test.)
-	docker-compose -f docker-compose.test.yml run --rm sut
+	docker-compose -f docker-compose.test.yml run sut
+	rm -rf test/config_check/*
+	docker cp docker-rsyslog_test_syslog_server_config_run_1:/tmp/config_check test/
+	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
+	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
+
+test_config: clean_test
+	$(info ## test config.)
+	docker-compose -f docker-compose.test.yml run test_syslog_server_config
+	rm -rf test/config_check/*
+	docker cp docker-rsyslog_test_syslog_server_config_run_1:/tmp/config_check test/
+	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 
 #push: test

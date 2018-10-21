@@ -124,7 +124,7 @@ fi
 if [[ -f "$rsyslog_pid_file" ]]; then
   old_pid=$(cat "$rsyslog_pid_file")
   report_error "A previous PID file '$rsyslog_pid_file' already exists with PID $old_pid, indicating a restart after an abnormal exit."
-  if [ -n "$old_pid" -a -e /proc/$old_pid ]; then
+  if [ -n "$old_pid" -a -e "/proc/$old_pid" ]; then
     report_error "PID $old_pid still appears to be active, so '$0' aborting"
     exit 1
   fi

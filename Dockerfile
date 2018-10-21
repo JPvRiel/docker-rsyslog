@@ -13,7 +13,7 @@ LABEL org.label-schema.schema-version=1.0.0-rc1 \
 ENV container=docker
 
 # Embed custom org CA into image if need be
-COPY etc/pki/ca-trust/source/anchors/* /etc/pki/ca-trust/source/anchors/
+COPY etc/pki/ca-trust/source/anchors/ /etc/pki/ca-trust/source/anchors/
 RUN update-ca-trust
 
 # Setup repos, etc

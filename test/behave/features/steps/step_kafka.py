@@ -62,19 +62,6 @@ def step_impl(context, message, topic, broker_list):
     #assert_that(context.message_sent, equal_to(True))
 
 
-#@then(
-#   'consuming the kafka message "{message}" from the topic "{topic}" at '
-#   'broker(s) "{broker_list}" should happen within "{timeout}" seconds'
-#)
-#def step_impl(context, message, topic, broker_list, timeout):
-#    context.message = message
-#    context.topic = topic
-#    context.broker_list = broker_list
-#    message_found = None
-#    TODO (not needed as yet)
-#    assert_that(message_found, contains_string(context.message))
-
-
 @then(
     'the env configured kafka topic should have the the message within '
     '"{timeout}" seconds'

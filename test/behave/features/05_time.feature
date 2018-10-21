@@ -21,7 +21,7 @@ Feature: Process timestamps with or without timezone information
   When connecting
     And sending the raw message "<message>"
     And waiting "1" seconds
-    And searching lines for the pattern "<regex>" over "30" seconds
+    And searching lines for the pattern "<regex>" over "60" seconds
   Then a connection should be complete
     And the pattern should be found
     And a JSON entry should contain "<json>"
@@ -39,7 +39,7 @@ Feature: Process timestamps with or without timezone information
   When connecting
     And sending the raw message "<message>"
     And waiting "1" seconds
-    And searching lines for the pattern "<regex>" over "30" seconds
+    And searching lines for the pattern "<regex>" over "60" seconds
   Then a connection should be complete
     And the pattern should be found
     And a JSON entry should contain "<json>"
@@ -58,7 +58,7 @@ Feature: Process timestamps with or without timezone information
     When connecting
       And sending the raw message "<14>Jan 1 02:43:29 behave test[99999]: RFC3164 should be have timestamps converted to ISO8601"
       And waiting "1" seconds
-      And searching lines for the pattern ".*?RFC3164 should be have timestamps converted to ISO8601.*" over "30" seconds
+      And searching lines for the pattern ".*?RFC3164 should be have timestamps converted to ISO8601.*" over "60" seconds
     Then a connection should be complete
       And the pattern should be found
       And a JSON jmespath ""syslog-relay".timegenerated" field should match the "(\d{4})-(\d{2})-(\d{2})T(\d{2})\:(\d{2})\:(\d{2})(\.\d{1,12})?((Z)|([+-](\d{2})\:(\d{2})))" pattern

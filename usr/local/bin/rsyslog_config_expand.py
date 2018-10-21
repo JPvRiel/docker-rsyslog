@@ -3,7 +3,7 @@ import sys
 import glob
 import re
 
-def expand_included_config(conf_file='/etc/rsyslog.conf', re_directive='^[\t ]*\$IncludeConfig (.*)'):
+def expand_included_config(conf_file='/etc/rsyslog.conf', re_directive=r'^[\t ]*\$IncludeConfig (.*)'):
     with open(conf_file, 'r') as parent_file:
         n = 0
         for l in parent_file.readlines():

@@ -1,0 +1,8 @@
+[1;33mWARN:[0m No key found at default location "/etc/pki/rsyslog/key.pem".
+[1;33mWARN:[0m No certficate found at default location "/etc/pki/rsyslog/cert.pem".
+[1;33mWARN:[0m Insecure built-in TLS key or certifcate in use. DO NOT run in produciton.
+[0;34mINFO:[0m Using /usr/local/etc/pki/test/test_syslog_server.key.pem as the private key.
+[0;34mINFO:[0m Using /usr/local/etc/pki/test/test_syslog_server.cert.pem as the certficate.
+[0;34mINFO:[0m Explicit config check.
+rsyslogd: version 8.38.0, config validation run (level 1), master config /etc/rsyslog.conf
+rsyslogd: End of config validation run. Bye.

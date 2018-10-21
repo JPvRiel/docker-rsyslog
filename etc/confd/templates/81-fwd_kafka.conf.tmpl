@@ -31,11 +31,11 @@ ruleset(name="fwd_kafka")
     # queue config
     queue.type = "LinkedList"
     queue.filename="fwd_kafka"
-    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
-    queue.saveonshutdown="on"
+    queue.maxDiskSpace = "{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
+    queue.saveOnShutdown="on"
     queue.size = "{{ getenv "rsyslog_om_action_queue_size" }}"
-    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardMark" }}"
-    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
+    queue.discardMark = "{{ getenv "rsyslog_om_action_queue_discardMark" }}"
+    queue.discardSeverity = "{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
   )
 }
 {{- end}}

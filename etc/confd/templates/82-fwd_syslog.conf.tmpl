@@ -19,13 +19,15 @@ ruleset(name="fwd_syslog")
     template="{{ getenv "rsyslog_omfwd_syslog_template" }}"
     action.resumeRetryCount = "-1"
     # queue config
-    queue.type = "LinkedList"
+    queue.type="LinkedList"
     queue.filename="fwd_syslog"
-    queue.maxdiskspace = "{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
-    queue.saveonshutdown="on"
-    queue.size = "{{ getenv "rsyslog_om_action_queue_size" }}"
-    queue.discardmark = "{{ getenv "rsyslog_om_action_queue_discardMark" }}"
-    queue.discardseverity = "{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
+    queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
+    queue.saveOnShutdown="on"
+    queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
+    queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
+    # often last message is lost when a connection breaks
+    resendLastMSGOnReconnect="on"
   )
 }
 {{- end}}

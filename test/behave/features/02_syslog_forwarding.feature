@@ -29,7 +29,7 @@ Feature: Foward syslog messages
       And a file "/tmp/syslog_relay/nc.out" exists
     When sending the syslog message "Testing syslog forwarding" in "RFC3164" format
       And waiting "1" seconds
-      And searching lines for the pattern "Testing syslog forwarding" over "30" seconds
+      And searching lines for the pattern "Testing syslog forwarding" over "60" seconds
     Then the pattern should be found
 
   @slow
@@ -40,5 +40,5 @@ Feature: Foward syslog messages
       And a file "/tmp/json_relay/nc.out" exists
     When sending the syslog message "Testing JSON forwarding" in "RFC3164" format
       And waiting "1" seconds
-      And searching lines for the pattern "Testing JSON forwarding" over "30" seconds
+      And searching lines for the pattern "Testing JSON forwarding" over "60" seconds
     Then the pattern should be found

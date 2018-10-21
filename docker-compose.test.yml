@@ -18,6 +18,11 @@ services:
     depends_on:
       - test_syslog_server_config
       - test_syslog_server
+      # test cases need to relay / forward to the following
+      - test_kafka
+      - test_syslog_relay
+      - test_json_relay
+      # test clients / generate events
       - test_syslog_client_centos7
       - test_syslog_client_ubuntu1604
     volumes:
@@ -50,13 +55,14 @@ services:
     # use $$ for a literal $ value in shellscript and avoid docker-compose interpolating $
     entrypoint: |
       bash -c '
+      set -e
       /usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/config_check/rsyslog_n1_output.txt 2>&1
       rsyslog_exit_code=$$?
       echo -n $$rsyslog_exit_code > /tmp/config_check/rsyslog_n1_exit_code.txt
-      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/config_check/
       /usr/local/bin/rsyslog_config_expand.py > /tmp/config_check/rsyslog_expanded_output.txt
-      exit $$rsyslog_exit_code
-      '
+      mkdir -p /tmp/config_check/etc
+      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/config_check/etc/
+      exit $$rsyslog_exit_code'
     volumes:
       - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - ./test/etc/rsyslog.d/extra/:/etc/rsyslog.d/extra/
@@ -159,11 +165,6 @@ services:
     stop_grace_period: 15s
     env_file:
       - ./test/test_syslog_server.env
-    depends_on:
-      # test cases need to relay / forward to the following
-      - test_kafka
-      - test_syslog_relay
-      - test_json_relay
     healthcheck:
       test: ["CMD", "/usr/local/bin/rsyslog_healthcheck.sh"]
       interval: 5s

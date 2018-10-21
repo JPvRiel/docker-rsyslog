@@ -18,7 +18,7 @@ Feature: Filter messages
   Scenario Outline: Message output can be filtered globally
     Given a file "/tmp/syslog_relay/nc.out" exists
     When sending the syslog message "<message>" in "RFC3164" format
-     And searching lines for the pattern "<regex>" over "30" seconds
+     And searching lines for the pattern "<regex>" over "60" seconds
     Then the pattern should be found
 
     Examples:
@@ -30,7 +30,7 @@ Feature: Filter messages
   Scenario Outline: Message output can be filtered per output
     Given a file "/tmp/syslog_relay/nc.out" exists
     When sending the syslog message "<message>" in "RFC3164" format
-     And searching lines for the pattern "<regex>" over "30" seconds
+     And searching lines for the pattern "<regex>" over "60" seconds
     Then the pattern should NOT be found
 
     Examples:

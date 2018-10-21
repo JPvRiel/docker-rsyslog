@@ -1,0 +1,15 @@
+# Notable references
+# - https://blog.packagecloud.io/eng/2017/02/21/set-environment-variable-save-thousands-of-system-calls/
+# - https://github.com/rsyslog/rsyslog/issues/2054
+
+FROM centos:7
+LABEL application="test_timeloop"
+
+ENV container=docker
+
+COPY timeloop /usr/local/bin
+RUN chmod +x /usr/local/bin/timeloop
+
+CMD time /usr/local/bin/timeloop none && \
+  time /usr/local/bin/timeloop localtime && \
+  time /usr/local/bin/timeloop gettimeofday
