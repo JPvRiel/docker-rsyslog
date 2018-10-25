@@ -42,7 +42,7 @@ test: clean_test build
 	$(info ## test.)
 	docker-compose -f docker-compose.test.yml run sut
 	rm -rf test/config_check/*
-	docker cp docker-rsyslog_test_syslog_server_config_run_1:/tmp/config_check test/
+	docker cp $$(docker-compose -f docker-compose.test.yml ps -q test_syslog_server_config):/tmp/config_check test/
 	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 
@@ -50,7 +50,7 @@ test_config: clean_test
 	$(info ## test config.)
 	docker-compose -f docker-compose.test.yml run test_syslog_server_config
 	rm -rf test/config_check/*
-	docker cp docker-rsyslog_test_syslog_server_config_run_1:/tmp/config_check test/
+	docker cp $$(docker-compose -f docker-compose.test.yml ps -q test_syslog_server_config):/tmp/config_check test/
 	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 

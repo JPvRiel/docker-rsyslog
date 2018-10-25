@@ -61,8 +61,7 @@ services:
       echo -n $$rsyslog_exit_code > /tmp/config_check/rsyslog_n1_exit_code.txt
       /usr/local/bin/rsyslog_config_expand.py > /tmp/config_check/rsyslog_expanded_output.txt
       mkdir -p /tmp/config_check/etc
-      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/config_check/etc/
-      exit $$rsyslog_exit_code'
+      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/config_check/etc/'
     volumes:
       - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - ./test/etc/rsyslog.d/extra/:/etc/rsyslog.d/extra/
