@@ -1,0 +1,3 @@
+[template]
+src = "60-ruleset.conf.tmpl"
+dest = "/etc/rsyslog.d/60-ruleset.conf"

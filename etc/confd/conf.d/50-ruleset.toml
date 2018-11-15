@@ -1,3 +1,0 @@
-[template]
-src = "50-ruleset.conf.tmpl"
-dest = "/etc/rsyslog.d/50-ruleset.conf"

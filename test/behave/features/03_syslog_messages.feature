@@ -44,6 +44,7 @@ Feature: Accept syslog messages in various formats
       | <14>Sep 19 23:43:29 behave test: Well formed RFC3164 without PID | .*?Well formed RFC3164 without PID.* | { "hostname": "behave", "app-name": "test", "procid" : "-" } |
       | <14>Sep 19 23:43:29 behave Well formed RFC3164 without application name  | .*?Well formed RFC3164 without application name.* | { "hostname": "behave", "app-name": "-" } |
       | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - - Well formed RFC5424 with PID | .*Well formed RFC5424 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
+      | <14>1 2017-09-21T23:43:29.402+02:00 behave hub.docker.com/proj/image:0.1.0/container_name/4b6045272e31 - - - test tag "{{.ImageName}}/{{.Name}}/{{.ID}}" docker engine example | .*test tag.*docker engine example.* | { "app-name": "hub.docker.com/proj/image:0.1.0/container_name/4b6045272e31" } |
       | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - [test@16543 key1="value1" key2="value2"] Well formed RFC5424 with structured data | .*Well formed RFC5424 with structured data.* | { "rfc5424-sd": { "test@16543": { "key1": "value1", "key2": "value2" } } } |
 
 
@@ -93,10 +94,10 @@ Feature: Accept syslog messages in various formats
       | <38>Sep 19 23:43:29 Message forwarded from claimedhostname: procnamewithid[99]: AIX extraneous forwarded from message with process ID | .*?AIX extraneous forwarded from message with process ID.* | { "hostname": "claimedhostname", "app-name": "procnamewithid", "procid" : "99" } |
 
 
-  # - Negative testing with RFC3164 "malformed" message samples
+  # - Negative testing with "malformed" message samples
 
   @slow
-  Scenario Outline: Malformed RFC3164 messages do not create bogus field values
+  Scenario Outline: Malformed messages do not create bogus field values
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
       And a file "/tmp/json_relay/nc.out" exists
@@ -113,6 +114,7 @@ Feature: Accept syslog messages in various formats
     | Sep 19 23:43:29 lies Poor form RFC3164 with no priority | .*?RFC3164 with no priority.* | hostname | lies |
     | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | false |
     | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | false |
+    | <14>1 2017-09-21T23:43:29.402+02:00 behave test 99999 - [bogus structured-data element] misc text after incorrect structured data element | .*bogus structured-data element.* | "rfc5424-sd" | null |
 
 
   @slow

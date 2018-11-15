@@ -15,10 +15,10 @@ from hamcrest import *
 # - see ../docker-compose.test.yml
 def step_impl(context):
     rsyslog_config_text_exit_code = None
-    with open('/tmp/config_check/rsyslog_n1_exit_code.txt', 'r') as f_exit:
+    with open('/tmp/test/config_check/rsyslog_n1_exit_code.txt', 'r') as f_exit:
         rsyslog_config_text_exit_code = f_exit.read().rstrip('\n')
     if (rsyslog_config_text_exit_code != '0'):
-        with open('/tmp/config_check/rsyslog_n1_output.txt', 'r') as f_output:
+        with open('/tmp/test/config_check/rsyslog_n1_output.txt', 'r') as f_output:
             logging.error(
                 "rsyslog configuration invalid. Output:\n{0:s}".format(
                     f_output.read()

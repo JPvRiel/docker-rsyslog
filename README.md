@@ -521,6 +521,35 @@ Message with RFC5424 structured data and using the native rsyslog `%jsonmesg%` o
 
 ### rsyslog processing stats (impstats)
 
+Output stats are enabled by default, but can be disabled via `rsyslog_impstats` and `rsyslog_dyn_stats`:
+ 
+- `rsyslog_impstats` enables the module for general input, ruleset and output action stats
+- `rsyslog_dyn_stats` depends on impstats and adds extra stat aggregates per host with the follwing stat names:
+  - `msg_per_fromhost_<input ruleset_name>_pre_filter`: messages per source per input ruleset - what was recieved. Use this to compare what a source sent vs what was recieved.
+  - `msg_per_fromhost`: messages per source processed in the main output ruleset - what was handled between input after input filters, but before output actions and output filters.
+  - `msg_per_fromhost_<output_ruleset_name>_post_filter`: messages per source per output ruleset - what was eventually sent. Use this to compare what rsyslog relayed/forwarded vs what the external system recieved.
+
+This is what the dynamic stat looks like when output as JSON:
+
+```json
+{
+  "name": "msg_per_fromhost",
+  "origin": "dynstats.bucket",
+  "values": {
+    "docker-rsyslog_test_syslog_client_centos7_1.docker-rsyslog_default": 3,
+    "docker-rsyslog_test_syslog_client_ubuntu1604_1.docker-rsyslog_default": 3,
+    "docker-rsyslog_sut_run_1.docker-rsyslog_default": 39
+  }
+}
+```
+
+`$fromhost` vs `$hostname`:
+
+- `$fromhost` syslog property can be more reliable than `$hostname` property when dealing with syslog clients that don't follow RFC syslog formats which can cause the client provided hostname to be missing or not correctly interpreted.
+- `$fromhost` can evaulate to either the FQDN of the source host or an IP if no DNS reverse lookup is available.
+
+Due to syslog impstats being sent via the syslog engine itself, the `$rawmsg` property lacks the standard syslogheaders, if  `rsyslog_support_metadata_formats=on`, then `"format": "NA_internal_rsyslogd-pstats"` is and `"pri-valid": false` and `header-valid": false` are set becasue there is no RFC spec header to inspect ude to it being internal to the syslog engine.
+
 As per [formats
 Tutorial: Sending impstats Metrics to Elasticsearch Using Rulesets and Queues](https://www.rsyslog.com/tutorial-sending-impstats-metrics-to-elasticsearch-using-rulesets-and-queues/), it can be useful to track how many messages rsyslog processes. Also:
 
@@ -699,10 +728,12 @@ docker container run --rm -it \
  --name syslog jpvriel/rsyslog:latest -E
 ```
 
-`-E` is interpreted by entrypoint shell script. To the python script within a running container, use:
+`-E` is interpreted by entrypoint shell script.
+
+To run python script within a running container, use:
 
 ```bash
-docker container exec --name syslog rsyslog_config_expand.py
+docker container exec <name of running container> rsyslog_config_expand.py
 ```
 
 Output will have `##` comment tags to help highlight and show when `$IncludeConfig` directives are expanded to produce a flattened config output with line number prefixes:
@@ -732,13 +763,13 @@ Live manual checks can also be done.
 To see rsyslogd config syntax check output, try:
 
 ```bash
-docker run -it --rm --name rsyslogtest --env-file test/test_syslog_server.env jpvriel/rsyslog rsyslogd -N1
+docker-compose -f docker-compose.test.yml run test_syslog_server -N1
 ```
 
 Similarly, to expand the config used for testing:
 
 ```bash
-docker-compose -f docker-compose.test.yml exec test_syslog_server rsyslog_config_expand.py
+docker-compose -f docker-compose.test.yml run test_syslog_server rsyslog_config_expand.py
 ```
 
 To run a minimal test container that simply generates the output for `test/config_check`:

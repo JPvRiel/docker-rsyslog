@@ -1,40 +1,59 @@
 ## Option to write remote logs to plain files
 # Note further, it would be prudent to setup logrotate for /var/log/remote/*
 # See 50-ruleset.conf for the parent ruleset that calls this
+# This will be blank if rsyslog_omfile_enabled="on" is not set
 
-{{$rsyslog_omfile_split_files_per_host := getenv "rsyslog_omfile_split_files_per_host" | toLower | eq "on" "true" -}}
-{{$rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
-{{$rsyslog_output_filtering_enabled := getenv "rsyslog_output_filtering_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_omfile_split_files_per_host := getenv "rsyslog_omfile_split_files_per_host" | toLower | eq "on" "true" -}}
+{{ $rsyslog_support_metadata_formats := getenv "rsyslog_support_metadata_formats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_output_filtering_enabled := getenv "rsyslog_output_filtering_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_impstats := getenv "rsyslog_impstats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_dyn_stats := getenv "rsyslog_dyn_stats" | toLower | eq "on" "true" -}}
 
-{{if $rsyslog_support_metadata_formats -}}
+{{- if $rsyslog_omfile_enabled -}}
+
+{{ if $rsyslog_support_metadata_formats -}}
 # Avoid using invalid hostnames if possible (meta-data enabled)
 template(name="TmplPerHostFile" type="string" string="/var/log/remote/%$.hostname%")
-{{if $rsyslog_omfile_split_files_per_host -}}
+{{ if $rsyslog_omfile_split_files_per_host -}}
 template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%$.hostname%/secure")
 template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%$.hostname%/audit")
 template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%$.hostname%/console")
 template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%$.hostname/firewall")
 template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%$.hostname%/messages")
-{{- end}}
+{{- end }}
 {{- else}}
 # The hostname property in rsyslog is taken without any checks from the message content
 template(name="TmplPerHostFile" type="string" string="/var/log/remote/%hostname%")
-{{if $rsyslog_omfile_split_files_per_host -}}
+{{ if $rsyslog_omfile_split_files_per_host -}}
 template(name="TmplPerHostAuthFile" type="string" string="/var/log/remote/%hostname%/secure")
 template(name="TmplPerHostAuditFile" type="string" string="/var/log/remote/%hostname%/audit")
 template(name="TmplPerHostConsoleFile" type="string" string="/var/log/remote/%hostname%/console")
 template(name="TmplPerHostFirewallFile" type="string" string="/var/log/remote/%hostname%/firewall")
 template(name="TmplPerHostMsgFile" type="string" string="/var/log/remote/%hostname%/messages")
-{{- end}}
-{{- end}}
+{{- end }}
+{{- end }}
+
+{{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
+# Dynamic stats for output
+dyn_stats(name="msg_per_fromhost_out_file_post_filter" resettable="on" maxCardinality="{{ getenv "rsyslog_dyn_stats_maxCardinality" }}" unusedMetricLife="{{ getenv  "rsyslog_dyn_stats_unusedMetricLife" }}" )
+{{- end }}
 
 ruleset(name="out_file") {
 
-  {{if $rsyslog_output_filtering_enabled -}}
+  {{ if $rsyslog_output_filtering_enabled -}}
   $IncludeConfig /etc/rsyslog.d/output/filters/out_file/*.conf
-  {{- end}}
+  {{- end }}
 
-  {{if not $rsyslog_omfile_split_files_per_host -}}
+  {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
+  set $.inc_status = dyn_inc("msg_per_fromhost_out_file_post_filter", $fromhost);
+  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  if ($.inc_status != 0) then { 
+    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+  }
+  {{- end }}
+
+  {{ if not $rsyslog_omfile_split_files_per_host -}}
   # In the simple case, we use the hostname as the filename and place all logs in that file
   action(
        name="out_file_remote_in_file_hostname"
@@ -169,5 +188,7 @@ ruleset(name="out_file") {
     }
   }
 
-  {{- end}}
+  {{- end }}
 }
+
+{{- end -}}

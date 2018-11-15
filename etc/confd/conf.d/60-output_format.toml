@@ -1,3 +1,0 @@
-[template]
-src = "60-output_format.conf.tmpl"
-dest = "/etc/rsyslog.d/output/60-output_format.conf"
