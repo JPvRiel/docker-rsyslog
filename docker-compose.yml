@@ -20,7 +20,9 @@ services:
       - syslog_work:/var/lib/rsyslog
       - syslog_tls:/etc/pki/rsyslog
     stop_grace_period: 1m30s
-    mem_limit: 2g
+    mem_limit: 16g
+    cap_add:
+      - SYS_NICE
 
 volumes:
   syslog_log:

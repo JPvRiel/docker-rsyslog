@@ -34,6 +34,7 @@ Feature: Accept syslog network connections for various syslog transports
       #| TCP                | 7514 | secure RELP syslog |
       # Unfortunately, RELP TLS without client authentication doesn't seem possible
       # https://github.com/rsyslog/rsyslog/issues/435
+      # https://github.com/rsyslog/rsyslog/issues/3838
 
   Scenario Outline: Establish TLS sessions with client authentication
     Given a protocol "<transport protocol>" and port "<port>"

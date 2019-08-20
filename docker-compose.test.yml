@@ -54,7 +54,6 @@ services:
     # use $$ for a literal $ value in shellscript and avoid docker-compose interpolating $
     entrypoint: |
       bash -c '
-      set -e
       mkdir -p /tmp/test/config_check
       /usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/test/config_check/rsyslog_n1_output.txt 2>&1
       rsyslog_exit_code=$$?
@@ -160,7 +159,9 @@ services:
         - no_proxy
         - DISABLE_YUM_MIRROR
     hostname: test_syslog_server
-    mem_limit: 32m
+    mem_limit: 16g
+    cap_add:
+      - SYS_NICE
     stop_grace_period: 15s
     env_file:
       - ./test/test_syslog_server.env

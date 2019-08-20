@@ -26,9 +26,10 @@ Feature: Process timestamps with or without timezone information
     And the pattern should be found
     And a JSON entry should contain "<json>"
 
+  # Note, this test fails if the example is not updated to use the current year
   Examples:
     | message | regex | json |
-    | <14>Jan 1 02:43:29 behave test[99999]: RFC3164 without timezone info | .*?RFC3164 without timezone info.* | { "timestamp": "2018-01-01T02:43:29+02:00" } |
+    | <14>Jan 1 02:43:29 behave test[99999]: RFC3164 without timezone info | .*?RFC3164 without timezone info.* | { "timestamp": "2019-01-01T02:43:29+02:00" } |
 
 
   @slow

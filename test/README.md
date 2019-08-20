@@ -30,3 +30,10 @@ This won't be supported on older distributions.
 
 - Earlier versions of CentOS 7 only shiped with rsyslogd 7.4.7.
 - Ubuntu 16.04.3 ships with 8.16.0.
+
+### Load testing
+
+See [benchmark-syslog](https://github.com/JPvRiel/benchmark-syslog). It provides:
+
+- `test_syslog.sh`, a bash script that can perform basic load testing against any environment that accepts plain TCP syslog or UDP.
+- And a more complex benchmark suite to evaluate rsyslog options.

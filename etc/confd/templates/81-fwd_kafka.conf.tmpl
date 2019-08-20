@@ -20,7 +20,7 @@ ruleset(name="fwd_kafka")
 
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_kafka_post_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then {
     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
   }
@@ -45,13 +45,21 @@ ruleset(name="fwd_kafka")
     template="{{ getenv "rsyslog_omkafka_template" }}"
     action.resumeRetryCount = "-1"
     # queue config
-    queue.type = "LinkedList"
+    queue.type="LinkedList"
     queue.filename="fwd_kafka"
-    queue.maxDiskSpace = "{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
+    # queue peristance and size limit
+    queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
+    queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
+    queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
+    queue.checkpointInterval="{{ getenv "rsyslog_om_action_queue_checkpointInterval" }}"
     queue.saveOnShutdown="on"
-    queue.size = "{{ getenv "rsyslog_om_action_queue_size" }}"
-    queue.discardMark = "{{ getenv "rsyslog_om_action_queue_discardMark" }}"
-    queue.discardSeverity = "{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
+    # queue threads and batching
+    queue.dequeueBatchSize="{{ getenv "rsyslog_om_action_queue_dequeueBatchSize" }}"
+    queue.minDequeueBatchSize="{{ getenv "rsyslog_om_action_queue_minDequeueBatchSize" }}"
+    queue.minDequeueBatchSize.timeout="{{ getenv "rsyslog_om_action_queue_minDequeueBatchSize_timeout" }}"
+    queue.workerThreads="{{ getenv "rsyslog_om_action_queue_workerThreads" }}"
+    queue.workerThreadMinimumMessages="{{ getenv "rsyslog_om_action_queue_workerThreadMinimumMessages" }}"
   )
 }
 {{- end }}

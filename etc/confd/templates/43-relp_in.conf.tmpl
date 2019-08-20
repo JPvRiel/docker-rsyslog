@@ -1,9 +1,19 @@
 # RELP and librelp seems to support it's own TLS settings per input. Therefore, there can be varied TLS security requirements (e.g. needing client auth) per RELP input and port.
 
-module(load="imrelp")
+module(
+  load="imrelp"
+  #tls.tlslib="openssl"
+)
 
-# proivdes RELP reception
-input(type="imrelp" name="imrepl" port="2514" ruleset="remote_in_relp" tls="off")
+# proivdes RELP reception without TLS
+input(
+  type="imrelp"
+  name="imrepl"
+  port="2514"
+  ruleset="remote_in_relp"
+  KeepAlive="{{ getenv "rsyslog_module_imrelp_KeepAlive" }}"
+  tls="off"
+)
 
 # provides secure RELP reception (with client not needing to provide a CA signed cert)
 # Limitation:
@@ -14,6 +24,7 @@ input(
   name="imrelp_secure"
   port="7514"
   ruleset="remote_in_relp_secure"
+  KeepAlive="{{ getenv "rsyslog_module_imrelp_KeepAlive" }}"
   tls="on"
   tls.dhbits="2048"
   tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"
@@ -28,6 +39,7 @@ input(
   name="imrelp_secure_client_auth"
   port="8514"
   ruleset="remote_in_relp_secure_client_auth"
+  KeepAlive="{{ getenv "rsyslog_module_imrelp_KeepAlive" }}"
   tls="on"
   tls.dhbits="2048"
   tls.caCert="{{ getenv "rsyslog_global_ca_file" }}"

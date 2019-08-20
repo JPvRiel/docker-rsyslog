@@ -10,20 +10,23 @@ global(
   defaultNetstreamDriverCertFile="{{ getenv "rsyslog_server_cert_file" }}"
   defaultNetstreamDriverKeyFile="{{ getenv "rsyslog_server_key_file" }}"
   defaultNetstreamDriver="ptcp"
-  #defaultNetstreamDriver="gtls"
 )
 
 # For plain TCP without TLS (tailored for high performance on Linux)
 module(
   load="imptcp"
   threads="{{ getenv "rsyslog_module_imptcp_threads" }}"
-  processOnPoller="off"
+  processOnPoller="{{ getenv "rsyslog_module_imptcp_ProcessOnPoller" }}"
 )
 # For TCP with TLS (imptcp does not support TLS)
 module(
   load="imtcp"
   maxSessions="{{ getenv "rsyslog_module_imtcp_maxSessions" }}"
+  KeepAlive="{{ getenv "rsyslog_module_imtcp_KeepAlive" }}"
+  flowControl="{{ getenv "rsyslog_module_imtcp_flowControl" }}"
+  NotifyOnConnectionClose="{{ getenv "rsyslog_module_imtcp_NotifyOnConnectionClose" }}"
   streamDriver.name="gtls"
+  #streamDriver.name="ossl"
   streamDriver.mode="1"
     #This indicates TLS is enabled. 0 indicated disabled.
   streamDriver.authMode="{{ getenv "rsyslog_module_imtcp_streamDriver_authMode" }}"
@@ -33,13 +36,37 @@ module(
 )
 
 # provides plain TCP syslog reception. Both port 514 and 601 (IANA offical registered number)
-input(type="imptcp" port="514" ruleset="remote_in_tcp")
-input(type="imptcp" port="601" ruleset="remote_in_tcp")
+input(
+  type="imptcp"
+  port="514"
+  ruleset="remote_in_tcp"
+  SocketBacklog="{{ getenv "rsyslog_module_imptcp_SocketBacklog" }}"
+  KeepAlive="{{ getenv "rsyslog_module_imptcp_KeepAlive" }}"
+  flowControl="{{ getenv "rsyslog_module_imptcp_flowControl" }}"
+  NotifyOnConnectionOpen="{{ getenv "rsyslog_module_imptcp_NotifyOnConnectionOpen" }}"
+  NotifyOnConnectionClose="{{ getenv "rsyslog_module_imptcp_NotifyOnConnectionClose" }}"
+  RateLimit.Interval="{{ getenv "rsyslog_module_imptcp_RateLimit_Interval" }}"
+  RateLimit.Burst="{{ getenv "rsyslog_module_imptcp_RateLimit_Burst" }}"
+)
+input(
+  type="imptcp"
+  port="601"
+  ruleset="remote_in_tcp"
+  SocketBacklog="{{ getenv "rsyslog_module_imptcp_SocketBacklog" }}"
+  KeepAlive="{{ getenv "rsyslog_module_imptcp_KeepAlive" }}"
+  flowControl="{{ getenv "rsyslog_module_imptcp_flowControl" }}"
+  NotifyOnConnectionOpen="{{ getenv "rsyslog_module_imptcp_NotifyOnConnectionOpen" }}"
+  NotifyOnConnectionClose="{{ getenv "rsyslog_module_imptcp_NotifyOnConnectionClose" }}"
+  RateLimit.Interval="{{ getenv "rsyslog_module_imptcp_RateLimit_Interval" }}"
+  RateLimit.Burst="{{ getenv "rsyslog_module_imptcp_RateLimit_Burst" }}"
+)
 
 # provides secure TCP syslog reception
 input(
   type="imtcp"
   name="tcp_secure"
   port="6514"
+  RateLimit.Interval="{{ getenv "rsyslog_module_imtcp_RateLimit_Interval" }}"
+  RateLimit.Burst="{{ getenv "rsyslog_module_imtcp_RateLimit_Burst" }}"
   ruleset="remote_in_tcp_secure"
 )

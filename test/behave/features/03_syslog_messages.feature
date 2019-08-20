@@ -114,6 +114,7 @@ Feature: Accept syslog messages in various formats
     | Sep 19 23:43:29 lies Poor form RFC3164 with no priority | .*?RFC3164 with no priority.* | hostname | lies |
     | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | false |
     | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | false |
+    | <14>1 2017-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space | .*incorrect non-IS08601 timestamp with extra space.* | "syslog-relay"."header-valid" | false |
     | <14>1 2017-09-21T23:43:29.402+02:00 behave test 99999 - [bogus structured-data element] misc text after incorrect structured data element | .*bogus structured-data element.* | "rfc5424-sd" | null |
 
 

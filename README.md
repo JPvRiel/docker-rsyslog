@@ -1,10 +1,31 @@
 # docker-rsyslog
 
-An rsyslog container intended to transfer syslog input into kafka with a JSON format (because rsyslog is way better than logstash syslog inputs).
+An rsyslog container intended to transfer syslog input into kafka with a JSON format (because rsyslog is more mature, performant and production tested compared to logstash syslog inputs).
+
+## Differentiation from official rsyslog container images
+
+Why not the official image?
+
+About a year since starting this project, the upstream rsyslog project has started publishing [official rsyslog impages](https://hub.docker.com/u/rsyslog/) which in future will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme:
+
+- [rsyslog/syslog_appliance_alpine
+](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
+- [Using Rsyslog Docker Containers](https://www.rsyslog.com/doc/master/installation/rsyslog_docker.html) still has the development warning notice.
+- The [alpine: add kafka module](https://github.com/rsyslog/rsyslog-docker/issues/6) issue was still open.
+
+Besides the "beta" status, other differences are:
+
+- A focus on kafka output functionality.
+- An attempt to adopt and overlay some [Twelve-Factor](https://12factor.net) concepts, most notably, the suggestion to [Store config in the environment](https://12factor.net/config) by using confd.
+  - Newly introduced (since v8.33) rsyslog container friendly features such as backticks that can echo evn var values as string constants along with the `config.enabled` parameter for configuration objects would also likely suffice, but confd supports more backends than just env vars.
 
 ## Features
 
 rsyslog is fast, highly adaptable, but notoriously difficult to configure via config files. This image tries to pre-package some common use-cases that can be controlled via setting env vars. The objective is to avoid needing to supply configuration in rainerscript or legacy config syntaxes.
+
+Some basic performance testing was done to adapt and override conservative defaults so that this container can function in the role of a central syslog service. Choices made in the default config were based on rough and ready benchmark suite hacked together at[benchmark-syslog](https://github.com/JPvRiel/benchmark-syslog).
+
+However, for complex and flexible use-cases, it may be preferable to bind mount/supply a configuration file and directory instead.
 
 ### Inputs
 
@@ -15,19 +36,19 @@ Accept multiple syslog inputs:
   - Deal with syslog output forwarded from some quirky non-standard systems like AIX.
 - Accept multiple syslog transports (UDP, TCP or RELP).
 - Accept multiple security options (TLS or not).
-- Optionally append useful metadata with `rsyslog_support_metadata_formats=on` to add context about how a messge was recieved.
+- Optionally append useful metadata with `rsyslog_support_metadata_formats=on` to add context about how a message was received.
 
 The table below lists pre-configured inputs:
 
-| Port | Proto    | Use                              | Encryption | Authentication             |
-| ---- | -------- | -------------------------------- | ---------- | -------------------------- |
-| 514  | UDP      | Legacy syslog transport          | No         | No                         |
-| 514  | TCP      | Plain TCP high-performance       | No         | No                         |
-| 601  | TCP      | Plain TCP with offical IANA port | No         | No                         |
-| 2514 | RELP     | Reliable Event Log Protocol      | No         | No                         |
-| 6514 | TCP+TLS  | Secure TCP                       | Yes        | Sever, client configurable |
-| 7514 | RELP+TLS | Secure RELP                      | Yes        | Server only                |
-| 8514 | RELP+TLS | Secure RELP                      | Yes        | Server, client required    |
+| Port | Proto    | Use                               | Encryption | Authentication             |
+| ---- | -------- | --------------------------------- | ---------- | -------------------------- |
+| 514  | UDP      | Legacy syslog transport           | No         | No                         |
+| 514  | TCP      | Plain TCP high-performance        | No         | No                         |
+| 601  | TCP      | Plain TCP with official IANA port | No         | No                         |
+| 2514 | RELP     | Reliable Event Log Protocol       | No         | No                         |
+| 6514 | TCP+TLS  | Secure TCP                        | Yes        | Sever, client configurable |
+| 7514 | RELP+TLS | Secure RELP                       | Yes        | Server only                |
+| 8514 | RELP+TLS | Secure RELP                       | Yes        | Server, client required    |
 
 ### Outputs
 
@@ -48,7 +69,7 @@ Legacy formats/templates can easily be set via [pre-defined rsyslog template nam
 - JSON output templates:
   - `TmplrsyslogJSON` is the full native rsyslog message object (might duplicate fields, but also useful to debug with).
   - `TmplJSON` is a JSON output option for a subset of common syslog fields and the parsed msg portion (the message after the syslog header pieces)
-  - `TmplJSONRawMsg` includes the full raw message inlcuding orginal syslog headers - potentially useful as provenance / evidence on exactly how the message was transfered from a source
+  - `TmplJSONRawMsg` includes the full raw message including original syslog headers - potentially useful as provenance / evidence on exactly how the message was transfered from a source
   - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`.
   - Optionally parse JSON message payloads with `rsyslog_mmjsonparse=on` (as a default, usually preceeded by `@cee` cookie).
     - Use `rsyslog_mmjsonparse_without_cee=on` to try parse messages as JSON without the cookie.
@@ -61,8 +82,6 @@ See the `ENV` instructions with `rsyslog_` environment name prefixes in the `Doc
 
 The container also supports advanced debug scenarios.
 
-About a year since starting this project, upstream rsyslog has started publishing [official rsyslog impages](https://hub.docker.com/u/rsyslog/) which in future will likely be better maintained and hopefully cover similar use cases.
-
 ## Usage
 
 ### TL;DR
@@ -72,7 +91,7 @@ About a year since starting this project, upstream rsyslog has started publishin
 The 'yolo' way
 
 ```bash
-docker container run --rm -it --name syslog jpvriel/rsyslog:latest
+docker container run --cap-add sys_nice --rm -it --name syslog jpvriel/rsyslog:latest
 ```
 
 __NB!__:
@@ -109,12 +128,15 @@ Run docker mounting volumes and ensuring `TZ` is set/passed
 
 ```bash
 docker container run --rm -it \
+ --cap-add sys_nice \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
  -v syslog_tls:/etc/pki/rsyslog \
  -e TZ='Africa/Johannesburg' \
  --name syslog jpvriel/rsyslog:latest
 ```
+
+Note, the `SYS_NICE` capability is needed to set a FIFO IO priority for the UDP input threads.
 
 #### docker-compose
 
@@ -156,7 +178,7 @@ If you see `ERROR: Ungraceful exit...`, then most likely, the rsyslogd process d
 
 [test/test_syslog_server.env](test/test_syslog_server.env) as an example will provide ideas on some env vars you can set.
 
-Reading the `ENV rsyslog_*` optons in the `Dockerfile` will provide a more exhustive list about what rsyslog configuration options are supported via environment variables.
+Reading the `ENV rsyslog_*` optons in the `Dockerfile` will provide a more exhaustive list about what rsyslog configuration options are supported via environment variables.
 
 #### How env vars get applied
 
@@ -316,7 +338,7 @@ If an input or forwarding use case isn't covered as above, then:
 1. Use `/etc/rsyslog.d/extra/` with your own config files
 2. Add your own inputs and, if desired, intergrate them with pre-existing filters and output rulesets.
    1. Incorporate `$IncludeConfig /etc/rsyslog.d/input/filters/*.conf` into your own input processing ruleset to apply "global" input filters.
-   2. Set your input module to use `ruleset="output"`, or if you first need to do your own custom adaptation (e.g. filters and enrichment) the use `call output` in your own own input processing ruleset. This approach will retainin the pre-bundled outputs and output filters.
+   2. Set your input module to use `ruleset="central"`, or if you first need to do your own custom adaptation (e.g. filters and enrichment) the use `call central` in your own own input processing ruleset. This approach will retainin the pre-bundled outputs and output filters.
 3. Add your own outputs if desired. You can intergrate them with pre-existing inputs, input filters and global output filters, via the `rsyslog_call_fwd_extra_rule` option:
    1. Set evn var `rsyslog_call_fwd_extra_rule=true` which enables `call fwd_extra` at the end of the master `output` ruleset grouping.
    2. If you enable the env var, but fail to define a ruleset called `fwd_extra` in your extra config, the rsyslog config will become  invalid.
@@ -351,7 +373,7 @@ ruleset(name="extra" parser="rsyslog.rfc3164") {
 }
 ```
 
-E.g. to create an extra input and plug it into the pre-canned output, use `call output` within your own input ruleset to call the standard output (implies global output filters apply):
+E.g. to create an extra input and plug it into the pre-canned output, use `call central` within your own input ruleset to call the standard output (implies global output filters apply):
 
 `/etc/rsyslog.d/extra/49_input_extra.conf`
 
@@ -368,7 +390,7 @@ input(
 # apply global input filters
 ruleset(name="kafka_in_extra_topic" parser="rsyslog.rfc3164") {
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
-  call output
+  call central
 }
 ```
 
@@ -1044,7 +1066,20 @@ rsyslog has a safe default of escaping non-printable characters, which, unfortun
 While the approach taken attempted to expose/simply running an rsyslog container by just setting a couple of environment variables, a lot of underlying complexity (and maintainer burden) occurs because:
 
 - Confd and golang text templates dynamically change the rsyslog configuration files, so configuration errors reported by rsyslogd are hard to track back (hence the `-E` option for the container to see the expanded rsyslog configuration result with line numbers)
-- rsyslog rainerscript syntax for assinging values to variables does not appear to support boolean true or false types, nor does it support a null type. As a resulty, trying to populate JSON template output with such types requires literal strings represent and be explicitly output as such without using native built-in json output templating, otherwise, rsyslogd will quote the JSON values as "true", "false" or "null" (which is not intended). This makes creating the desired JSON templates a verbose excercise of hand picking various elements with such types. Instead, coercing types downstream (e.g. via logstash or elasticsearch index templates) might be a simpler solution that allows for simpler rsyslog templates.
+- rsyslog rainerscript syntax for assinging values to variables does not appear to support boolean true or false types, nor does it support a null type. 
+  - As a result, trying to populate JSON template output with such types requires literal strings be manually crafted and explicitly output as such without using native built-in json output templating, otherwise, rsyslogd will quote the JSON values as "true", "false" or "null" (which is not intended).
+  - This makes creating the desired JSON templates a verbose excercise of hand picking various elements with such types. Instead, coercing types downstream (e.g. via logstash or elasticsearch index templates) might be a simpler solution that allows for simpler rsyslog templates.
+
+Newer versions of rsyslog does support some env var handling. Note:
+
+- The [`getenv()`](https://www.rsyslog.com/doc/v8-stable/rainerscript/functions/rs-getenv.html) function.
+  - E.g. `if $msg contains getenv('TRIGGERVAR') then /path/to/errfile`
+  - However it doesn't seem to apply/work in all config contexts, such as configuring a module.
+  - [Not able to read the environmental variable in rsyslog config](https://github.com/rsyslog/rsyslog/issues/2735) was still open at the time of writing this.
+  - A work-arround an custom variable, and then setting a value from that variable, but that'd be overly cumbersome.
+- Backticks string constants to use shell commands (as of v8.33 with an enchanced `echo` in v8.37).
+  - E.g. `` `echo $VARNAME` ``
+  - See: [String Constants](https://www.rsyslog.com/doc/master/rainerscript/constant_strings.html#string-constants)
 
 ## Status
 
@@ -1065,15 +1100,19 @@ Done:
 
 Not yet done:
 
+- Refactor configuration templating:
+  - Leverage new [config.enabled](https://www.rsyslog.com/doc/v8-stable/rainerscript/configuration_objects.html#config-enabled) config object feature instead of complicted script block inclusion or exclusion with confd?
+  - Leverage new [`inlcude()`](https://www.rsyslog.com/doc/v8-stable/rainerscript/configuration_objects.html#include)? Note, PR [2426](https://github.com/rsyslog/rsyslog/pull/2426) provides more detail as the current documation for it is very thin?
+  - Leverage new backtick string format to evaluate variable names directly. This could be a partial replacement for confd templating?
 - Use mmfields module to handle LEEF and CEF extraction to JSON?
 - Re-factor test suite
   - Simplify and depend on less containers one async support in behave allows better network test cases (using tmpfs shared volumes is the current work-arround)
   - Watch out for pre-existing files in volumes from prior runs (testing via Makefile avoids this pitfall)
 - More rsyslog -> kafka optimisation, which would first require a benchmark test suite
 - expose enhancments in env config like
-  - `imptcp` socket backlog setting
-  - confirm `impstats` counters for `omkafka`
-- performance tuning as per <https://rsyslog.readthedocs.io/en/stable/examples/high_performance.html> started with input thread settings. However, ruleset and action output queues settings haven't been optimised or exposed with settings
+  - `imptcp` socket backlog setting! Default of 5 does not cope well with high load systems!
+  - Confirm `impstats` counters for `omkafka`
+- Performance tuning as per <https://rsyslog.readthedocs.io/en/stable/examples/high_performance.html> started with input thread settings. However, ruleset and action output queues settings haven't been optimised or exposed with settings:
   - `dequeueBatchSize`
   - `workerThreads`
   - multiple input rulesets all call a single ruleset that then calls multiple output rulesets
@@ -1088,7 +1127,7 @@ Not yet done:
       > Please note that when a ruleset uses its own queue, processing of the ruleset happens asynchronously to the rest of processing. As such, any modifications made to the message object (e.g. message or local variables that are set) or discarding of the message object have no effect outside that ruleset. So if you want to modify the message object inside the ruleset, you cannot define a queue for it.
 
     - <https://rsyslog.readthedocs.io/en/stable/concepts/multi_ruleset.html>
-- performance tunning hooks for the main queue and the other output action queues as per <https://www.rsyslog.com/performance-tuning-elasticsearch/> example.
+- Performance tunning hooks for the main queue and the other output action queues as per <https://www.rsyslog.com/performance-tuning-elasticsearch/> example.
 
 Maybe someday:
 
@@ -1098,5 +1137,5 @@ Maybe someday:
 - Filter/send rsyslog performance metrics to stdout (omstdout) - is this needed?
 - All syslog output to omstdout (would we even need this?)
 - More test cases
-  - Unit test for stopping and starting the server container to check that persistent queues in /var/lib/rsyslog function as intended
+  - Unit test for stopping and starting the server container to check that state files and persistent queues in /var/lib/rsyslog function as intended
   - Older and other syslog demons as clients, e.g. from centos6, syslog-ng, etc

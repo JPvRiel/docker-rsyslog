@@ -35,8 +35,21 @@ template(name="TmplRFC5424Meta" type="string" string="<%pri%>1 %timestamp:::date
 # JSON templates
 
 # Make sure the message content is escaped to be safely interpreted as JSON
-# NB! Rainerscript only supports setting quoted variables and jsonf outputs a quoted value forcing a string JSON type. To get integer or boolean JSON types requires manually building a JSON field, i.e. otherwise { "boolean": true } gets quoted as { "boolean": "true" }
-# While bool and int JSON types are used, for RFC5424, `-` represents null and is left as when the field is flat (not a nested object). However, if the structured data element is `-` or can't be parsed into json, then it is set as null because some products like elasticsearch will have data mapping conflicts if it expects a json object (e.g. nested field) but instead gets a plain string (e.g. `-`).
+# Note:
+# - NB! Rainerscript only supports setting quoted variables and jsonf outputs a quoted value forcing a string JSON type.
+# - To get integer or boolean JSON types requires manually building a JSON field, i.e. otherwise { "boolean": true } gets quoted as { "boolean": "true" }
+# - The template jsonf datatype option can be used in templates to coerce types upon output, but rainerscript config still treats/reads everything like strings.
+# - The 'bool' datatype does not treat string "false" as a literal false and only interprets "0" or the empty string "" as false.
+# - Therefore it's not adaptable to use for non-JSON output that needs a literal string 'false'.
+# - See https://github.com/rsyslog/rsyslog/issues/3836
+# - See https://www.rsyslog.com/doc/v8-stable/configuration/templates.html#property-statement
+# Due to this, and some values being used in both JSON and plaintext output template choices, manually crafted templates instead of using a jsonf datatype is performed.
+# While bool and int JSON types are used, for RFC5424, `-` represents null and is left as when the field is flat (not a nested object). 
+# Structured data element handling is complex and involves 2 different fields
+# - 'structured-data' will be the string representation (not parsed to JSON) and null represented as string character `-`.
+# - 'rfc5424-sd' will be the JSON parsed nested object (if rsyslog_mmpstrucdata is enabled) and null represented as literal string `"null"`
+# - If the structured data element is `-` it's 'structured-data' property is left as a string `-` else 
+# - Downstream systems like elasticsearch will have data mapping conflicts if it expects a json object (e.g. nested field) but instead gets a plain string (e.g. `"null"`). Logstash can coerce/remove the "null" field when present to avoid the issue.
 
 # Output the full native rsyslog JSON message object
 template(name="TmplRSyslogJSON" type="string" string="%jsonmesg%\n")

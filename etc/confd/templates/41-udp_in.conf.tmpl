@@ -1,11 +1,17 @@
 module(
   load="imudp"
+  BatchSize="{{ getenv "rsyslog_module_imudp_BatchSize" }}"
   threads="{{ getenv "rsyslog_module_imudp_threads" }}"
+  SchedulingPolicy="{{ getenv "rsyslog_module_imudp_SchedulingPolicy" }}"
+  SchedulingPriority="{{  getenv "rsyslog_module_imudp_SchedulingPriority" }}"
 )
 
 # provides UDP syslog resception
 input(
   type="imudp"
   port="514"
+  RcvBufSize="{{ getenv "rsyslog_module_imudp_RcvBufSize" }}"
+  RateLimit.Interval="{{ getenv "rsyslog_module_imudp_RateLimit_Interval" }}"
+  RateLimit.Burst="{{ getenv "rsyslog_module_imudp_RateLimit_Burst" }}"
   ruleset="remote_in_udp"
 )

@@ -37,7 +37,7 @@ ruleset(name="syslog_stats") {
   set $.syslog-relay!tls = "false";
   set $.syslog-relay!authenticated-client = "false";
   {{- end }}
-  call output
+  call central
 }
 
 {{ if $rsyslog_dyn_stats -}}
@@ -81,7 +81,7 @@ ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_udp/*.conf
   {{- end }}
-  call output
+  call central
 }
 
 ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
@@ -100,7 +100,7 @@ ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp/*.conf
   {{- end }}
-  call output
+  call central
 }
 
 ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
@@ -119,7 +119,7 @@ ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp_secure/*.conf
   {{- end }}
-  call output
+  call central
 }
 
 ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
@@ -138,7 +138,7 @@ ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp/*.conf
   {{- end }}
-  call output
+  call central
 }
 
 # NB: rsyslog limitation seems to block RELP TLS without client authentication
@@ -158,7 +158,7 @@ ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure/*.conf
   {{- end }}
-  call output
+  call central
 }
 
 ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parser" }}) {
@@ -177,13 +177,23 @@ ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parse
   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure_client_auth/*.conf
   {{- end }}
-  call output
+  call central
 }
 
 # Ouptut rulesets
 # Rules to output and forward / relay messages placed in output/*.conf and called below
 
-ruleset(name="output") {
+ruleset(
+  name="central"
+  # queue config
+  queue.type="{{ getenv "rsyslog_central_queue_type" }}"
+  queue.size="{{ getenv "rsyslog_central_queue_size" }}"
+  queue.dequeueBatchSize="{{ getenv "rsyslog_central_queue_dequeueBatchSize" }}"
+  queue.minDequeueBatchSize="{{ getenv "rsyslog_central_queue_minDequeueBatchSize" }}"
+  queue.minDequeueBatchSize.timeout="{{ getenv "rsyslog_central_queue_minDequeueBatchSize_timeout" }}"
+  queue.workerThreads="{{ getenv "rsyslog_central_queue_workerThreads" }}"
+  queue.workerThreadMinimumMessages="{{ getenv "rsyslog_central_workerThreadMinimumMessages" }}"
+) {
 
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost", $fromhost);
@@ -199,9 +209,9 @@ ruleset(name="output") {
   # Note:
   # - Copying properties is less efficient.
   # - But this could simplify manually constructing JSON output with complex templates...
-  # - `$!` can be output without needing to know exectly which JSON fields are present or not allowinig more dynamic attributes for messages.
-  # There are issues formatting nested JSON output and items commented out due to limitations
-  # - Instead, explicit / manual templating for JSON is the current workarround
+  # - `$!` can be output without needing to know exactly which JSON fields are present or not allowing more dynamic attributes for messages.
+  # There are issues formatting nested JSON output and items commented out due to limitations:
+  # - Instead, explicit / manual templating for JSON is the current workaround.
   # - See https://github.com/rsyslog/rsyslog/issues/2873
   # - See https://github.com/rsyslog/rsyslog/issues/2827
   # Commented out due to above limitations
@@ -211,10 +221,18 @@ ruleset(name="output") {
   #set $.syslog-relay!myhostname = $$myhostname;
   #set $.syslog-relay!inputname = $inputname;
   if ($protocol-version == "1") then {
-    set $.syslog-relay!format = "RFC5424";
-    # when rsyslog parses a message as version 1 / RFC5424, it implies parsing worked
+    # When rsyslog parses a message as version 1 / RFC5424, it implies parsing worked, but sometimes not all fields can be parsed.
     set $.syslog-relay!pri-valid = "true";
-    set $.syslog-relay!header-valid = "true";
+    # Detect malformed RFC5424 messages with bad timestamps which cause the 'programname' to be set as an empty string.
+    # E.g. '<14>1 2017-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space'
+    if ($programname == "") then {
+      set $.syslog-relay!format = "RFC5424_malformed";
+      set $.syslog-relay!header-valid = "false";
+    } else {
+      set $.syslog-relay!format = "RFC5424";
+      set $.syslog-relay!header-valid = "true";
+    }
+    # If rsyslog can't parse the timestamp or hostname for RFC5424, it seems to populate $hostname automatically from $fromhost
     set $.hostname = $hostname;
   {{ if $rsyslog_impstats -}}
   } else if ($app-name == "rsyslogd-pstats" and ($fromhost-ip == "127.0.0.1" or $fromhost-ip == "::1" )) then {
@@ -269,7 +287,7 @@ ruleset(name="output") {
     #action(type="mmpstrucdata" name="output_mmpstrucdata" jsonRoot="$!structured-data")
     action(type="mmpstrucdata" name="output_mmpstrucdata")
     # Guard against $!rfc5424-sd not existing if there was a parse failure
-    # note, rsyslog has not yet got an exits() function, so workarround is to check for a blank string: https://github.com/rsyslog/rsyslog/issues/970
+    # Note, rsyslog has not yet got an exits() function, so workaround is to check for a blank string: https://github.com/rsyslog/rsyslog/issues/970
     if ($!rfc5424-sd == "") then {
       set $!rfc5424-sd = "null";
       {{ if $rsyslog_support_metadata_formats -}}

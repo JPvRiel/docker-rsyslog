@@ -1,6 +1,7 @@
 bats
 behave
 kafka
+misc
 eg
 tls_x509
 **/.md

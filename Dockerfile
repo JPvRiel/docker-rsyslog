@@ -39,7 +39,7 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.39.0'
+ARG RSYSLOG_VERSION='8.1907.0'
 RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
@@ -90,15 +90,22 @@ COPY usr/local/etc/pki/test/test_ca.cert.pem /usr/local/etc/pki/test
 COPY usr/local/etc/pki/test/test_syslog_server.key.pem /usr/local/etc/pki/test
 COPY usr/local/etc/pki/test/test_syslog_server.cert.pem /usr/local/etc/pki/test
 
-# Default ENV vars for rsyslog config
+# Default ENV vars for rsyslog config tuned for high throughput by default and assumes a multi-core system that can handle several worker threads.
+# - See: https://www.rsyslog.com/doc/v8-stable/examples/high_performance.html.
 
 # TLS related globals
 ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
   rsyslog_server_cert_file='/etc/pki/rsyslog/cert.pem' \
   rsyslog_server_key_file='/etc/pki/rsyslog/key.pem'
 
-# Inputs and parsing inputs
-ENV rsyslog_global_maxMessageSize='65536' \
+# Inputs and parsing inputs. Note:
+# - Rate limiting is disabled by default (0).
+# - UDP recieve buffer size is left as autotune by default (0).
+# - UDP FIFO shedular is set to try avoid packet loss.
+# - TCP socket backlog is increase to try avoid failed TCP open connection errors (only applies to imptcp).
+# - imtcp is used for TCP with TLS while imptcp is used for TCP without TLS.
+# - Batch sizes and threads are increased with the aim of handling higher remote server throughput.
+ENV rsyslog_global_maxMessageSize=65536 \
   rsyslog_parser='["rsyslog.rfc5424", "custom.rfc3164"]' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
   rsyslog_pmrfc3164_remove_msgFirstSpace='on' \
@@ -114,27 +121,76 @@ ENV rsyslog_global_maxMessageSize='65536' \
   rsyslog_support_metadata_formats='off' \
   rsyslog_input_filtering_enabled='on' \
   rsyslog_impstats='on' \
-  rsyslog_module_impstats_interval='60' \
+  rsyslog_module_impstats_interval=60 \
   rsyslog_module_impstats_resetCounters='on' \
   rsyslog_module_impstats_format='cee' \
   rsyslog_impstats_ruleset='syslog_stats' \
   rsyslog_dyn_stats='on' \
-  rsyslog_dyn_stats_maxCardinality='10000' \
-  rsyslog_dyn_stats_unusedMetricLife='86400' \
+  rsyslog_dyn_stats_maxCardinality=10000 \
+  rsyslog_dyn_stats_unusedMetricLife=86400 \
   rsyslog_global_action_reportSuspension='on' \
   rsyslog_global_senders_keepTrack='on' \
-  rsyslog_global_senders_timeoutAfter='86400' \
+  rsyslog_global_senders_timeoutAfter=86400 \
   rsyslog_global_senders_reportGoneAway='on' \
-  rsyslog_module_imtcp_maxSessions='1000' \
+  rsyslog_module_imudp_RcvBufSize=0 \
+  rsyslog_module_imudp_BatchSize=128 \
+  rsyslog_module_imudp_threads=2 \
+  rsyslog_module_imudp_SchedulingPolicy='fifo' \
+  rsyslog_module_imudp_SchedulingPriority=10 \
+  rsyslog_module_imudp_RateLimit_Interval=0 \
+  rsyslog_module_imudp_RateLimit_Burst=262144 \
+  rsyslog_module_imptcp_threads=4 \
+  rsyslog_module_imptcp_SocketBacklog=128 \
+  rsyslog_module_imptcp_ProcessOnPoller='off' \
+  rsyslog_module_imptcp_KeepAlive='off' \
+  rsyslog_module_imptcp_flowControl='on' \
+  rsyslog_module_imptcp_NotifyOnConnectionOpen='off' \
+  rsyslog_module_imptcp_NotifyOnConnectionClose='off' \
+  rsyslog_module_imptcp_RateLimit_Interval=0 \
+  rsyslog_module_imptcp_RateLimit_Burst=262144 \
+  rsyslog_module_imtcp_KeepAlive='off' \
+  rsyslog_module_imtcp_flowControl='on' \
+  rsyslog_module_imtcp_NotifyOnConnectionClose='off' \
+  rsyslog_module_imtcp_maxSessions=1000 \
   rsyslog_module_imtcp_streamDriver_authMode='anon' \
-  rsyslog_module_imrelp_authMode='name' \
-  rsyslog_tls_permittedPeer='["*"]' \
-  rsyslog_module_imudp_threads='1' \
-  rsyslog_module_imptcp_threads='1'
+  rsyslog_module_imtcp_RateLimit_Interval=0 \
+  rsyslog_module_imtcp_RateLimit_Burst=262144 \
+  rsyslog_module_imrelp_KeepAlive='off' \
+  rsyslog_module_imrelp_authMode='certvalid' \
+  rsyslog_tls_permittedPeer='["*"]'
 # Note:
+# - A 'central' queue is based on a fixed array in-memory queue, so take care when increasing rsyslog_global_maxMessageSize
 # - 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode does not apply to RELP, only TCP TLS
 
-# Outputs
+# Central queue tuned for higher throughput in a central syslog server:
+# - Up to 8 worker threads will be running if the queue gets filled halfway (i.e. 64K messages, 8K messages per worker).
+# - FixedArray sacrifices RAM (consumes more static memory) for slightly less CPU overhead.
+ENV rsyslog_central_queue_type='FixedArray' \
+  rsyslog_central_queue_size=131072 \
+  rsyslog_central_queue_dequeueBatchSize=2048 \
+  rsyslog_central_queue_minDequeueBatchSize=256 \
+  rsyslog_central_queue_minDequeueBatchSize_timeout=500 \
+  rsyslog_central_queue_workerThreads=8 \
+  rsyslog_central_workerThreadMinimumMessages=8192
+# Note - see /etc/confd/60-ruleset.conf.tmpl:
+# - Instead of using the default main queue, a 'central' explicitly defined queue is used between inputs and outputs
+# - If rsyslog_global_maxMessageSize needs to be excessivly large, consider changing the queue type from 'fixed array' to 'linked list'
+# - Each input is bound to it's own input ruleset (instead of the rsyslog main queue default)
+# - Each input ruleset applies generic or input specific filters
+# - Each input ruleset/queue is of type 'direct'
+# - Each input ruleset/queue calls the central ruleset
+# - The central ruleset acts as a central 'sink' to collate all inputs
+# - The central queue applies various parsing checks and data enrichments
+# - The central queue can apply a generic output filter before calling other output rulesets
+# - The central ruleset/queue is of type 'in-memory'
+# - Output specific rulesets, such as fwd_kafka, fwd_syslog, etc have 'disk-assisted' memory queues
+# - Output specific rulesets/queues are intended to persist data backlogs the most, and should perist when rsyslog is restarted
+# Note futher:
+# - The queue.workerThreadMinimumMessages setting defaults to queue.size/queue.workerthreads.
+# - The 'fixed array' queue type for the central queue trades off extra memory usage for lower CPU overhead 
+#   (See: https://www.rsyslog.com/doc/v8-stable/configuration/global/options/rsconf1_mainmsgqueuesize.html)
+
+# Outputs (action output queues are persistant/disk assisted)
 # See 60-output_format.conf.tmpl
 ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfile_enabled='on' \
@@ -156,10 +212,16 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
+  rsyslog_om_action_queue_dequeueBatchSize=1024 \
+  rsyslog_om_action_queue_minDequeueBatchSize=128 \
+  rsyslog_om_action_queue_minDequeueBatchSize_timeout=500 \
+  rsyslog_om_action_queue_workerThreads=4 \
+  rsyslog_om_action_queue_workerThreadMinimumMessages=8192 \
   rsyslog_om_action_queue_maxDiskSpace=1073741824 \
-  rsyslog_om_action_queue_size=2097152 \
-  rsyslog_om_action_queue_discardMark=1048576 \
+  rsyslog_om_action_queue_size=1048576 \
+  rsyslog_om_action_queue_discardMark=838860 \
   rsyslog_om_action_queue_discardSeverity=6 \
+  rsyslog_om_action_queue_checkpointInterval=8192 \
   rsyslog_call_fwd_extra_rule='off'
 # Several globals are defined via rsyslog_global_* inlcuding reporting stats
 #
@@ -173,7 +235,8 @@ ENV rsyslog_output_filtering_enabled='on' \
 # - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G
 # - E.g. if three outputs have ~ 1G file limit for the queue, 3G overall is needed
 # - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardMark need to be adjusted in line with rsyslog_om_action_queue_maxDiskSpace
-# - E.g. Assuming 512 byte messages, a 1G file can fit ~ 2 million messages, and start discarding at ~ 1 million messages
+# - E.g. Assuming 1024 byte messages (e.g. custom templates or JSON formats create bloat), then a 1G file can fit ~1 million messages, and start discarding at ~800K million messages
+# - E.g. Assuming worst case, all messages are 64K size, then only ~16K messages can be handled (without knowing what overhead rsyslog adds for each message in the queue)
 # - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: https://github.com/kelseyhightower/confd/issues/611
 # - rsyslog_om_action_queue_discardSeverity=6 implies info and debug messages get discarded
 #
