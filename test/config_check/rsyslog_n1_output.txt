@@ -4,5 +4,5 @@
 [0;34mINFO:[0m Using /usr/local/etc/pki/test/test_syslog_server.key.pem as the private key.
 [0;34mINFO:[0m Using /usr/local/etc/pki/test/test_syslog_server.cert.pem as the certficate.
 [0;34mINFO:[0m Explicit config check.
-rsyslogd: version 8.1907.0, config validation run (level 1), master config /etc/rsyslog.conf
+rsyslogd: version 8.2006.0, config validation run (level 1), master config /etc/rsyslog.conf
 rsyslogd: End of config validation run. Bye.
