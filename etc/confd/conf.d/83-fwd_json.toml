@@ -1,3 +1,0 @@
-[template]
-src = "83-fwd_json.conf.tmpl"
-dest = "/etc/rsyslog.d/output/83-fwd_json.conf"

@@ -1,4 +1,7 @@
 {{ $rsyslog_impstats := getenv "rsyslog_impstats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_impstats_log_file_enabled := getenv "rsyslog_impstats_log_file_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_impstats_log_file := getenv "rsyslog_impstats_log_file" -}}
+{{ $empty_string := "" }}
 {{ if $rsyslog_impstats -}}
 # Collect stats - rsyslog docs warn to load this module first before others (but might only be applicable to legacy config)
 module(
@@ -6,6 +9,10 @@ module(
   interval="{{ getenv "rsyslog_module_impstats_interval" }}"
   resetCounters="{{ getenv "rsyslog_module_impstats_resetCounters" }}"
   Format="{{ getenv "rsyslog_module_impstats_format" }}"
+  log.syslog="{{ getenv "rsyslog_impstats_log_syslog" }}"
+  {{ if and $rsyslog_impstats_log_file_enabled (ne $rsyslog_impstats_log_file "") -}}
+  log.file="{{ $rsyslog_impstats_log_file }}"
+  {{- end }}
   ruleset="{{ getenv "rsyslog_impstats_ruleset" }}"
 )
 {{- end }}

@@ -21,7 +21,7 @@ Feature: Foward syslog messages
     When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format
     Then the env configured kafka topic should have the the message within "60" seconds
 
-  @slow
+  @slow @wip
   Scenario: Messages are forwarded to another server in syslog format
     Given "rsyslog_omfwd_syslog_enabled" environment variable is "on"
       And "rsyslog_omfwd_syslog_host" environment variable is set
@@ -30,6 +30,17 @@ Feature: Foward syslog messages
     When sending the syslog message "Testing syslog forwarding" in "RFC3164" format
       And waiting "1" seconds
       And searching lines for the pattern "Testing syslog forwarding" over "60" seconds
+    Then the pattern should be found
+
+  @slow @wip
+  Scenario: Messages are forwarded to another server using UDP and spoofing the orginal source IP
+    Given "rsyslog_omudpspoof_syslog_enabled" environment variable is "on"
+      And "rsyslog_omudpspoof_syslog_host" environment variable is set
+      And "rsyslog_omudpspoof_syslog_port" environment variable is set
+      And a file "/tmp/syslog_relay_udp_spoof/nc.out" exists
+    When sending the syslog message "Testing syslog UDP source spoofing" in "RFC3164" format
+      And waiting "1" seconds
+      And searching lines for the pattern "Testing syslog UDP source spoofing" over "60" seconds
     Then the pattern should be found
 
   @slow

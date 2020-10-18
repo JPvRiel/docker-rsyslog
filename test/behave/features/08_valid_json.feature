@@ -5,7 +5,7 @@ Feature: JSON templates produce valid JSON objects
       And a server "test_syslog_server"
       And an environment variable file "test_syslog_server.env"
 
-  @slow @wip
+  @slow
   Scenario: All events forwarded via a JSON template should be valid JSON
     Given "rsyslog_omfwd_json_enabled" environment variable is "on"
       And "rsyslog_omfwd_json_host" environment variable is set

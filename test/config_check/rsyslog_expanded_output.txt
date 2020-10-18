@@ -12,38 +12,41 @@
  12: $IncludeConfig /etc/rsyslog.d/*.conf
 ##< start of include directive: $IncludeConfig /etc/rsyslog.d/*.conf
 ##^ expanding file: /etc/rsyslog.d/30-globals.conf
-  1: # Collect stats - rsyslog docs warn to load this module first before others (but might only be applicable to legacy config)
-  2: module(
-  3:   load="impstats"
-  4:   interval="60"
-  5:   resetCounters="on"
-  6:   Format="cee"
-  7:   ruleset="syslog_stats"
-  8: )
-  9: 
- 10: # Load extra parser modules which the peoples might want to use in the parser chain - will waste a bit of memory, but keeps logic simpler
- 11: module(load="pmlastmsg")
- 12: module(load="pmaixforwardedfrom")
- 13: module(load="pmciscoios")
- 14: module(load="pmnull")
- 15: 
- 16: module(load="mmjsonparse")
- 17: # Parse RFCR424 structured data
- 18: module(load="mmpstrucdata")
- 19: 
- 20: # Globals
- 21: global(
- 22:   parser.permitSlashInProgramName="on"
- 23:   parser.escapeControlCharacterTab="off"
- 24:   preserveFQDN="on"
- 25:   maxMessageSize="65536"
- 26:   action.reportSuspension="on"
- 27:   senders.keepTrack="on"
- 28:   senders.timeoutAfter="86400"
- 29:   senders.reportGoneAway="on"
- 30:   shutdown.enable.ctlc="on"
- 31:   processInternalMessages="on"
- 32: )
+  1: 
+  2: # Collect stats - rsyslog docs warn to load this module first before others (but might only be applicable to legacy config)
+  3: module(
+  4:   load="impstats"
+  5:   interval="60"
+  6:   resetCounters="on"
+  7:   Format="cee"
+  8:   log.syslog="on"
+  9:   log.file="/var/log/impstats/metrics.log"
+ 10:   ruleset="syslog_stats"
+ 11: )
+ 12: 
+ 13: # Load extra parser modules which the peoples might want to use in the parser chain - will waste a bit of memory, but keeps logic simpler
+ 14: module(load="pmlastmsg")
+ 15: module(load="pmaixforwardedfrom")
+ 16: module(load="pmciscoios")
+ 17: module(load="pmnull")
+ 18: 
+ 19: module(load="mmjsonparse")
+ 20: # Parse RFCR424 structured data
+ 21: module(load="mmpstrucdata")
+ 22: 
+ 23: # Globals
+ 24: global(
+ 25:   parser.permitSlashInProgramName="on"
+ 26:   parser.escapeControlCharacterTab="off"
+ 27:   preserveFQDN="on"
+ 28:   maxMessageSize="65536"
+ 29:   action.reportSuspension="on"
+ 30:   senders.keepTrack="on"
+ 31:   senders.timeoutAfter="86400"
+ 32:   senders.reportGoneAway="on"
+ 33:   shutdown.enable.ctlc="on"
+ 34:   processInternalMessages="on"
+ 35: )
 ##^ expanding file: /etc/rsyslog.d/50-output_format.conf
   1: # Output templates
   2: # Built-in templates at https://www.rsyslog.com/doc/v8-stable/configuration/templates.html#reserved-template-names
@@ -257,283 +260,285 @@
   1: # Rules and actions to apply when a specific kind of input is received
   2: # Note extensive use of variable property types as per https://www.rsyslog.com/doc/master/rainerscript/variable_property_types.html
   3: 
-  4: # Customise the settings of the built-in RFC3164 to use extra options to better handle malformed messages
-  5: # - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
-  6: # - Avoid adding in a pre-pending space in the message field
-  7: parser(
-  8:   name="custom.rfc3164" type="pmrfc3164"
-  9:   force.tagEndingByColon="on"
- 10:   remove.msgFirstSpace="on"
- 11:   permit.squareBracketsInHostname="off"
- 12:   permit.slashesInHostname="on"
- 13:   permit.atSignsInHostname="off"
- 14: )
- 15: 
- 16: # Stats
- 17: ruleset(name="syslog_stats") {
- 18:   # TODO
- 19:   # - In future ommit setting these values and simply ommit from message when not relevant
- 20:   # - Needed for now due to explicit templating because of issues like https://github.com/rsyslog/rsyslog/issues/2873
- 21:   set $.syslog-relay!tls = "false";
- 22:   set $.syslog-relay!authenticated-client = "false";
- 23:   call central
- 24: }
- 25: 
- 26: # To count message input per source
- 27: # Note about reliablity of hostname and fromhost rsyslog properties
- 28: # - Can't always trust hostname 
- 29: #   - source can send malformed syslog headers
- 30: #   - $.hostname is sometimes used to correct for cases where something seems incorrect about the source hostname
- 31: #   - $fromhost might be a more reliable metric than $hostname for the above situation
- 32: # - Can't always trust fromhost
- 33: #   - SNAT might cause fromhost to have the IP of a network device and not the actual host sending the message
- 34: # So both hostname nor fromhost can have corner cases that make accounting for the true source inaccurate
- 35: # Filtering can affect the per message host count, e.g. more inputs than outputs
- 36: dyn_stats(name="msg_per_fromhost_remote_in_udp_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 37: dyn_stats(name="msg_per_fromhost_remote_in_tcp_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 38: dyn_stats(name="msg_per_fromhost_remote_in_tcp_secure_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 39: dyn_stats(name="msg_per_fromhost_remote_in_relp_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 40: dyn_stats(name="msg_per_fromhost_remote_in_relp_secure_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 41: dyn_stats(name="msg_per_fromhost_remote_in_relp_secure_client_auth_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 42: # To count messages processed at the start of the output ruleset (before output filtering)
- 43: dyn_stats(name="msg_per_fromhost" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
- 44: 
- 45: # Input related rulesets
- 46: # Input filter rules are placed in filter/*.conf and should be conditions that drop (stop) messages from being processed futher
- 47: 
- 48: ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
- 49:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_udp_pre_filter", $fromhost);
- 50:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 51:   if ($.inc_status != 0) then { 
- 52:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="DynStatsError")
- 53:   }
- 54:   set $.syslog-relay!tls = "false";
- 55:   set $.syslog-relay!authenticated-client = "false";
- 56:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  4: 
+  5: 
+  6: # Customise the settings of the built-in RFC3164 to use extra options to better handle malformed messages
+  7: # - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
+  8: # - Avoid adding in a pre-pending space in the message field
+  9: parser(
+ 10:   name="custom.rfc3164" type="pmrfc3164"
+ 11:   force.tagEndingByColon="on"
+ 12:   remove.msgFirstSpace="on"
+ 13:   permit.squareBracketsInHostname="off"
+ 14:   permit.slashesInHostname="on"
+ 15:   permit.atSignsInHostname="off"
+ 16: )
+ 17: 
+ 18: # Stats
+ 19: ruleset(name="syslog_stats") {
+ 20:   # TODO
+ 21:   # - In future ommit setting these values and simply ommit from message when not relevant
+ 22:   # - Needed for now due to explicit templating because of issues like https://github.com/rsyslog/rsyslog/issues/2873
+ 23:   set $.syslog-relay!tls = "false";
+ 24:   set $.syslog-relay!authenticated-client = "false";
+ 25:   call central
+ 26: }
+ 27: 
+ 28: # To count message input per source
+ 29: # Note about reliablity of hostname and fromhost rsyslog properties
+ 30: # - Can't always trust hostname 
+ 31: #   - source can send malformed syslog headers
+ 32: #   - $.hostname is sometimes used to correct for cases where something seems incorrect about the source hostname
+ 33: #   - $fromhost might be a more reliable metric than $hostname for the above situation
+ 34: # - Can't always trust fromhost
+ 35: #   - SNAT might cause fromhost to have the IP of a network device and not the actual host sending the message
+ 36: # So both hostname nor fromhost can have corner cases that make accounting for the true source inaccurate
+ 37: # Filtering can affect the per message host count, e.g. more inputs than outputs
+ 38: dyn_stats(name="msg_per_fromhost_remote_in_udp_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 39: dyn_stats(name="msg_per_fromhost_remote_in_tcp_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 40: dyn_stats(name="msg_per_fromhost_remote_in_tcp_secure_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 41: dyn_stats(name="msg_per_fromhost_remote_in_relp_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 42: dyn_stats(name="msg_per_fromhost_remote_in_relp_secure_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 43: dyn_stats(name="msg_per_fromhost_remote_in_relp_secure_client_auth_pre_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 44: # To count messages processed at the start of the output ruleset (before output filtering)
+ 45: dyn_stats(name="msg_per_fromhost" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 46: 
+ 47: # Input related rulesets
+ 48: # Input filter rules are placed in filter/*.conf and should be conditions that drop (stop) messages from being processed futher
+ 49: 
+ 50: ruleset(name="remote_in_udp" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
+ 51:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_udp_pre_filter", $fromhost);
+ 52:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 53:   if ($.inc_status != 0) then { 
+ 54:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 55:   }
+ 56:   set $.syslog-relay!tls = "false";
+ 57:   set $.syslog-relay!authenticated-client = "false";
+ 58:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
- 57:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_udp/*.conf
+ 59:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_udp/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_udp/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_udp/*.conf
- 58:   call central
- 59: }
- 60: 
- 61: ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
- 62:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_pre_filter", $fromhost);
- 63:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 64:   if ($.inc_status != 0) then { 
- 65:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 66:   }
- 67:   set $.syslog-relay!tls = "false";
- 68:   set $.syslog-relay!authenticated-client = "false";
- 69:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+ 60:   call central
+ 61: }
+ 62: 
+ 63: ruleset(name="remote_in_tcp" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
+ 64:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_pre_filter", $fromhost);
+ 65:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 66:   if ($.inc_status != 0) then { 
+ 67:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 68:   }
+ 69:   set $.syslog-relay!tls = "false";
+ 70:   set $.syslog-relay!authenticated-client = "false";
+ 71:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
- 70:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp/*.conf
+ 72:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp/*.conf
- 71:   call central
- 72: }
- 73: 
- 74: ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
- 75:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_secure_pre_filter", $fromhost);
- 76:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 77:   if ($.inc_status != 0) then { 
- 78:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 79:   }
- 80:   set $.syslog-relay!tls = "true";
- 81:   set $.syslog-relay!authenticated-client = "false";
- 82:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+ 73:   call central
+ 74: }
+ 75: 
+ 76: ruleset(name="remote_in_tcp_secure" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
+ 77:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_secure_pre_filter", $fromhost);
+ 78:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 79:   if ($.inc_status != 0) then { 
+ 80:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 81:   }
+ 82:   set $.syslog-relay!tls = "true";
+ 83:   set $.syslog-relay!authenticated-client = "false";
+ 84:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
- 83:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp_secure/*.conf
+ 85:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp_secure/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp_secure/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/remote_in_tcp_secure/*.conf
- 84:   call central
- 85: }
- 86: 
- 87: ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
- 88:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_pre_filter", $fromhost);
- 89:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 90:   if ($.inc_status != 0) then { 
- 91:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 92:   }
- 93:   set $.syslog-relay!tls = "false";
- 94:   set $.syslog-relay!authenticated-client = "false";
- 95:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+ 86:   call central
+ 87: }
+ 88: 
+ 89: ruleset(name="remote_in_relp" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
+ 90:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_pre_filter", $fromhost);
+ 91:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 92:   if ($.inc_status != 0) then { 
+ 93:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 94:   }
+ 95:   set $.syslog-relay!tls = "false";
+ 96:   set $.syslog-relay!authenticated-client = "false";
+ 97:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
- 96:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp/*.conf
+ 98:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp/*.conf
- 97:   call central
- 98: }
- 99: 
-100: # NB: rsyslog limitation seems to block RELP TLS without client authentication
-101: ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
-102:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_pre_filter", $fromhost);
-103:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
-104:   if ($.inc_status != 0) then { 
-105:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
-106:   }
-107:   set $.syslog-relay!tls = "true";
-108:   set $.syslog-relay!authenticated-client = "false";
-109:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+ 99:   call central
+100: }
+101: 
+102: # NB: rsyslog limitation seems to block RELP TLS without client authentication
+103: ruleset(name="remote_in_relp_secure" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
+104:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_pre_filter", $fromhost);
+105:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+106:   if ($.inc_status != 0) then { 
+107:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+108:   }
+109:   set $.syslog-relay!tls = "true";
+110:   set $.syslog-relay!authenticated-client = "false";
+111:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
-110:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure/*.conf
+112:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure/*.conf
-111:   call central
-112: }
-113: 
-114: ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
-115:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_client_auth_pre_filter", $fromhost);
-116:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
-117:   if ($.inc_status != 0) then { 
-118:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
-119:   }
-120:   set $.syslog-relay!tls = "true";
-121:   set $.syslog-relay!authenticated-client = "true";
-122:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+113:   call central
+114: }
+115: 
+116: ruleset(name="remote_in_relp_secure_client_auth" parser=["rsyslog.rfc5424", "rsyslog.aixforwardedfrom", "custom.rfc3164"]) {
+117:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_client_auth_pre_filter", $fromhost);
+118:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+119:   if ($.inc_status != 0) then { 
+120:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+121:   }
+122:   set $.syslog-relay!tls = "true";
+123:   set $.syslog-relay!authenticated-client = "true";
+124:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
-123:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure_client_auth/*.conf
+125:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure_client_auth/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure_client_auth/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/input/remote_in_relp_secure_client_auth/*.conf
-124:   call central
-125: }
-126: 
-127: # Ouptut rulesets
-128: # Rules to output and forward / relay messages placed in output/*.conf and called below
-129: 
-130: ruleset(
-131:   name="central"
-132:   # queue config
-133:   queue.type="FixedArray"
-134:   queue.size="131072"
-135:   queue.dequeueBatchSize="2048"
-136:   queue.minDequeueBatchSize="256"
-137:   queue.minDequeueBatchSize.timeout="500"
-138:   queue.workerThreads="8"
-139:   queue.workerThreadMinimumMessages="8192"
-140: ) {
-141: 
-142:   set $.inc_status = dyn_inc("msg_per_fromhost", $fromhost);
-143:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
-144:   if ($.inc_status != 0) then { 
-145:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
-146:   }
-147: 
-148:   # Add metadata about how the message was received and compensate for malformed messages
-149:   # TODO: Copy and create properties in a nested metadata json subelement called "syslog-relay"
-150:   # Note:
-151:   # - Copying properties is less efficient.
-152:   # - But this could simplify manually constructing JSON output with complex templates...
-153:   # - `$!` can be output without needing to know exactly which JSON fields are present or not allowing more dynamic attributes for messages.
-154:   # There are issues formatting nested JSON output and items commented out due to limitations:
-155:   # - Instead, explicit / manual templating for JSON is the current workaround.
-156:   # - See https://github.com/rsyslog/rsyslog/issues/2873
-157:   # - See https://github.com/rsyslog/rsyslog/issues/2827
-158:   # Commented out due to above limitations
-159:   #set $.syslog-relay!timegenerated = format_time($timegenerated, "date-rfc3339");
-160:   #set $.syslog-relay!fromhost = $fromhost;
-161:   #set $.syslog-relay!fromhost-ip = $fromhost-ip;
-162:   #set $.syslog-relay!myhostname = $$myhostname;
-163:   #set $.syslog-relay!inputname = $inputname;
-164:   if ($protocol-version == "1") then {
-165:     # When rsyslog parses a message as version 1 / RFC5424, it implies parsing worked, but sometimes not all fields can be parsed.
-166:     set $.syslog-relay!pri-valid = "true";
-167:     # Detect malformed RFC5424 messages with bad timestamps which cause the 'programname' to be set as an empty string.
-168:     # E.g. '<14>1 2017-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space'
-169:     if ($programname == "") then {
-170:       set $.syslog-relay!format = "RFC5424_malformed";
-171:       set $.syslog-relay!header-valid = "false";
-172:     } else {
-173:       set $.syslog-relay!format = "RFC5424";
-174:       set $.syslog-relay!header-valid = "true";
-175:     }
-176:     # If rsyslog can't parse the timestamp or hostname for RFC5424, it seems to populate $hostname automatically from $fromhost
-177:     set $.hostname = $hostname;
-178:   } else if ($app-name == "rsyslogd-pstats" and ($fromhost-ip == "127.0.0.1" or $fromhost-ip == "::1" )) then {
-179:       # Catch corner case where rsyslog impstats produces valid header properties, but the rawmsg field doesn't include the standard syslog header because it's internal
-180:       set $.syslog-relay!format = "NA_internal_rsyslogd-pstats";
-181:       set $.syslog-relay!pri-valid = "false";
-182:       set $.syslog-relay!header-valid = "false";
-183:       set $.hostname = $hostname;
-184:   } else {
-185:     # assume protocol-version == 0
-186:     # check priority
-187:     # 0-191 are valid priority encodings, set to 192 > 191 to indicate invalid
-188:     set $.pri-test = cnum(re_extract($rawmsg, "^<([0-9]{1,3})>", 0, 0, "192"));
-189:     if ($.pri-test > 191) then {
-190:       set $.syslog-relay!format = "RFC3164_malformed";
-191:       set $.syslog-relay!pri-valid = "false";
-192:       set $.hostname = $fromhost;
-193:     } else {
-194:       set $.syslog-relay!pri-valid = "true";
-195:     }
-196:     # Check syslog header (date and hostname)
-197:     # - See https://github.com/rsyslog/rsyslog/issues/1789
-198:     # - Regex is costly, so skim for 'Mmm' pattern of date (but dont match to actual months)
-199:     # - Also use a trick to see if rsyslog assumed the first word was the hostname after failing to parse a syslog header date
-200:     if (not re_match($rawmsg-after-pri, "^[A-Z][a-z]{2}") or $rawmsg-after-pri startswith $hostname) then {
-201:       # rsyslog assumed first word of malformed message was the hostname, so RFC3164 conventions for timestamp and hostname not followed
-202:       set $.syslog-relay!format = "RFC3164_malformed";
-203:       set $.syslog-relay!header-valid = "false";
-204:       set $.hostname = $fromhost;
-205:       # If we wanted to correct a misaligned $msg due to a bad header...
-206:       #set $.msg = $rawmsg-after-pri;
-207:     } else {
-208:       set $.syslog-relay!format = "RFC3164";
-209:       # above checks not 100% precise to avoid perfomance cost, so only reasonably confident a good header was found
-210:       set $.syslog-relay!header-valid = "true";
-211:       set $.hostname = $hostname;
-212:       #set $.msg = $msg;
-213:     }
-214:     # TODO check for valid app-name and processs ID values?
-215:   }
-216: 
-217:   # Parse RFC5424 structured elements into JSON
-218:   if ($structured-data == "-") then {
-219:     # !rfc5424-sd won't be created if there's no structured data, but a template might expect it to exist. See https://github.com/rsyslog/rsyslog/issues/1891
-220:     # Note rsyslog json properties don't yet support setting a proper JSON null value, so use a string
-221:     set $!rfc5424-sd = "null";
-222:   } else {
-223:     # jsonRoot doesn't change the name of where fields are parsed to. It just moves where it is put. See https://github.com/rsyslog/rsyslog/issues/1262
-224:     #action(type="mmpstrucdata" name="output_mmpstrucdata" jsonRoot="$!structured-data")
-225:     action(type="mmpstrucdata" name="output_mmpstrucdata")
-226:     # Guard against $!rfc5424-sd not existing if there was a parse failure
-227:     # Note, rsyslog has not yet got an exits() function, so workaround is to check for a blank string: https://github.com/rsyslog/rsyslog/issues/970
-228:     if ($!rfc5424-sd == "") then {
-229:       set $!rfc5424-sd = "null";
-230:       set $.syslog-relay!format = "RFC5424_malformed";
-231:     }
-232:   }
-233: 
-234:   # Support trying to decode msg part as JSON (hopefully fails fast when not JSON)
-235:   # - nullify $!msg-json if there is a failure
-236:   # - null is represented as the literal string "null" and requires care with templates to output as a true JSON null datatype
-237:   # By default, require the @cee cookie
-238:   action(type="mmjsonparse" name="mmjsonparse_cee")
-239:   if $parsesuccess == "OK" then {
-240:     set $.syslog-relay!json-msg-parsed = "true";
-241:     continue
-242:   } else {
-243:     # Also try parsing message as JSON without the @cee cookie
-244:     # - mmjsonparse will fail to decode messages that have both structured data elements and JSON without a @cee cookie
-245:     action(type="mmjsonparse" name="mmjsonparse_without_cee" cookie="")
-246:     if $parsesuccess == "OK" then {
-247:       set $.syslog-relay!json-msg-parsed = "true";
-248:     } else {
-249:       # remove duplicated $!msg field (will use $msg in templates instead)
-250:       unset $!msg;
-251:       set $.syslog-relay!json-msg-parsed = "false";
-252:     }
-253:   }
-254: 
-255:   # global output filter
-256:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
+126:   call central
+127: }
+128: 
+129: # Ouptut rulesets
+130: # Rules to output and forward / relay messages placed in output/*.conf and called below
+131: 
+132: ruleset(
+133:   name="central"
+134:   # queue config
+135:   queue.type="FixedArray"
+136:   queue.size="131072"
+137:   queue.dequeueBatchSize="2048"
+138:   queue.minDequeueBatchSize="256"
+139:   queue.minDequeueBatchSize.timeout="500"
+140:   queue.workerThreads="8"
+141:   queue.workerThreadMinimumMessages="8192"
+142: ) {
+143: 
+144:   set $.inc_status = dyn_inc("msg_per_fromhost", $fromhost);
+145:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+146:   if ($.inc_status != 0) then { 
+147:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+148:   }
+149: 
+150:   # Add metadata about how the message was received and compensate for malformed messages
+151:   # TODO: Copy and create properties in a nested metadata json subelement called "syslog-relay"
+152:   # Note:
+153:   # - Copying properties is less efficient.
+154:   # - But this could simplify manually constructing JSON output with complex templates...
+155:   # - `$!` can be output without needing to know exactly which JSON fields are present or not allowing more dynamic attributes for messages.
+156:   # There are issues formatting nested JSON output and items commented out due to limitations:
+157:   # - Instead, explicit / manual templating for JSON is the current workaround.
+158:   # - See https://github.com/rsyslog/rsyslog/issues/2873
+159:   # - See https://github.com/rsyslog/rsyslog/issues/2827
+160:   # Commented out due to above limitations
+161:   #set $.syslog-relay!timegenerated = format_time($timegenerated, "date-rfc3339");
+162:   #set $.syslog-relay!fromhost = $fromhost;
+163:   #set $.syslog-relay!fromhost-ip = $fromhost-ip;
+164:   #set $.syslog-relay!myhostname = $$myhostname;
+165:   #set $.syslog-relay!inputname = $inputname;
+166:   if ($protocol-version == "1") then {
+167:     # When rsyslog parses a message as version 1 / RFC5424, it implies parsing worked, but sometimes not all fields can be parsed.
+168:     set $.syslog-relay!pri-valid = "true";
+169:     # Detect malformed RFC5424 messages with bad timestamps which cause the 'programname' to be set as an empty string.
+170:     # E.g. '<14>1 2017-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space'
+171:     if ($programname == "") then {
+172:       set $.syslog-relay!format = "RFC5424_malformed";
+173:       set $.syslog-relay!header-valid = "false";
+174:     } else {
+175:       set $.syslog-relay!format = "RFC5424";
+176:       set $.syslog-relay!header-valid = "true";
+177:     }
+178:     # If rsyslog can't parse the timestamp or hostname for RFC5424, it seems to populate $hostname automatically from $fromhost
+179:     set $.hostname = $hostname;
+180:   } else if ($app-name == "rsyslogd-pstats" and ($fromhost-ip == "127.0.0.1" or $fromhost-ip == "::1" )) then {
+181:       # Catch corner case where rsyslog impstats produces valid header properties, but the rawmsg field doesn't include the standard syslog header because it's internal
+182:       set $.syslog-relay!format = "NA_internal_rsyslogd-pstats";
+183:       set $.syslog-relay!pri-valid = "false";
+184:       set $.syslog-relay!header-valid = "false";
+185:       set $.hostname = $hostname;
+186:   } else {
+187:     # assume protocol-version == 0
+188:     # check priority
+189:     # 0-191 are valid priority encodings, set to 192 > 191 to indicate invalid
+190:     set $.pri-test = cnum(re_extract($rawmsg, "^<([0-9]{1,3})>", 0, 0, "192"));
+191:     if ($.pri-test > 191) then {
+192:       set $.syslog-relay!format = "RFC3164_malformed";
+193:       set $.syslog-relay!pri-valid = "false";
+194:       set $.hostname = $fromhost;
+195:     } else {
+196:       set $.syslog-relay!pri-valid = "true";
+197:     }
+198:     # Check syslog header (date and hostname)
+199:     # - See https://github.com/rsyslog/rsyslog/issues/1789
+200:     # - Regex is costly, so skim for 'Mmm' pattern of date (but dont match to actual months)
+201:     # - Also use a trick to see if rsyslog assumed the first word was the hostname after failing to parse a syslog header date
+202:     if (not re_match($rawmsg-after-pri, "^[A-Z][a-z]{2}") or $rawmsg-after-pri startswith $hostname) then {
+203:       # rsyslog assumed first word of malformed message was the hostname, so RFC3164 conventions for timestamp and hostname not followed
+204:       set $.syslog-relay!format = "RFC3164_malformed";
+205:       set $.syslog-relay!header-valid = "false";
+206:       set $.hostname = $fromhost;
+207:       # If we wanted to correct a misaligned $msg due to a bad header...
+208:       #set $.msg = $rawmsg-after-pri;
+209:     } else {
+210:       set $.syslog-relay!format = "RFC3164";
+211:       # above checks not 100% precise to avoid perfomance cost, so only reasonably confident a good header was found
+212:       set $.syslog-relay!header-valid = "true";
+213:       set $.hostname = $hostname;
+214:       #set $.msg = $msg;
+215:     }
+216:     # TODO check for valid app-name and processs ID values?
+217:   }
+218: 
+219:   # Parse RFC5424 structured elements into JSON
+220:   if ($structured-data == "-") then {
+221:     # !rfc5424-sd won't be created if there's no structured data, but a template might expect it to exist. See https://github.com/rsyslog/rsyslog/issues/1891
+222:     # Note rsyslog json properties don't yet support setting a proper JSON null value, so use a string
+223:     set $!rfc5424-sd = "null";
+224:   } else {
+225:     # jsonRoot doesn't change the name of where fields are parsed to. It just moves where it is put. See https://github.com/rsyslog/rsyslog/issues/1262
+226:     #action(type="mmpstrucdata" name="output_mmpstrucdata" jsonRoot="$!structured-data")
+227:     action(type="mmpstrucdata" name="output_mmpstrucdata")
+228:     # Guard against $!rfc5424-sd not existing if there was a parse failure
+229:     # Note, rsyslog has not yet got an exits() function, so workaround is to check for a blank string: https://github.com/rsyslog/rsyslog/issues/970
+230:     if ($!rfc5424-sd == "") then {
+231:       set $!rfc5424-sd = "null";
+232:       set $.syslog-relay!format = "RFC5424_malformed";
+233:     }
+234:   }
+235: 
+236:   # Support trying to decode msg part as JSON (hopefully fails fast when not JSON)
+237:   # - nullify $!msg-json if there is a failure
+238:   # - null is represented as the literal string "null" and requires care with templates to output as a true JSON null datatype
+239:   # By default, require the @cee cookie
+240:   action(type="mmjsonparse" name="mmjsonparse_cee")
+241:   if $parsesuccess == "OK" then {
+242:     set $.syslog-relay!json-msg-parsed = "true";
+243:     continue
+244:   } else {
+245:     # Also try parsing message as JSON without the @cee cookie
+246:     # - mmjsonparse will fail to decode messages that have both structured data elements and JSON without a @cee cookie
+247:     action(type="mmjsonparse" name="mmjsonparse_without_cee" cookie="")
+248:     if $parsesuccess == "OK" then {
+249:       set $.syslog-relay!json-msg-parsed = "true";
+250:     } else {
+251:       # remove duplicated $!msg field (will use $msg in templates instead)
+252:       unset $!msg;
+253:       set $.syslog-relay!json-msg-parsed = "false";
+254:     }
+255:   }
+256: 
+257:   # global output filter
+258:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
 ##^ expanding file: /etc/rsyslog.d/output/filters/exclude_debug.conf
   1: # don't permit debug level logging
@@ -542,17 +547,18 @@
   1: # tests white-list approach where this regex matches everything
   2: if (not re_match($msg, ".*")) then { stop }
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
-257: 
-258:   # Standard outputs "pre-bundled
-259:   call out_file
-260:   call fwd_kafka
-261:   call fwd_syslog
-262:   call fwd_json
-263: 
-264:   # Add extra output ruleset call for extra conf
-265:   call fwd_extra
+259: 
+260:   # Standard outputs "pre-bundled
+261:   call out_file
+262:   call fwd_kafka
+263:   call fwd_syslog
+264:   call fwd_syslog_udp_spoof
+265:   call fwd_json
 266: 
-267: }
+267:   # Add extra output ruleset call for extra conf
+268:   call fwd_extra
+269: 
+270: }
 ##> end of expand directive: $IncludeConfig /etc/rsyslog.d/*.conf
  13: $IncludeConfig /etc/rsyslog.d/input/*.conf
 ##< start of include directive: $IncludeConfig /etc/rsyslog.d/input/*.conf
@@ -721,9 +727,9 @@
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/out_file/*.conf
  16: 
  17:   set $.inc_status = dyn_inc("msg_per_fromhost_out_file_post_filter", $fromhost);
- 18:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 18:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
  19:   if ($.inc_status != 0) then { 
- 20:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+ 20:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
  21:   }
  22: 
  23:   # In the simple case, we use the hostname as the filename and place all logs in that file
@@ -747,40 +753,147 @@
  41:   
  42: }##^ expanding file: /etc/rsyslog.d/output/81-fwd_kafka.conf
   1: # Kafka output (if enabled, else blank)
-  2: module(load="omkafka")
+  2: 
   3: 
-  4: # Dynamic stats for output
-  5: dyn_stats(name="msg_per_fromhost_fwd_kafka_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
-  6: 
-  7: ruleset(name="fwd_kafka")
-  8: {
-  9:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_kafka/*.conf
+  4: module(load="omkafka")
+  5: 
+  6: # Dynamic stats for output
+  7: dyn_stats(name="msg_per_fromhost_fwd_kafka_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+  8: 
+  9: ruleset(name="fwd_kafka")
+ 10: {
+ 11:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_kafka/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_kafka/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_kafka/*.conf
+ 12: 
+ 13:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_kafka_post_filter", $fromhost);
+ 14:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 15:   if ($.inc_status != 0) then {
+ 16:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+ 17:   }
+ 18: 
+ 19:   action(
+ 20:     name="fwd_kafka_topic_test_syslog"
+ 21:     type="omkafka"
+ 22:     broker=["test_kafka:9092"]
+ 23:     confParam=["batch.num.messages=1", "queue.buffering.max.ms=100", "sasl.mechanisms=PLAIN", "sasl.username=test", "sasl.password=test-secret", "security.protocol=sasl_ssl", "ssl.ca.location=/usr/local/etc/pki/test/test_ca.cert.pem", "ssl.key.location=/usr/local/etc/pki/test/test_syslog_server.key.pem", "ssl.certificate.location=/usr/local/etc/pki/test/test_syslog_server.cert.pem"]
+ 24:     topic="test_syslog"
+ 25:     dynatopic="off"
+ 26:     partitions.auto="on"
+ 27:     
+ 28:     resubmitOnFailure="on"
+ 29:     keepFailedMessages="on"
+ 30:     failedMsgFile="/var/lib/rsyslog/kafka_failed.msg"
+ 31:     template="TmplJSON"
+ 32:     action.resumeRetryCount = "-1"
+ 33:     # queue config
+ 34:     queue.type="LinkedList"
+ 35:     queue.filename="fwd_kafka"
+ 36:     # queue peristance and size limit
+ 37:     queue.maxDiskSpace="1073741824"
+ 38:     queue.size="1048576"
+ 39:     queue.discardMark="838860"
+ 40:     queue.discardSeverity="6"
+ 41:     queue.checkpointInterval="8192"
+ 42:     queue.saveOnShutdown="on"
+ 43:     # queue threads and batching
+ 44:     queue.dequeueBatchSize="1024"
+ 45:     queue.minDequeueBatchSize="128"
+ 46:     queue.minDequeueBatchSize.timeout="500"
+ 47:     queue.workerThreads="4"
+ 48:     queue.workerThreadMinimumMessages="8192"
+ 49:   )
+ 50: }
+##^ expanding file: /etc/rsyslog.d/output/82-fwd_syslog.conf
+  1: # Syslog forwarding output (if enabled, else blank)
+  2: 
+  3: 
+  4: # Standard syslog forwarding. 
+  5: # omfwd module is loaded by deafault / built-in
+  6: 
+  7: # Dynamic stats for output
+  8: dyn_stats(name="msg_per_fromhost_fwd_syslog_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+  9: 
+ 10: ruleset(name="fwd_syslog")
+ 11: {
+ 12:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
+  1: # tests black-list approach
+  2: if $msg contains "foobar" then { stop }
+##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+ 13: 
+ 14:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_syslog_post_filter", $fromhost);
+ 15:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 16:   if ($.inc_status != 0) then { 
+ 17:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 18:   }
+ 19: 
+ 20:   action(
+ 21:     name="fwd_syslog_target_test_syslog_relay"
+ 22:     type="omfwd"
+ 23:     Target="test_syslog_relay"
+ 24:     Port="10514"
+ 25:     Protocol="tcp"
+ 26:     template="TmplRFC5424Meta"
+ 27:     action.resumeRetryCount = "-1"
+ 28:     # queue config 
+ 29:     queue.type="LinkedList"
+ 30:     queue.filename="fwd_syslog"
+ 31:     # queue peristance and size limit
+ 32:     queue.maxDiskSpace="1073741824"
+ 33:     queue.size="1048576"
+ 34:     queue.discardMark="838860"
+ 35:     queue.discardSeverity="6"
+ 36:     queue.checkpointInterval="8192"
+ 37:     queue.saveOnShutdown="on"
+ 38:     # queue threads and batching
+ 39:     queue.dequeueBatchSize="1024"
+ 40:     queue.minDequeueBatchSize="128"
+ 41:     queue.minDequeueBatchSize.timeout="500"
+ 42:     queue.workerThreads="4"
+ 43:     queue.workerThreadMinimumMessages="8192"
+ 44:   )
+ 45: }
+##^ expanding file: /etc/rsyslog.d/output/83-fwd_syslog_udp_spoof.conf
+  1: 
+  2: # Special UDP syslog forwarding output relayed with the origin log source IP address spoofed (if enabled, else blank)
+  3: 
+  4: 
+  5: # Useful with downstream systems that don't process the syslog header and assume the network source IP is the original host.
+  6: 
+  7: Module (
+  8:   load="omudpspoof"
+  9: )
  10: 
- 11:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_kafka_post_filter", $fromhost);
- 12:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 13:   if ($.inc_status != 0) then {
- 14:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 15:   }
- 16: 
- 17:   action(
- 18:     name="fwd_kafka_topic_test_syslog"
- 19:     type="omkafka"
- 20:     broker=["test_kafka:9092"]
- 21:     confParam=["batch.num.messages=1", "queue.buffering.max.ms=100", "sasl.mechanisms=PLAIN", "sasl.username=test", "sasl.password=test-secret", "security.protocol=sasl_ssl", "ssl.ca.location=/usr/local/etc/pki/test/test_ca.cert.pem", "ssl.key.location=/usr/local/etc/pki/test/test_syslog_server.key.pem", "ssl.certificate.location=/usr/local/etc/pki/test/test_syslog_server.cert.pem"]
- 22:     topic="test_syslog"
- 23:     dynatopic="off"
- 24:     partitions.auto="on"
- 25:     
- 26:     resubmitOnFailure="on"
- 27:     keepFailedMessages="on"
- 28:     failedMsgFile="/var/lib/rsyslog/kafka_failed.msg"
- 29:     template="TmplJSON"
+ 11: # Dynamic stats for output
+ 12: dyn_stats(name="msg_per_fromhost_omudpspoof_syslog_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+ 13: 
+ 14: ruleset(name="fwd_syslog_udp_spoof")
+ 15: {
+ 16:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
+  1: # tests black-list approach
+  2: if $msg contains "foobar" then { stop }
+##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
+ 17: 
+ 18:   set $.inc_status = dyn_inc("msg_per_fromhost_omudpspoof_syslog_post_filter", $fromhost);
+ 19:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 20:   if ($.inc_status != 0) then {
+ 21:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+ 22:   }
+ 23: 
+ 24:   action(
+ 25:     name="fwd_syslog_target_test_syslog_relay_udp_spoof"
+ 26:     type="omudpspoof"
+ 27:     Target="test_syslog_relay_udp_spoof"
+ 28:     Port="10514"
+ 29:     template="TmplRFC5424Meta"
  30:     action.resumeRetryCount = "-1"
- 31:     # queue config
+ 31:     # queue config 
  32:     queue.type="LinkedList"
- 33:     queue.filename="fwd_kafka"
+ 33:     queue.filename="fwd_syslog_omudpspoof"
  34:     # queue peristance and size limit
  35:     queue.maxDiskSpace="1073741824"
  36:     queue.size="1048576"
@@ -796,101 +909,55 @@
  46:     queue.workerThreadMinimumMessages="8192"
  47:   )
  48: }
-##^ expanding file: /etc/rsyslog.d/output/82-fwd_syslog.conf
-  1: # Syslog output (if enabled, else blank)
-  2: # omfwd module is loaded by deafault / built-in
-  3: 
-  4: # Dynamic stats for output
-  5: dyn_stats(name="msg_per_fromhost_fwd_syslog_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
-  6: 
-  7: ruleset(name="fwd_syslog")
-  8: {
-  9:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
-##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
-##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
-  1: # tests black-list approach
-  2: if $msg contains "foobar" then { stop }
-##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
- 10: 
- 11:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_syslog_post_filter", $fromhost);
- 12:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 13:   if ($.inc_status != 0) then {
- 14:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 15:   }
- 16: 
- 17:   action(
- 18:     name="fwd_syslog_target_test_syslog_relay"
- 19:     type="omfwd"
- 20:     Target="test_syslog_relay"
- 21:     Port="10514"
- 22:     Protocol="tcp"
- 23:     template="TmplRFC5424Meta"
- 24:     action.resumeRetryCount = "-1"
- 25:     # queue config 
- 26:     queue.type="LinkedList"
- 27:     queue.filename="fwd_syslog"
- 28:     # queue peristance and size limit
- 29:     queue.maxDiskSpace="1073741824"
- 30:     queue.size="1048576"
- 31:     queue.discardMark="838860"
- 32:     queue.discardSeverity="6"
- 33:     queue.checkpointInterval="8192"
- 34:     queue.saveOnShutdown="on"
- 35:     # queue threads and batching
- 36:     queue.dequeueBatchSize="1024"
- 37:     queue.minDequeueBatchSize="128"
- 38:     queue.minDequeueBatchSize.timeout="500"
- 39:     queue.workerThreads="4"
- 40:     queue.workerThreadMinimumMessages="8192"
- 41:   )
- 42: }
-##^ expanding file: /etc/rsyslog.d/output/83-fwd_json.conf
+##^ expanding file: /etc/rsyslog.d/output/84-fwd_json.conf
   1: # JSON output (if enabled, else blank)
-  2: # omfwd module is loaded by deafault / built-in
+  2: 
   3: 
-  4: # Dynamic stats for output
-  5: dyn_stats(name="msg_per_fromhost_fwd_json_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
-  6: 
-  7: ruleset(name="fwd_json")
-  8: {
-  9:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_json/*.conf
+  4: # omfwd module is loaded by deafault / built-in
+  5: 
+  6: # Dynamic stats for output
+  7: dyn_stats(name="msg_per_fromhost_fwd_json_post_filter" resettable="on" maxCardinality="10000" unusedMetricLife="86400" )
+  8: 
+  9: ruleset(name="fwd_json")
+ 10: {
+ 11:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_json/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_json/*.conf
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_json/*.conf
- 10: 
- 11:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_json_post_filter", $fromhost);
- 12:   # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 13:   if ($.inc_status != 0) then {
- 14:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 15:   }
- 16: 
- 17:   action(
- 18:     name="fwd_json_target_test_json_relay"
- 19:     type="omfwd"
- 20:     Target="test_json_relay"
- 21:     Port="15000"
- 22:     Protocol="tcp"
- 23:     template="TmplJSONRawMsg"
- 24:     action.resumeRetryCount = "-1"
- 25:     # often last message is lost when a connection breaks
- 26:     resendLastMSGOnReconnect="on"
- 27:     # queue config
- 28:     queue.type = "LinkedList"
- 29:     queue.filename="fwd_json"
- 30:     # queue peristance and size limit
- 31:     queue.maxDiskSpace="1073741824"
- 32:     queue.size="1048576"
- 33:     queue.discardMark="838860"
- 34:     queue.discardSeverity="6"
- 35:     queue.checkpointInterval="8192"
- 36:     queue.saveOnShutdown="on"
- 37:     # queue threads and batching
- 38:     queue.dequeueBatchSize="1024"
- 39:     queue.minDequeueBatchSize="128"
- 40:     queue.minDequeueBatchSize.timeout="500"
- 41:     queue.workerThreads="4"
- 42:     queue.workerThreadMinimumMessages="8192"
- 43:   )
- 44: }
+ 12: 
+ 13:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_json_post_filter", $fromhost);
+ 14:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+ 15:   if ($.inc_status != 0) then { 
+ 16:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 17:   }
+ 18: 
+ 19:   action(
+ 20:     name="fwd_json_target_test_json_relay"
+ 21:     type="omfwd"
+ 22:     Target="test_json_relay"
+ 23:     Port="15000"
+ 24:     Protocol="tcp"
+ 25:     template="TmplJSONRawMsg"
+ 26:     action.resumeRetryCount = "-1"
+ 27:     # often last message is lost when a connection breaks
+ 28:     resendLastMSGOnReconnect="on"
+ 29:     # queue config
+ 30:     queue.type = "LinkedList"
+ 31:     queue.filename="fwd_json"
+ 32:     # queue peristance and size limit
+ 33:     queue.maxDiskSpace="1073741824"
+ 34:     queue.size="1048576"
+ 35:     queue.discardMark="838860"
+ 36:     queue.discardSeverity="6"
+ 37:     queue.checkpointInterval="8192"
+ 38:     queue.saveOnShutdown="on"
+ 39:     # queue threads and batching
+ 40:     queue.dequeueBatchSize="1024"
+ 41:     queue.minDequeueBatchSize="128"
+ 42:     queue.minDequeueBatchSize.timeout="500"
+ 43:     queue.workerThreads="4"
+ 44:     queue.workerThreadMinimumMessages="8192"
+ 45:   )
+ 46: }
 ##> end of expand directive: $IncludeConfig /etc/rsyslog.d/output/*.conf
  15: 
  16: # Optional extra custom config to inlcude from volume via /etc/rsyslog.d/extra
@@ -926,7 +993,7 @@
  27: }
  28: 
  29: # Integrated extra output
- 30: # - rsyslog_call_fwd_extra_rule=true must be set
+ 30: # - env var rsyslog_call_fwd_extra_rule=true must be set
  31: # - Then /etc/rsyslog.d/60-output_format.conf should call this ruleset after the other pre-defined outputs
  32: # - Expects the ruleset with name `fwd_extra` to be defined in a file in /etc/rsyslog.d/extra/ and rsyslog will fail to start if it is missing
  33: # - Will be affected by global output filters in /etc/rsyslog.d/output/filters/*

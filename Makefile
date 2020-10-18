@@ -42,17 +42,35 @@ clean_test:
 
 # A failed test won't run the next command to clean, so clean before just in case
 # Assume sudo might be used due to the security risk of adding a normal user to the docker group, so chown the config check files copied into the test dir
-test: clean_test build
-	$(info ## test.)
-	docker-compose -f docker-compose.test.yml run sut
-	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
-	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 
 test_config: clean_test
 	$(info ## test config.)
 	docker-compose -f docker-compose.test.yml run test_syslog_server_config
 	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
+
+test: clean_test build
+	$(info ## test.)
+	docker-compose -f docker-compose.test.yml run sut
+	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
+	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
+
+test_debug_fail: clean_test build
+	$(info ## test and stop on first failure along with triggering the python debugger.)
+	docker-compose -f docker-compose.test.yml run sut behave --define BEHAVE_DEBUG_ON_ERROR --stop --no-capture --no-capture-stderr --no-logcapture --format plain --logging-level debug behave/features
+	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
+	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
+
+test_wip: clean_test build
+	$(info ## test and stop on first failure along with triggering the python debugger.)
+	docker-compose -f docker-compose.test.yml run sut behave  --define BEHAVE_DEBUG_ON_ERROR --wip --logging-level debug --stop behave/features
+	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
+	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
+
+test_no_teardown: clean_test build
+	$(info ## test.)
+	docker-compose -f docker-compose.test.yml run sut
+	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 
 #push: test
 #	docker-compose -f docker-compose.yml push

@@ -50,6 +50,7 @@ RUN yum --setopt=timeout=120 -y update && \
   rsyslog-relp-${RSYSLOG_VERSION} \
   rsyslog-pmciscoios-${RSYSLOG_VERSION} \
   rsyslog-mmjsonparse-${RSYSLOG_VERSION} \
+  rsyslog-udpspoof-${RSYSLOG_VERSION} \
   lsof \
   && yum clean all
 RUN rm -rf /etc/rsyslog.d/ \
@@ -106,6 +107,8 @@ ENV rsyslog_global_ca_file='/etc/pki/tls/certs/ca-bundle.crt' \
 # - TCP socket backlog is increase to try avoid failed TCP open connection errors (only applies to imptcp).
 # - imtcp is used for TCP with TLS while imptcp is used for TCP without TLS.
 # - Batch sizes and threads are increased with the aim of handling higher remote server throughput.
+# - A 'central' queue is based on a fixed array in-memory queue, so take care when increasing rsyslog_global_maxMessageSize
+# - 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode does not apply to RELP, only TCP TLS
 ENV rsyslog_global_maxMessageSize=65536 \
   rsyslog_parser='["rsyslog.rfc5424", "custom.rfc3164"]' \
   rsyslog_pmrfc3164_force_tagEndingByColon='off' \
@@ -121,18 +124,6 @@ ENV rsyslog_global_maxMessageSize=65536 \
   rsyslog_mmjsonparse_without_cee='off' \
   rsyslog_support_metadata_formats='off' \
   rsyslog_input_filtering_enabled='on' \
-  rsyslog_impstats='on' \
-  rsyslog_module_impstats_interval=60 \
-  rsyslog_module_impstats_resetCounters='on' \
-  rsyslog_module_impstats_format='cee' \
-  rsyslog_impstats_ruleset='syslog_stats' \
-  rsyslog_dyn_stats='on' \
-  rsyslog_dyn_stats_maxCardinality=10000 \
-  rsyslog_dyn_stats_unusedMetricLife=86400 \
-  rsyslog_global_action_reportSuspension='on' \
-  rsyslog_global_senders_keepTrack='on' \
-  rsyslog_global_senders_timeoutAfter=86400 \
-  rsyslog_global_senders_reportGoneAway='on' \
   rsyslog_module_imudp_RcvBufSize=0 \
   rsyslog_module_imudp_BatchSize=128 \
   rsyslog_module_imudp_threads=2 \
@@ -159,9 +150,31 @@ ENV rsyslog_global_maxMessageSize=65536 \
   rsyslog_module_imrelp_KeepAlive='off' \
   rsyslog_module_imrelp_authMode='certvalid' \
   rsyslog_tls_permittedPeer='["*"]'
-# Note:
-# - A 'central' queue is based on a fixed array in-memory queue, so take care when increasing rsyslog_global_maxMessageSize
-# - 'anon' or 'x509/certvalid' or 'x509/name' for ...auth_mode does not apply to RELP, only TCP TLS
+
+# Metrics. Note:
+# - impstats is a special internal input for reporting rsyslog metrics
+# - Options to log to syslog and/or a file.
+# - Logging metrics within syslog itself could be unreliable as problems can prevent metrics from being processed properly.
+# - If logging metrics within syslog, the cee format helps rsyslog expect impstats in a JSON format after the '@cee' cookie in the message.
+# - Logging metrics to a file is probably better but should be complimented with log rotate process to avoid filling up storage.
+# - Option to enable logging of dynstat incriment errors to a seperate meta file (off by default)
+ENV rsyslog_impstats='on' \
+  rsyslog_module_impstats_interval=60 \
+  rsyslog_module_impstats_resetCounters='on' \
+  rsyslog_module_impstats_format='cee' \
+  rsyslog_impstats_log_syslog='on' \
+  rsyslog_impstats_log_file_enabled='off' \
+  rsyslog_impstats_log_file='/var/log/impstats/metrics.log' \
+  rsyslog_impstats_ruleset='syslog_stats' \
+  rsyslog_dyn_stats='on' \
+  rsyslog_dyn_stats_maxCardinality=10000 \
+  rsyslog_dyn_stats_unusedMetricLife=86400 \
+  rsyslog_dyn_stats_inc_error_reporting='off' \
+  rsyslog_dyn_stats_inc_error_reporting_file='/var/log/impstats/dyn_stats_inc_error.log' \
+  rsyslog_global_action_reportSuspension='on' \
+  rsyslog_global_senders_keepTrack='on' \
+  rsyslog_global_senders_timeoutAfter=86400 \
+  rsyslog_global_senders_reportGoneAway='on'
 
 # Central queue tuned for higher throughput in a central syslog server:
 # - Up to 8 worker threads will be running if the queue gets filled halfway (i.e. 64K messages, 8K messages per worker).
@@ -209,6 +222,10 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfwd_syslog_port=514 \
   rsyslog_omfwd_syslog_protocol='tcp' \
   rsyslog_omfwd_syslog_template='TmplRFC5424' \
+  rsyslog_omudpspoof_syslog_enabled='off' \
+  rsyslog_omudpspoof_syslog_host='' \
+  rsyslog_omudpspoof_syslog_port=514 \
+  rsyslog_omudpspoof_syslog_template='TmplRFC5424' \
   rsyslog_omfwd_json_enabled=off \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
@@ -231,6 +248,7 @@ ENV rsyslog_output_filtering_enabled='on' \
 # - TmplJSONRawMsg
 #
 # Notes for the pre-canned outputs (kafka, JSON, syslog)
+# - choose either 
 # - each pre-canned output can have it's own template applied, e.g.
 # - rsyslog_om_action_queue_* is set for all outputs (sort of a global)
 # - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G

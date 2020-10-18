@@ -6,14 +6,14 @@ An rsyslog container intended to transfer syslog input into kafka with a JSON fo
 
 Why not the official image?
 
-About a year since starting this project, the upstream rsyslog project has started publishing [official rsyslog impages](https://hub.docker.com/u/rsyslog/) which in future will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme:
+About a year since starting this project (2016), the upstream rsyslog project has started publishing [official rsyslog impages](https://hub.docker.com/u/rsyslog/) which in future will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (Oct 2020):
 
 - [rsyslog/syslog_appliance_alpine
 ](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
 - [Using Rsyslog Docker Containers](https://www.rsyslog.com/doc/master/installation/rsyslog_docker.html) still has the development warning notice.
 - The [alpine: add kafka module](https://github.com/rsyslog/rsyslog-docker/issues/6) issue was still open.
 
-Besides the "beta" status, other differences are:
+Besides the "beta" status, other differences compared to the official container are:
 
 - A focus on kafka output functionality.
 - An attempt to adopt and overlay some [Twelve-Factor](https://12factor.net) concepts, most notably, the suggestion to [Store config in the environment](https://12factor.net/config) by using confd.
@@ -23,9 +23,9 @@ Besides the "beta" status, other differences are:
 
 rsyslog is fast, highly adaptable, but notoriously difficult to configure via config files. This image tries to pre-package some common use-cases that can be controlled via setting env vars. The objective is to avoid needing to supply configuration in rainerscript or legacy config syntaxes.
 
-Some basic performance testing was done to adapt and override conservative defaults so that this container can function in the role of a central syslog service. Choices made in the default config were based on rough and ready benchmark suite hacked together at[benchmark-syslog](https://github.com/JPvRiel/benchmark-syslog).
+Some basic performance testing was done to adapt and override conservative defaults so that this container can function in the role of a central syslog service. Choices made in the default config were based on rough and ready benchmark suite hacked together at [benchmark-syslog](https://github.com/JPvRiel/benchmark-syslog).
 
-However, for complex and flexible use-cases, it may be preferable to bind mount/supply a configuration file and directory instead.
+However, for complex and flexible use-cases, it may be preferable to bind mount/supply a configuration file and directory instead of using the config templated via confd.
 
 ### Inputs
 
@@ -57,6 +57,7 @@ Some built-in use cases, e.g.:
 - Split and output files to a volume.
 - Produce JSON to a Kafka topic.
 - Relay syslog RFC3164 or RFC5424 formats to other syslog servers (e.g. a SIEM product).
+  - If need be, spoof the original UDP source because SIEM vendor products like IBM QRadar assume the log source is sending directly (not relayed) and set log source identities using network packet headers instead of the syslog header (insert profanity of choice here...).
 - Send JSON over TCP (e.g. to logstash).
 
 ### Formats
@@ -147,7 +148,8 @@ Version dependency on compose file format v2.2 and docker engine >= 1.13.0.
 Note:
 
 - Assumes `TZ` is set and passes this along (see above).
-- Assumes or creates named volumes (`syslog_log`, `syslog_work`, `syslog_tls`).
+- Assumes or creates named volumes (`syslog_log`, `syslog_metrics`, `syslog_work`, `syslog_tls`).
+- The `syslog_metrics` volume will only be used if `rsyslog_impstats_log_file_enabled` env var is set to `on`.
 
 The volume name is forced (doesn't use the directory prefix). E.g. if run from a directory `docker-rsyslog`, then:
 
@@ -663,9 +665,11 @@ However, should you need to embed a CA for other reasons (e.g. building via a co
 
 Follows docker convention to use an `sut` service to test. Depends on several other containers like `zookeeper` and `kafka` images in order to test component intergeneration (e.g. `omkafka`).
 
-#### Makefile test
+#### Makefile test target
 
-Similar to build, e.g.:
+Similar to build, some prepared test invocations are defined in the make file.
+
+The standard full test suite:
 
 ```bash
 sudo -E make test
@@ -678,6 +682,44 @@ To find a quick recap of which tests failed after lengthy and verbose python beh
 ```bash
 xmllint --xpath '//failure' test/behave/reports/TESTS-*.xml  | highlight --out-format=ansi --syntax xml
 ```
+
+The default `make test` attempts to runs all tests continuing past failures to get full test results:
+
+- stdout, stderr and logging output are captured by behave (not displayed on the console).
+- Test results are output to [./test/behave/reports](./test/behave/reports) in JUnit format.
+- The `sut` container exits once done. 
+- If there were no failures, all other containers (test dependencies) will also exit.
+- With one or more errors the, the `sut` container will exit with a non-zero return code, but other test containers (syslog server, kafka, relays and clients) will be left in the running state.
+
+To avoid removing / clearing the container and volumes after the `sut` container exists, use this alternative.
+
+```bash
+sudo -E make test_no_teardown
+```
+
+Then, even with no failures, the other containers and volumes should still exist for futher inspection.
+
+#### Makefile targets for work-in-progress (WIP) testing and debugging
+
+To have testing stop on the first failure and start the python debugger (`Pdb`) within the behave (`sut`) container:
+
+```bash
+sudo -E make test_debug_fail
+```
+
+When adding new features, only testing the feature tagged with `@wip` can be tested with:
+
+```bash
+sudo -E make test_wip
+```
+
+The `test_wip` also triggers the debugger upon a failed step.
+
+Note:
+
+- The above debug and WIP tests were set to use the plain behave output formatter due to [Adding the `--format plain` flag in addition to `--no-capture` fixed the issue](https://github.com/behave/behave/issues/346#issuecomment-495767593).
+- No JUnit reporting is performed with the above tests and output / logging is not captured by behave.
+- Simply use `continue` to step through debugging or use the `exit()` function to stop and the container will also exit.
 
 #### Manual test invocation
 
@@ -914,7 +956,7 @@ Then cleanup the debug image:
 docker image rm dockerrsyslog_test_syslog_server_config_1_debug
 ```
 
-### Debugging WIP test scenarios
+### Debugging test scenarios
 
 When you just run `sut` via compose, the output from other containers is hard to see.
 
@@ -929,6 +971,7 @@ You may need to adapt according to how dockerd logging is configured.
 
 For behave failures, the following can help:
 
+- set a behave userdata defined option `BEHAVE_DEBUG_ON_ERROR` (defined in `environment.py`) which triggers the python debugger if a test step fails.
 - To avoid a work in progress scenario tagged with the `@wip` fixture, use `--tags=-wip`, e.g. `docker-compose -f docker-compose.test.yml run sut behave behave/features --tags=-wip`.
 - Use `--exclude PATTERN` with the behave command to skip problematic feature files.
 

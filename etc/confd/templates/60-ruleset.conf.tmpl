@@ -10,10 +10,13 @@
 {{ $rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" "true" -}}
 {{ $rsyslog_omkafka_enabled := getenv "rsyslog_omkafka_enabled" | toLower | eq "on" "true" -}}
 {{ $rsyslog_omfwd_syslog_enabled := getenv "rsyslog_omfwd_syslog_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_omudpspoof_syslog_enabled := getenv "rsyslog_omudpspoof_syslog_enabled" | toLower | eq "on" "true" -}}
 {{ $rsyslog_omfwd_json_enabled := getenv "rsyslog_omfwd_json_enabled" | toLower | eq "on" "true" -}}
 {{ $rsyslog_call_fwd_extra_rule := getenv "rsyslog_call_fwd_extra_rule" | toLower | eq "on" "true" -}}
 {{ $rsyslog_impstats := getenv "rsyslog_impstats" | toLower | eq "on" "true" -}}
 {{ $rsyslog_dyn_stats := getenv "rsyslog_dyn_stats" | toLower | eq "on" "true" -}}
+{{ $rsyslog_dyn_stats_inc_error_reporting := getenv "rsyslog_dyn_stats_inc_error_reporting" | toLower | eq "on" "true" -}}
+{{ $rsyslog_dyn_stats_inc_error_reporting_file := getenv "rsyslog_dyn_stats_inc_error_reporting_file" }}
 
 # Customise the settings of the built-in RFC3164 to use extra options to better handle malformed messages
 # - Avoid populating syslog tags incorrectly when bad clients don't follow tagging conventions
@@ -68,10 +71,12 @@ dyn_stats(name="msg_per_fromhost" resettable="on" maxCardinality="{{ getenv "rsy
 ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_udp_pre_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
   {{ if $rsyslog_support_metadata_formats -}}
   set $.syslog-relay!tls = "false";
@@ -87,10 +92,12 @@ ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
 ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_pre_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
   {{ if $rsyslog_support_metadata_formats -}}
   set $.syslog-relay!tls = "false";
@@ -106,10 +113,12 @@ ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
 ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_secure_pre_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
   {{ if $rsyslog_support_metadata_formats -}}
   set $.syslog-relay!tls = "true";
@@ -125,10 +134,12 @@ ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
 ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_pre_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
   {{ if $rsyslog_support_metadata_formats -}}
   set $.syslog-relay!tls = "false";
@@ -145,10 +156,12 @@ ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
 ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_pre_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
   {{ if $rsyslog_support_metadata_formats -}}
   set $.syslog-relay!tls = "true";
@@ -164,10 +177,12 @@ ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
 ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parser" }}) {
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_client_auth_pre_filter", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
   {{ if $rsyslog_support_metadata_formats -}}
   set $.syslog-relay!tls = "true";
@@ -197,10 +212,12 @@ ruleset(
 
   {{ if and $rsyslog_impstats $rsyslog_dyn_stats -}}
   set $.inc_status = dyn_inc("msg_per_fromhost", $fromhost);
-  # TODO - improve action when incriment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
+  {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
+  # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
   }
+  {{- end }}
   {{- end }}
 
   {{ if $rsyslog_support_metadata_formats -}}
@@ -350,6 +367,9 @@ ruleset(
   {{- end }}
   {{ if $rsyslog_omfwd_syslog_enabled -}}
   call fwd_syslog
+  {{- end }}
+  {{ if $rsyslog_omudpspoof_syslog_enabled -}}
+  call fwd_syslog_udp_spoof
   {{- end }}
   {{ if $rsyslog_omfwd_json_enabled -}}
   call fwd_json

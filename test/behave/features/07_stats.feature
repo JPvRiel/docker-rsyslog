@@ -15,7 +15,7 @@ Feature: rsyslog outputs message stats
       #And "rsyslog_module_impstats_format" environment variable is "cee"
       #And "rsyslog_impstats_ruleset" environment variable is "syslog_stats"
 
-  @slow @wip
+  @slow
   Scenario Outline: JSON stats are emitted per action
     Given a protocol "TCP" and port "514"
       And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"

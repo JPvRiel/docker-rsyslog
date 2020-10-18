@@ -13,6 +13,8 @@ services:
         - no_proxy
     hostname: behave
     mem_limit: 512m
+    stdin_open: true
+    tty: true
     env_file:
       - ./test/test_syslog_server.env
     depends_on:
@@ -21,6 +23,7 @@ services:
       # test cases need to relay / forward to the following
       - test_kafka
       - test_syslog_relay
+      - test_syslog_relay_udp_spoof
       - test_json_relay
       # test clients / generate events
       - test_syslog_client_centos7
@@ -28,7 +31,9 @@ services:
     volumes:
       - ./test:/tmp/test
       - syslog_log:/var/log/remote:ro
+      - syslog_metrics:/var/log/impstats:ro
       - syslog_relay:/tmp/syslog_relay:ro
+      - syslog_relay_udp_spoof:/tmp/syslog_relay_udp_spoof:ro
       - json_relay:/tmp/json_relay:ro
 
   # rsyslog config validation
@@ -128,9 +133,20 @@ services:
     volumes:
       - syslog_relay:/tmp/syslog_relay
     ports:
-      - "10514"
-    #command: sh -c 'rm -f /tmp/syslog_relay/nc.out; mkfifo /tmp/syslog_relay/nc.out && nc -lk 0.0.0.0 10514 > /tmp/syslog_relay/nc.out'
+      - "10514/tcp"
     command: sh -c 'nc -lk 0.0.0.0 10514 > /tmp/syslog_relay/nc.out'
+
+  # To test syslog omudpspoof relay/forwarding
+  test_syslog_relay_udp_spoof:
+    image: appropriate/nc
+    hostname: syslog_relay_udp_spoof
+    mem_limit: 64m
+    volumes:
+      - syslog_relay_udp_spoof:/tmp/syslog_relay_udp_spoof
+    ports:
+      - "10514/udp"
+    # While contradicted by the man page which stats -w is ignored if -l is specified, for UDP, netcat needs `-w 0` set to be able to remain open after receiving a UDP packet. Otherwise it seems to stop listening.
+    command: sh -c 'nc -q -1 -w 0 -u -lk 0.0.0.0 10514 > /tmp/syslog_relay_udp_spoof/nc.out'
 
   # To test forwarding as JSON output
   test_json_relay:
@@ -141,7 +157,6 @@ services:
       - json_relay:/tmp/json_relay
     ports:
       - "15000"
-    #command: sh -c 'rm -f /tmp/json_relay/nc.out; mkfifo /tmp/json_relay/nc.out && nc -lk 0.0.0.0 15000 > /tmp/json_relay/nc.out'
     command: sh -c 'nc -lk 0.0.0.0 15000 > /tmp/json_relay/nc.out'
 
   # Main syslog server (the test object / target)
@@ -174,22 +189,33 @@ services:
       - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - ./test/etc/rsyslog.d/extra/:/etc/rsyslog.d/extra/
       - syslog_log:/var/log/remote
+      - syslog_metrics:/var/log/impstats
 
 
 volumes:
   # Volumes below get shared with the behave container so that files therein can
   # be inspected
-  syslog_log:
-    driver: local
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
   syslog_relay:
     driver: local
     driver_opts:
       type: tmpfs
       device: tmpfs
+  syslog_relay_udp_spoof:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
   json_relay:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  syslog_log:
+    driver: local
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+  syslog_metrics:
     driver: local
     driver_opts:
       type: tmpfs

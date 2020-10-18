@@ -17,6 +17,7 @@ services:
       - TZ
     volumes:
       - syslog_log:/var/log/remote
+      - syslog_metrics:/var/log/impstats
       - syslog_work:/var/lib/rsyslog
       - syslog_tls:/etc/pki/rsyslog
     stop_grace_period: 1m30s
@@ -26,5 +27,6 @@ services:
 
 volumes:
   syslog_log:
+  syslog_metrics:
   syslog_work:
   syslog_tls:
