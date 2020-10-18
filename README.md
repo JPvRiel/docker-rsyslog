@@ -6,7 +6,7 @@ An rsyslog container intended to transfer syslog input into kafka with a JSON fo
 
 Why not the official image?
 
-About a year since starting this project (2016), the upstream rsyslog project has started publishing [official rsyslog impages](https://hub.docker.com/u/rsyslog/) which in future will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (Oct 2020):
+This project was started in 2017. About a year later, an upstream [official rsyslog impages](https://hub.docker.com/u/rsyslog/) project started which will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (Oct 2020):
 
 - [rsyslog/syslog_appliance_alpine
 ](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
@@ -687,7 +687,7 @@ The default `make test` attempts to runs all tests continuing past failures to g
 
 - stdout, stderr and logging output are captured by behave (not displayed on the console).
 - Test results are output to [./test/behave/reports](./test/behave/reports) in JUnit format.
-- The `sut` container exits once done. 
+- The `sut` container exits once done.
 - If there were no failures, all other containers (test dependencies) will also exit.
 - With one or more errors the, the `sut` container will exit with a non-zero return code, but other test containers (syslog server, kafka, relays and clients) will be left in the running state.
 
