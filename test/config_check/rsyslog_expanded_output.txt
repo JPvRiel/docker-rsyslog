@@ -545,7 +545,7 @@
   2: if ( $syslogseverity == '7' ) then { stop }
 ##^ expanding file: /etc/rsyslog.d/output/filters/include_all.conf
   1: # tests white-list approach where this regex matches everything
-  2: if (not re_match($msg, ".*")) then { stop }
+  2: if (not re_match($msg, '.*')) then { stop }
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
 259: 
 260:   # Standard outputs "pre-bundled
@@ -818,9 +818,12 @@
  11: {
  12:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
-##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
+##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_complex.conf
+  1: # Test blacklist approach with complex regex (note, rsyslog re_match uses POSIX ERE)
+  2: # E.g. 'client\s@0x[a-f0-9]+\s10\.((254\.254\.254)|(253\.253\.253))' for PCRE or Python needs double escaping (rsyslog rainerscript and ERE use a backslash as the escape character) and only a limited set of regex syntex applies
+  3: if re_match($msg, 'client @0x[a-f0-9]+ 10\\.(254\\.254\\.254)|(253\\.253\\.253)') then { stop }##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
   1: # tests black-list approach
-  2: if $msg contains "foobar" then { stop }
+  2: if $msg contains 'foobar' then { stop }
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
  13: 
  14:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_syslog_post_filter", $fromhost);
@@ -873,9 +876,12 @@
  15: {
  16:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
-##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
+##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_complex.conf
+  1: # Test blacklist approach with complex regex (note, rsyslog re_match uses POSIX ERE)
+  2: # E.g. 'client\s@0x[a-f0-9]+\s10\.((254\.254\.254)|(253\.253\.253))' for PCRE or Python needs double escaping (rsyslog rainerscript and ERE use a backslash as the escape character) and only a limited set of regex syntex applies
+  3: if re_match($msg, 'client @0x[a-f0-9]+ 10\\.(254\\.254\\.254)|(253\\.253\\.253)') then { stop }##^ expanding file: /etc/rsyslog.d/output/filters/fwd_syslog/exclude_foobar.conf
   1: # tests black-list approach
-  2: if $msg contains "foobar" then { stop }
+  2: if $msg contains 'foobar' then { stop }
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
  17: 
  18:   set $.inc_status = dyn_inc("msg_per_fromhost_omudpspoof_syslog_post_filter", $fromhost);

@@ -43,8 +43,9 @@ clean_test:
 # A failed test won't run the next command to clean, so clean before just in case
 # Assume sudo might be used due to the security risk of adding a normal user to the docker group, so chown the config check files copied into the test dir
 
-test_config: clean_test
+test_config: build
 	$(info ## test config.)
+	rm -rf test/config_check/*
 	docker-compose -f docker-compose.test.yml run test_syslog_server_config
 	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'

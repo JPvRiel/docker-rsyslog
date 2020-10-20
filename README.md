@@ -12,12 +12,14 @@ This project was started in 2017. About a year later, an upstream [official rsys
 ](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
 - [Using Rsyslog Docker Containers](https://www.rsyslog.com/doc/master/installation/rsyslog_docker.html) still has the development warning notice.
 - The [alpine: add kafka module](https://github.com/rsyslog/rsyslog-docker/issues/6) issue was still open.
+- [rsyslog.conf.d](https://github.com/rsyslog/rsyslog-docker/tree/master/appliance/alpine/rsyslog.conf.d) only provided limited bundled config use-cases such as logging to file or a cloud logging provider (sematext), but not Kafka.
 
 Besides the "beta" status, other differences compared to the official container are:
 
 - A focus on kafka output functionality.
 - An attempt to adopt and overlay some [Twelve-Factor](https://12factor.net) concepts, most notably, the suggestion to [Store config in the environment](https://12factor.net/config) by using confd.
   - Newly introduced (since v8.33) rsyslog container friendly features such as backticks that can echo evn var values as string constants along with the `config.enabled` parameter for configuration objects would also likely suffice, but confd supports more backends than just env vars.
+- A larger number of pre-defined use-cases split into respective rulesets and queues.
 
 ## Features
 
@@ -669,7 +671,13 @@ Follows docker convention to use an `sut` service to test. Depends on several ot
 
 Similar to build, some prepared test invocations are defined in the make file.
 
-The standard full test suite:
+As rsyslog rainerscript config mistakes are likely, a shorthand to simply first test config would be:
+
+```bash
+sudo -E make test_config
+```
+
+The standard full test suite includes checking config and doing more advanced system intergration testing (SIT) with kafka and other mock syslog relays:
 
 ```bash
 sudo -E make test
@@ -836,7 +844,7 @@ Similarly, to expand the config used for testing:
 docker-compose -f docker-compose.test.yml run test_syslog_server rsyslog_config_expand.py
 ```
 
-To run a minimal test container that simply generates the output for `test/config_check`:
+As noted before, to run a minimal test container that simply generates the output for `test/config_check` and doesn't run the full `sut`:
 
 ```bash
 make test_config

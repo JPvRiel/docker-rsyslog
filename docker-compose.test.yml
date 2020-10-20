@@ -63,9 +63,14 @@ services:
       /usr/local/bin/entrypoint.sh rsyslogd -N1 > /tmp/test/config_check/rsyslog_n1_output.txt 2>&1
       rsyslog_exit_code=$$?
       echo -n $$rsyslog_exit_code > /tmp/test/config_check/rsyslog_n1_exit_code.txt
+      cat /tmp/test/config_check/rsyslog_n1_output.txt
       /usr/local/bin/rsyslog_config_expand.py > /tmp/test/config_check/rsyslog_expanded_output.txt
       mkdir -p /tmp/test/config_check/etc
-      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/test/config_check/etc/'
+      cp -r /etc/rsyslog.conf /etc/rsyslog.d /tmp/test/config_check/etc/
+      if [ $$rsyslog_exit_code -ne 0 ]; then
+        echo "rsyslogd -N1 check failed. Refer to test/config_check/rsyslog_n1_output.txt." >&2
+      fi
+      '
     volumes:
       - ./test/etc/rsyslog.d/output/filters/:/etc/rsyslog.d/output/filters/
       - ./test/etc/rsyslog.d/extra/:/etc/rsyslog.d/extra/
