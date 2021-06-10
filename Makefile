@@ -7,24 +7,38 @@ define docker_tag_latest
 	docker tag jpvriel/rsyslog:$(VERSION) jpvriel/rsyslog:latest
 endef
 
+# Check if a proxy is defined use and optomise build to use it
+DOCKER_COMPOSE_PROXY_BUILD_ARGS =
+ifdef http_proxy
+DOCKER_COMPOSE_PROXY_BUILD_ARGS = --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
+endif
+ifdef https_proxy
+DOCKER_COMPOSE_PROXY_BUILD_ARGS = --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
+endif
+ifeq ($(DOCKER_COMPOSE_PROXY_BUILD_ARGS),)
+$(info ## No proxy env vars found.)
+else
+$(info ## Proxy env vars found and will be passed onto docker-compose as build args.)
+endif
+
 build:
 	$(info ## build $(VERSION) ($(BUILD_DATE)).)
-	docker-compose -f docker-compose.yml build --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
+	docker-compose -f docker-compose.yml build --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE $(DOCKER_COMPOSE_PROXY_BUILD_ARGS)
 	$(call docker_tag_latest)
 
 rebuild:
 	$(info ## re-build $(VERSION) ($(BUILD_DATE)).)
-	docker-compose -f docker-compose.yml build --no-cache --pull --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
+	docker-compose -f docker-compose.yml build --no-cache --pull --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE $(DOCKER_COMPOSE_PROXY_BUILD_ARGS)
 	$(call docker_tag_latest)
 
 build_test:
 	$(info ## build test $(VERSION) ($(BUILD_DATE)).)
-	docker-compose -f docker-compose.test.yml build --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
+	docker-compose -f docker-compose.test.yml build --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE $(DOCKER_COMPOSE_PROXY_BUILD_ARGS)
 	$(call docker_tag_latest)
 
 rebuild_test: clean_test
 	$(info ## re-build test $(VERSION) ($(BUILD_DATE)).)
-	docker-compose -f docker-compose.test.yml build --no-cache --pull --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy --build-arg https_proxy --build-arg no_proxy
+	docker-compose -f docker-compose.test.yml build --no-cache --pull --build-arg RSYSLOG_VERSION --build-arg VERSION --build-arg BUILD_DATE $(DOCKER_COMPOSE_PROXY_BUILD_ARGS)
 	$(call docker_tag_latest)
 
 clean: clean_test
