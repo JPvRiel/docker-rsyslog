@@ -3,6 +3,12 @@
 
 FROM python:3
 LABEL application="behave_test"
+
+# Run as non root user
+RUN useradd --no-log-init --no-create-home --uid 1000 --user-group behave
+USER behave
+
+# Install dependencies (TODO: improve with python requirements.txt)
 RUN pip install behave && \
     pip install requests && \
     pip install pyhamcrest && \
