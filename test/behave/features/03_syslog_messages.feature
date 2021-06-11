@@ -20,7 +20,7 @@ Feature: Accept syslog messages in various formats
     Examples:
       | file | regex |
       | /var/log/remote/test_syslog_client_centos7 | CentOS Linux 7.* was running rsyslogd.* |
-      | /var/log/remote/test_syslog_client_ubuntu1804 | Ubuntu 16\.04.* was running rsyslogd.* |
+      | /var/log/remote/test_syslog_client_ubuntu1804 | Ubuntu 18\.04.* was running rsyslogd.* |
 
 
   # - Positive testing well formed message samples
