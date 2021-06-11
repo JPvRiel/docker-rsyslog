@@ -84,8 +84,6 @@ def step_impl(context, timeout):
                     'default.topic.config': {
                         'auto.offset.reset': 'earliest'
                     },
-                    'batch.num.messages': 1,
-                    'queue.buffering.max.ms': 100,
                     'sasl.mechanisms': 'PLAIN',
                     'sasl.username': 'test',
                     'sasl.password': 'test-secret',
