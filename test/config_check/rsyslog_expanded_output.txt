@@ -744,10 +744,10 @@
  32:        ioBufferSize="256k"
  33:        dirOwner="root"
  34:        dirGroup="wheel"
- 35:        dirCreateMode="0755"
+ 35:        DirCreateMode="0755"
  36:        fileOwner="root"
  37:        fileGroup="wheel"
- 38:        FileCreateMode="0640"
+ 38:        FileCreateMode="0644"
  39:   )
  40: 
  41:   
