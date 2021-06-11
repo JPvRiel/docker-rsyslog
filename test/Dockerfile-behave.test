@@ -5,17 +5,18 @@ FROM python:3
 LABEL application="behave_test"
 
 # Run as non root user
-RUN useradd --no-log-init --no-create-home --uid 1000 --user-group behave
+RUN useradd --no-log-init --create-home --uid 1000 --user-group behave
 USER behave
 
 # Install dependencies (TODO: improve with python requirements.txt)
-RUN pip install behave && \
-    pip install requests && \
-    pip install pyhamcrest && \
-    pip install jmespath && \
-    pip install rfc5424-logging-handler && \
-    pip install kafka-python && \
-    pip install confluent-kafka
+RUN pip install --user \
+    behave \
+    requests \
+    pyhamcrest \
+    jmespath \
+    rfc5424-logging-handler \
+    kafka-python \
+    confluent-kafka
 
 VOLUME /tmp/test
 WORKDIR /tmp/test
