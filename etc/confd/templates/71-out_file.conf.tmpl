@@ -70,10 +70,10 @@ ruleset(name="out_file") {
        ioBufferSize="256k"
        dirOwner="root"
        dirGroup="wheel"
-       dirCreateMode="0755"
+       DirCreateMode="{{ getenv "rsyslog_omfile_DirCreateMode" }}"
        fileOwner="root"
        fileGroup="wheel"
-       FileCreateMode="0640"
+       FileCreateMode="{{ getenv "rsyslog_omfile_FileCreateMode" }}"
   )
 
   {{else -}}
@@ -95,10 +95,10 @@ ruleset(name="out_file") {
        ioBufferSize="64k"
        dirOwner="root"
        dirGroup="wheel"
-       dirCreateMode="0755"
+       DirCreateMode="{{ getenv "rsyslog_omfile_DirCreateMode" }}"
        fileOwner="root"
        fileGroup="wheel"
-       FileCreateMode="0640"
+       FileCreateMode="{{ getenv "rsyslog_omfile_FileCreateMode" }}"
      )
   }
   else
@@ -119,10 +119,10 @@ ruleset(name="out_file") {
         ioBufferSize="64k"
         dirOwner="root"
         dirGroup="wheel"
-        dirCreateMode="0755"
+        DirCreateMode="{{ getenv "rsyslog_omfile_DirCreateMode" }}"
         fileOwner="root"
         fileGroup="wheel"
-        FileCreateMode="0640"
+        FileCreateMode="{{ getenv "rsyslog_omfile_FileCreateMode" }}"
       )
     }
     # audit
@@ -139,10 +139,10 @@ ruleset(name="out_file") {
         ioBufferSize="64k"
         dirOwner="root"
         dirGroup="wheel"
-        dirCreateMode="0755"
+        DirCreateMode="{{ getenv "rsyslog_omfile_DirCreateMode" }}"
         fileOwner="root"
         fileGroup="wheel"
-        FileCreateMode="0640"
+        FileCreateMode="{{ getenv "rsyslog_omfile_FileCreateMode" }}"
      )
     }
     # logalert. Note, no formal syslog faciltiy keyword supported by rsyslog
@@ -159,10 +159,10 @@ ruleset(name="out_file") {
         ioBufferSize="64k"
         dirOwner="root"
         dirGroup="wheel"
-        dirCreateMode="0755"
+        DirCreateMode="{{ getenv "rsyslog_omfile_DirCreateMode" }}"
         fileOwner="root"
         fileGroup="wheel"
-        FileCreateMode="0640"
+        FileCreateMode="{{ getenv "rsyslog_omfile_FileCreateMode" }}"
      )
     }
     # other / messages / syslog
@@ -184,10 +184,10 @@ ruleset(name="out_file") {
         ioBufferSize="64k"
         dirOwner="root"
         dirGroup="wheel"
-        dirCreateMode="0755"
+        DirCreateMode="{{ getenv "rsyslog_omfile_DirCreateMode" }}"
         fileOwner="root"
         fileGroup="wheel"
-        FileCreateMode="0640"
+        FileCreateMode="{{ getenv "rsyslog_omfile_FileCreateMode" }}"
      )
     }
   }
