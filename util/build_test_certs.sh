@@ -1,6 +1,20 @@
 #!/bin/bash
 set -e
 
+# Check script is excuted from patent folder (TODO: not intuitive, script could be refactored...)
+RE_REL_PATH_NEEDED='(./)?util/build_test_certs.sh'
+if ! [[ "$0" =~ $RE_REL_PATH_NEEDED ]]; then
+  echo "ERROR: run this script as ./util/build_test_certs.sh in the parent folder so it may populate certs into ./test and keep the CA in ./util/ca" >&2
+  exit 1
+fi
+
+# While openssl if often installed, keytool may not be.
+if ! command -v keytool &> /dev/null; then
+  echo "ERROR: keytool not found. Install OpenJDK?" >&2
+  exit 1
+fi
+
+
 function local_openssl_config {
 echo -n "\
 [ req ]
@@ -109,7 +123,7 @@ ca_signed_cert behave test/tls_x509/private test/tls_x509/certs
 ca_signed_cert test_syslog_client_centos7 test/tls_x509/private test/tls_x509/certs
 
 # Rsyslog Ubuntu client
-ca_signed_cert test_syslog_client_ubuntu1604 test/tls_x509/private test/tls_x509/certs
+ca_signed_cert test_syslog_client_ubuntu1804 test/tls_x509/private test/tls_x509/certs
 
 # Kafka server
 ca_signed_cert test_kafka test/tls_x509/private test/tls_x509/certs
@@ -123,5 +137,6 @@ openssl pkcs12 -export -inkey 'test/tls_x509/private/test_kafka.key.pem' -in 'te
 keytool -trustcacerts \
   -importcert -file util/ca/test_ca.cert.pem \
   -alias 'test_ca' \
+  -storetype JKS \
   -keystore 'test/tls_x509/certs/test_ca.jks' \
   -storepass 'changeit' -noprompt

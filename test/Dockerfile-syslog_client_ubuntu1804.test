@@ -1,5 +1,5 @@
-FROM ubuntu:16.04
-LABEL application="rsyslog_test_client_ubuntu1604"
+FROM ubuntu:18.04
+LABEL application="rsyslog_test_client_ubuntu1804"
 
 ENV container=docker
 
@@ -13,7 +13,7 @@ RUN mkdir -p /usr/local/etc/ssl/test
 
 RUN rm -r /etc/rsyslog.d/ \
   && rm /etc/rsyslog.conf
-COPY ubuntu1604/etc/ /etc/
+COPY ubuntu1804/etc/ /etc/
 COPY rsyslog_test_client.sh /usr/local/bin
 RUN chmod +x /usr/local/bin/rsyslog_test_client.sh
 

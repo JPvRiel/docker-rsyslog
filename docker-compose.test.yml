@@ -27,7 +27,7 @@ services:
       - test_json_relay
       # test clients / generate events
       - test_syslog_client_centos7
-      - test_syslog_client_ubuntu1604
+      - test_syslog_client_ubuntu1804
     volumes:
       - ./test:/tmp/test
       - syslog_log:/var/log/remote:ro
@@ -93,22 +93,22 @@ services:
     depends_on:
       - test_syslog_server
 
-  test_syslog_client_ubuntu1604:
-    image: jpvriel/syslog_client_ubuntu1604
+  test_syslog_client_ubuntu1804:
+    image: jpvriel/syslog_client_ubuntu1804
     build:
       context: test
-      dockerfile: Dockerfile-syslog_client_ubuntu1604.test
+      dockerfile: Dockerfile-syslog_client_ubuntu1804.test
       args:
         - http_proxy
         - https_proxy
         - ftp_proxy
         - no_proxy
-    hostname: test_syslog_client_ubuntu1604
+    hostname: test_syslog_client_ubuntu1804
     mem_limit: 256m
     volumes:
       - ./test/tls_x509/certs/test_ca.cert.pem:/usr/local/etc/ssl/test/test_ca.cert.pem
-      - ./test/tls_x509/private/test_syslog_client_ubuntu1604.key.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1604.key.pem
-      - ./test/tls_x509/certs/test_syslog_client_ubuntu1604.cert.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1604.cert.pem
+      - ./test/tls_x509/private/test_syslog_client_ubuntu1804.key.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1804.key.pem
+      - ./test/tls_x509/certs/test_syslog_client_ubuntu1804.cert.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1804.cert.pem
 
   # remote outputs to be tested, e.g. kafka
   test_zookeeper:
@@ -132,7 +132,10 @@ services:
   # To test syslog relay/forwarding
   # Simple netcat to file: https://github.com/appropriate/docker-nc
   test_syslog_relay:
-    image: appropriate/nc
+    image: jpvriel/netcat
+    build:
+      context: test
+      dockerfile: Dockerfile-netcat.test
     hostname: syslog_relay
     mem_limit: 64m
     volumes:
@@ -143,7 +146,10 @@ services:
 
   # To test syslog omudpspoof relay/forwarding
   test_syslog_relay_udp_spoof:
-    image: appropriate/nc
+    image: jpvriel/netcat
+    build:
+      context: test
+      dockerfile: Dockerfile-netcat.test
     hostname: syslog_relay_udp_spoof
     mem_limit: 64m
     volumes:
@@ -155,7 +161,10 @@ services:
 
   # To test forwarding as JSON output
   test_json_relay:
-    image: appropriate/nc
+    image: jpvriel/netcat
+    build:
+      context: test
+      dockerfile: Dockerfile-netcat.test
     hostname: json_relay
     mem_limit: 64m
     volumes:
