@@ -77,7 +77,7 @@ test_debug_fail: clean_test build
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
 
 test_wip: clean_test build
-	$(info ## test and stop on first failure along with triggering the python debugger.)
+	$(info ## test only wip tagged scenarios and stop on first failure along with triggering the python debugger.)
 	docker-compose -f docker-compose.test.yml run sut behave  --define BEHAVE_DEBUG_ON_ERROR --wip --logging-level debug --stop behave/features
 	if [ -n "$$SUDO_UID" -a -n "$$SUDO_GID" ]; then chown -R "$$SUDO_UID:$$SUDO_GID" test/config_check; fi
 	docker-compose -f docker-compose.test.yml down -v --rmi 'local'
