@@ -32,7 +32,7 @@ Feature: Foward syslog messages
       And searching lines for the pattern "Testing syslog forwarding" over "60" seconds
     Then the pattern should be found
 
-  @slow
+  @slow @root
   Scenario: Messages are forwarded to another server using UDP and spoofing the orginal source IP
     Given "rsyslog_omudpspoof_syslog_enabled" environment variable is "on"
       And "rsyslog_omudpspoof_syslog_host" environment variable is set
