@@ -26,7 +26,7 @@ Feature: Filter messages
       | Global test white-list filter allows all | .* Global test white-list filter allows all.* |
 
 
-  @slow @wip
+  @slow
   Scenario Outline: Message output can be filtered per output
     Given a file "/tmp/syslog_relay/nc.out" exists
     When sending the syslog message "<message>" in "RFC3164" format
