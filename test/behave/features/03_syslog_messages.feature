@@ -138,7 +138,7 @@ Feature: Accept syslog messages in various formats
 
 # Extended templating option tests
 
-  @slow @wip
+  @slow
   Scenario Outline: Extended metadata options can be used with extra plaintext outputs
     Given a file "<file>" exists
     When sending the syslog message "Testing extended metadata" in "RFC3164" format
