@@ -70,192 +70,194 @@
  20: # Like RSYSLOG_SyslogProtocol23Format, but with a special extra structured data field to append structured data.
  21: # Use of variable property types as per https://www.rsyslog.com/doc/master/rainerscript/variable_property_types.html
  22: # Regex needed to deal with structured data being null '-' and needing to append/replace null.
- 23: # `%structured-data:R,ERE,0,BLANK:[[].*--end%` avoids appending a null charceter '-' if there wasn't any pre-existing structured data.
+ 23: # `%structured-data:R,ERE,0,BLANK:[[].*--end%` avoids appending a null char '-' if there wasn't any pre-existing structured data.
  24: # See http://www.rsyslog.com/doc/v8-stable/configuration/nomatch.html
  25: template(name="TmplRFC5424Meta" type="string" string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$.syslog-relay!format%\" pri-valid=\"%$.syslog-relay!pri-valid%\" header-valid=\"%$.syslog-relay!header-valid%\" json-msg-parsed=\"%$.syslog-relay!json-msg-parsed%\" tls=\"%$.syslog-relay!tls%\" authenticated-client=\"%$.syslog-relay!authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n")
- 26: 
- 27: # JSON templates
+ 26: template(name="RawMsgEndMeta" type="string" string="%rawmsg% @meta:[timegenerated=\"%timegenerated:::date-rfc3339%\", fromhost=\"%fromhost%\", fromhost-ip=\"%fromhost-ip%\", myhostname=\"%$myhostname%\", inputname=\"%inputname%\", format=\"%$.syslog-relay!format%\", pri-valid=\"%$.syslog-relay!pri-valid%\", header-valid=\"%$.syslog-relay!header-valid%\", json-msg-parsed=\"%$.syslog-relay!json-msg-parsed%\", tls=\"%$.syslog-relay!tls%\", authenticated-client=\"%$.syslog-relay!authenticated-client%\"]\n")
+ 27: template(name="RawMsgEndMetaShort" type="string" string="%rawmsg% @meta:[fromhost=\"%fromhost%\", fromhost-ip=\"%fromhost-ip%\"]\n")
  28: 
- 29: # Make sure the message content is escaped to be safely interpreted as JSON
- 30: # Note:
- 31: # - NB! Rainerscript only supports setting quoted variables and jsonf outputs a quoted value forcing a string JSON type.
- 32: # - To get integer or boolean JSON types requires manually building a JSON field, i.e. otherwise { "boolean": true } gets quoted as { "boolean": "true" }
- 33: # - The template jsonf datatype option can be used in templates to coerce types upon output, but rainerscript config still treats/reads everything like strings.
- 34: # - The 'bool' datatype does not treat string "false" as a literal false and only interprets "0" or the empty string "" as false.
- 35: # - Therefore it's not adaptable to use for non-JSON output that needs a literal string 'false'.
- 36: # - See https://github.com/rsyslog/rsyslog/issues/3836
- 37: # - See https://www.rsyslog.com/doc/v8-stable/configuration/templates.html#property-statement
- 38: # Due to this, and some values being used in both JSON and plaintext output template choices, manually crafted templates instead of using a jsonf datatype is performed.
- 39: # While bool and int JSON types are used, for RFC5424, `-` represents null and is left as when the field is flat (not a nested object). 
- 40: # Structured data element handling is complex and involves 2 different fields
- 41: # - 'structured-data' will be the string representation (not parsed to JSON) and null represented as string character `-`.
- 42: # - 'rfc5424-sd' will be the JSON parsed nested object (if rsyslog_mmpstrucdata is enabled) and null represented as literal string `"null"`
- 43: # - If the structured data element is `-` it's 'structured-data' property is left as a string `-` else 
- 44: # - Downstream systems like elasticsearch will have data mapping conflicts if it expects a json object (e.g. nested field) but instead gets a plain string (e.g. `"null"`). Logstash can coerce/remove the "null" field when present to avoid the issue.
- 45: 
- 46: # Output the full native rsyslog JSON message object
- 47: template(name="TmplRSyslogJSON" type="string" string="%jsonmesg%\n")
- 48: 
- 49: # Output a subset of the native rsyslog JSON message fields
- 50: # Note:
- 51: # - JSON $! tree output will output empty enclosing brakets { } if $! doesn't have any JSON values set which will cause invalid JSON, so strip these by removing first 2 charceters '{ ' and allowing the end closing braket to occur in case this is indeed empty.
- 52: # - Handle cases where metadata or structured data is to be added
- 53: # - if metadata is enabled, RFC3164 assumed hostname parsing that might be incorrect are replaced with local var $.hostname = $fromhost instead of standard $hostname property when headers are detected as non-conformant
- 54: template(name="TmplJSON" type="list") {
- 55:   constant(value="{ ")
- 56:   property(name="syslogfacility" format="jsonf")
- 57:   constant(value=", ")
- 58:   property(name="syslogfacility-text" format="jsonf")
+ 29: # JSON templates
+ 30: 
+ 31: # Make sure the message content is escaped to be safely interpreted as JSON
+ 32: # Note:
+ 33: # - NB! Rainerscript only supports setting quoted variables and jsonf outputs a quoted value forcing a string JSON type.
+ 34: # - To get integer or boolean JSON types requires manually building a JSON field, i.e. otherwise { "boolean": true } gets quoted as { "boolean": "true" }
+ 35: # - The template jsonf datatype option can be used in templates to coerce types upon output, but rainerscript config still treats/reads everything like strings.
+ 36: # - The 'bool' datatype does not treat string "false" as a literal false and only interprets "0" or the empty string "" as false.
+ 37: # - Therefore it's not adaptable to use for non-JSON output that needs a literal string 'false'.
+ 38: # - See https://github.com/rsyslog/rsyslog/issues/3836
+ 39: # - See https://www.rsyslog.com/doc/v8-stable/configuration/templates.html#property-statement
+ 40: # Due to this, and some values being used in both JSON and plaintext output template choices, manually crafted templates instead of using a jsonf datatype is performed.
+ 41: # While bool and int JSON types are used, for RFC5424, `-` represents null and is left as when the field is flat (not a nested object). 
+ 42: # Structured data element handling is complex and involves 2 different fields
+ 43: # - 'structured-data' will be the string representation (not parsed to JSON) and null represented as string character `-`.
+ 44: # - 'rfc5424-sd' will be the JSON parsed nested object (if rsyslog_mmpstrucdata is enabled) and null represented as literal string `"null"`
+ 45: # - If the structured data element is `-` it's 'structured-data' property is left as a string `-` else 
+ 46: # - Downstream systems like elasticsearch will have data mapping conflicts if it expects a json object (e.g. nested field) but instead gets a plain string (e.g. `"null"`). Logstash can coerce/remove the "null" field when present to avoid the issue.
+ 47: 
+ 48: # Output the full native rsyslog JSON message object
+ 49: template(name="TmplRSyslogJSON" type="string" string="%jsonmesg%\n")
+ 50: 
+ 51: # Output a subset of the native rsyslog JSON message fields
+ 52: # Note:
+ 53: # - JSON $! tree output will output empty enclosing brakets { } if $! doesn't have any JSON values set which will cause invalid JSON, so strip these by removing first 2 charceters '{ ' and allowing the end closing braket to occur in case this is indeed empty.
+ 54: # - Handle cases where metadata or structured data is to be added
+ 55: # - if metadata is enabled, RFC3164 assumed hostname parsing that might be incorrect are replaced with local var $.hostname = $fromhost instead of standard $hostname property when headers are detected as non-conformant
+ 56: template(name="TmplJSON" type="list") {
+ 57:   constant(value="{ ")
+ 58:   property(name="syslogfacility" format="jsonf")
  59:   constant(value=", ")
- 60:   property(name="syslogseverity" format="jsonf")
+ 60:   property(name="syslogfacility-text" format="jsonf")
  61:   constant(value=", ")
- 62:   property(name="syslogseverity-text" format="jsonf")
+ 62:   property(name="syslogseverity" format="jsonf")
  63:   constant(value=", ")
- 64:   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
+ 64:   property(name="syslogseverity-text" format="jsonf")
  65:   constant(value=", ")
- 66:   property(name="$.hostname" outname="hostname" format="jsonf")
+ 66:   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
  67:   constant(value=", ")
- 68:   property(name="app-name" format="jsonf")
+ 68:   property(name="$.hostname" outname="hostname" format="jsonf")
  69:   constant(value=", ")
- 70:   property(name="procid" format="jsonf")
+ 70:   property(name="app-name" format="jsonf")
  71:   constant(value=", ")
- 72:   property(name="msgid" format="jsonf")
+ 72:   property(name="procid" format="jsonf")
  73:   constant(value=", ")
- 74:   constant(value="\"syslog-relay\": { ")
- 75:   property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
- 76:   constant(value=", ")
- 77:   property(name="fromhost" format="jsonf")
+ 74:   property(name="msgid" format="jsonf")
+ 75:   constant(value=", ")
+ 76:   constant(value="\"syslog-relay\": { ")
+ 77:   property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
  78:   constant(value=", ")
- 79:   property(name="fromhost-ip" format="jsonf")
- 80:   constant(value=", \"myhostname\":\"")
- 81:   property(name="$myhostname" format="jsonr")
- 82:   constant(value="\", ")
- 83:   property(name="inputname" format="jsonf")
- 84:   constant(value=", \"format\":\"")
- 85:   property(name="$.syslog-relay!format" format="jsonr")
- 86:   constant(value="\", \"pri-valid\":")
- 87:   property(name="$.syslog-relay!pri-valid")
- 88:   constant(value=", \"header-valid\":")
- 89:   property(name="$.syslog-relay!header-valid")
- 90:   constant(value=", \"json-msg-parsed\":")
- 91:   property(name="$.syslog-relay!json-msg-parsed")
- 92:   constant(value=", \"tls\":")
- 93:   property(name="$.syslog-relay!tls")
- 94:   constant(value=", \"authenticated-client\":")
- 95:   property(name="$.syslog-relay!authenticated-client")
- 96:   constant(value=" }, ")
- 97:   
- 98:   property(name="msg" format="jsonf")
- 99:   constant(value=", ")
-100:   property(name="$!" position.from="2")
-101:   constant(value="\n")
-102: }
-103: 
-104: template(name="TmplJSONRawMsg" type="list") {
-105:   constant(value="{ ")
-106:   property(name="syslogfacility" format="jsonf")
-107:   constant(value=", ")
-108:   property(name="syslogfacility-text" format="jsonf")
+ 79:   property(name="fromhost" format="jsonf")
+ 80:   constant(value=", ")
+ 81:   property(name="fromhost-ip" format="jsonf")
+ 82:   constant(value=", \"myhostname\":\"")
+ 83:   property(name="$myhostname" format="jsonr")
+ 84:   constant(value="\", ")
+ 85:   property(name="inputname" format="jsonf")
+ 86:   constant(value=", \"format\":\"")
+ 87:   property(name="$.syslog-relay!format" format="jsonr")
+ 88:   constant(value="\", \"pri-valid\":")
+ 89:   property(name="$.syslog-relay!pri-valid")
+ 90:   constant(value=", \"header-valid\":")
+ 91:   property(name="$.syslog-relay!header-valid")
+ 92:   constant(value=", \"json-msg-parsed\":")
+ 93:   property(name="$.syslog-relay!json-msg-parsed")
+ 94:   constant(value=", \"tls\":")
+ 95:   property(name="$.syslog-relay!tls")
+ 96:   constant(value=", \"authenticated-client\":")
+ 97:   property(name="$.syslog-relay!authenticated-client")
+ 98:   constant(value=" }, ")
+ 99:   
+100:   property(name="msg" format="jsonf")
+101:   constant(value=", ")
+102:   property(name="$!" position.from="2")
+103:   constant(value="\n")
+104: }
+105: 
+106: template(name="TmplJSONRawMsg" type="list") {
+107:   constant(value="{ ")
+108:   property(name="syslogfacility" format="jsonf")
 109:   constant(value=", ")
-110:   property(name="syslogseverity" format="jsonf")
+110:   property(name="syslogfacility-text" format="jsonf")
 111:   constant(value=", ")
-112:   property(name="syslogseverity-text" format="jsonf")
+112:   property(name="syslogseverity" format="jsonf")
 113:   constant(value=", ")
-114:   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
+114:   property(name="syslogseverity-text" format="jsonf")
 115:   constant(value=", ")
-116:   property(name="$.hostname" outname="hostname" format="jsonf")
+116:   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
 117:   constant(value=", ")
-118:   property(name="app-name" format="jsonf")
+118:   property(name="$.hostname" outname="hostname" format="jsonf")
 119:   constant(value=", ")
-120:   property(name="procid" format="jsonf")
+120:   property(name="app-name" format="jsonf")
 121:   constant(value=", ")
-122:   property(name="msgid" format="jsonf")
+122:   property(name="procid" format="jsonf")
 123:   constant(value=", ")
-124:   constant(value="\"syslog-relay\": { ")
-125:   property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
-126:   constant(value=", ")
-127:   property(name="fromhost" format="jsonf")
+124:   property(name="msgid" format="jsonf")
+125:   constant(value=", ")
+126:   constant(value="\"syslog-relay\": { ")
+127:   property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
 128:   constant(value=", ")
-129:   property(name="fromhost-ip" format="jsonf")
-130:   constant(value=", \"myhostname\":\"")
-131:   property(name="$myhostname" format="jsonr")
-132:   constant(value="\", ")
-133:   property(name="inputname" format="jsonf")
-134:   constant(value=", \"format\":\"")
-135:   property(name="$.syslog-relay!format" format="jsonr")
-136:   constant(value="\", \"pri-valid\":")
-137:   property(name="$.syslog-relay!pri-valid")
-138:   constant(value=", \"header-valid\":")
-139:   property(name="$.syslog-relay!header-valid")
-140:   constant(value=", \"json-msg-parsed\":")
-141:   property(name="$.syslog-relay!json-msg-parsed")
-142:   constant(value=", \"tls\":")
-143:   property(name="$.syslog-relay!tls")
-144:   constant(value=", \"authenticated-client\":")
-145:   property(name="$.syslog-relay!authenticated-client")
-146:   constant(value=" }, ")
-147:   
-148:   property(name="rawmsg" format="jsonf")
-149:   constant(value=", ")
-150:   property(name="$!" position.from="2")
-151:   constant(value="\n")
-152: }
-153: 
-154: template(name="TmplJSONMsgAndRawMsg" type="list") {
-155:   constant(value="{ ")
-156:   property(name="syslogfacility" format="jsonf")
-157:   constant(value=", ")
-158:   property(name="syslogfacility-text" format="jsonf")
+129:   property(name="fromhost" format="jsonf")
+130:   constant(value=", ")
+131:   property(name="fromhost-ip" format="jsonf")
+132:   constant(value=", \"myhostname\":\"")
+133:   property(name="$myhostname" format="jsonr")
+134:   constant(value="\", ")
+135:   property(name="inputname" format="jsonf")
+136:   constant(value=", \"format\":\"")
+137:   property(name="$.syslog-relay!format" format="jsonr")
+138:   constant(value="\", \"pri-valid\":")
+139:   property(name="$.syslog-relay!pri-valid")
+140:   constant(value=", \"header-valid\":")
+141:   property(name="$.syslog-relay!header-valid")
+142:   constant(value=", \"json-msg-parsed\":")
+143:   property(name="$.syslog-relay!json-msg-parsed")
+144:   constant(value=", \"tls\":")
+145:   property(name="$.syslog-relay!tls")
+146:   constant(value=", \"authenticated-client\":")
+147:   property(name="$.syslog-relay!authenticated-client")
+148:   constant(value=" }, ")
+149:   
+150:   property(name="rawmsg" format="jsonf")
+151:   constant(value=", ")
+152:   property(name="$!" position.from="2")
+153:   constant(value="\n")
+154: }
+155: 
+156: template(name="TmplJSONMsgAndRawMsg" type="list") {
+157:   constant(value="{ ")
+158:   property(name="syslogfacility" format="jsonf")
 159:   constant(value=", ")
-160:   property(name="syslogseverity" format="jsonf")
+160:   property(name="syslogfacility-text" format="jsonf")
 161:   constant(value=", ")
-162:   property(name="syslogseverity-text" format="jsonf")
+162:   property(name="syslogseverity" format="jsonf")
 163:   constant(value=", ")
-164:   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
+164:   property(name="syslogseverity-text" format="jsonf")
 165:   constant(value=", ")
-166:   property(name="$.hostname" outname="hostname" format="jsonf")
+166:   property(name="timestamp" dateFormat="rfc3339" format="jsonf")
 167:   constant(value=", ")
-168:   property(name="app-name" format="jsonf")
+168:   property(name="$.hostname" outname="hostname" format="jsonf")
 169:   constant(value=", ")
-170:   property(name="procid" format="jsonf")
+170:   property(name="app-name" format="jsonf")
 171:   constant(value=", ")
-172:   property(name="msgid" format="jsonf")
+172:   property(name="procid" format="jsonf")
 173:   constant(value=", ")
-174:   constant(value="\"syslog-relay\": { ")
-175:   property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
-176:   constant(value=", ")
-177:   property(name="fromhost" format="jsonf")
+174:   property(name="msgid" format="jsonf")
+175:   constant(value=", ")
+176:   constant(value="\"syslog-relay\": { ")
+177:   property(name="timegenerated" dateFormat="rfc3339" format="jsonf")
 178:   constant(value=", ")
-179:   property(name="fromhost-ip" format="jsonf")
-180:   constant(value=", \"myhostname\":\"")
-181:   property(name="$myhostname" format="jsonr")
-182:   constant(value="\", ")
-183:   property(name="inputname" format="jsonf")
-184:   constant(value=", \"format\":\"")
-185:   property(name="$.syslog-relay!format" format="jsonr")
-186:   constant(value="\", \"pri-valid\":")
-187:   property(name="$.syslog-relay!pri-valid")
-188:   constant(value=", \"header-valid\":")
-189:   property(name="$.syslog-relay!header-valid")
-190:   constant(value=", \"json-msg-parsed\":")
-191:   property(name="$.syslog-relay!json-msg-parsed")
-192:   constant(value=", \"tls\":")
-193:   property(name="$.syslog-relay!tls")
-194:   constant(value=", \"authenticated-client\":")
-195:   property(name="$.syslog-relay!authenticated-client")
-196:   constant(value=" }, ")
-197:   
-198:   property(name="msg" format="jsonf")
-199:   constant(value=", ")
-200:   property(name="rawmsg" format="jsonf")
+179:   property(name="fromhost" format="jsonf")
+180:   constant(value=", ")
+181:   property(name="fromhost-ip" format="jsonf")
+182:   constant(value=", \"myhostname\":\"")
+183:   property(name="$myhostname" format="jsonr")
+184:   constant(value="\", ")
+185:   property(name="inputname" format="jsonf")
+186:   constant(value=", \"format\":\"")
+187:   property(name="$.syslog-relay!format" format="jsonr")
+188:   constant(value="\", \"pri-valid\":")
+189:   property(name="$.syslog-relay!pri-valid")
+190:   constant(value=", \"header-valid\":")
+191:   property(name="$.syslog-relay!header-valid")
+192:   constant(value=", \"json-msg-parsed\":")
+193:   property(name="$.syslog-relay!json-msg-parsed")
+194:   constant(value=", \"tls\":")
+195:   property(name="$.syslog-relay!tls")
+196:   constant(value=", \"authenticated-client\":")
+197:   property(name="$.syslog-relay!authenticated-client")
+198:   constant(value=" }, ")
+199:   
+200:   property(name="msg" format="jsonf")
 201:   constant(value=", ")
-202:   property(name="$!" position.from="2")
-203:   constant(value="\n")
-204: }
-205: 
-206: # Special templates for handling rsyslog errors
-207: template(name="DynStatsError" type="string" string="fromhost=%fromhost% error=%$.inc_status%\n")
-208: template(name="Empty" type="string" string="")
+202:   property(name="rawmsg" format="jsonf")
+203:   constant(value=", ")
+204:   property(name="$!" position.from="2")
+205:   constant(value="\n")
+206: }
+207: 
+208: # Special templates for handling rsyslog errors
+209: template(name="DynStatsError" type="string" string="fromhost=%fromhost% error=%$.inc_status%\n")
+210: template(name="Empty" type="string" string="")
 ##^ expanding file: /etc/rsyslog.d/60-ruleset.conf
   1: # Rules and actions to apply when a specific kind of input is received
   2: # Note extensive use of variable property types as per https://www.rsyslog.com/doc/master/rainerscript/variable_property_types.html
@@ -994,37 +996,46 @@
  22:   action(
  23:     type="omfile"
  24:     template="RawMsg"
- 25:     file="/var/log/remote/extra_kafka_input.log"
- 26:   )
- 27: }
- 28: 
- 29: # Integrated extra output
- 30: # - env var rsyslog_call_fwd_extra_rule=true must be set
- 31: # - Then /etc/rsyslog.d/60-output_format.conf should call this ruleset after the other pre-defined outputs
- 32: # - Expects the ruleset with name `fwd_extra` to be defined in a file in /etc/rsyslog.d/extra/ and rsyslog will fail to start if it is missing
- 33: # - Will be affected by global output filters in /etc/rsyslog.d/output/filters/*
- 34: # - Input filters will also apply
- 35: ruleset(name="fwd_extra") {
- 36:   action(
- 37:     type="omfile"
- 38:     template="RawMsg"
- 39:     file="/var/log/remote/all_raw.log"
- 40:   )
- 41: }
- 42: 
- 43: # Integrated extra input
- 44: # - To plug input into pre-defined outputs of /etc/rsyslog.d/output/, must set ruleset="central"
- 45: # - Then, global input filters from /etc/rsyslog.d/input/filters/* will apply
- 46: # - And, global output filters from /etc/rsyslog.d/output/filters/* will apply
- 47: module(load="imfile")
- 48: input(
- 49:   type="imfile"
- 50:   File="/tmp/test_imfile"
- 51:   PersistStateInterval="60"
- 52:   freshStartTail="on"
- 53:   Tag="test_imfile:"
- 54:   Severity="info"
- 55:   Facility="local7"
- 56:   ruleset="central"
- 57: )
+ 25:     fileCreateMode="0644"
+ 26:     file="/var/log/remote/extra_kafka_input.log"
+ 27:   )
+ 28: }
+ 29: 
+ 30: # Integrated extra output
+ 31: # - env var rsyslog_call_fwd_extra_rule=true must be set
+ 32: # - Then /etc/rsyslog.d/60-output_format.conf should call this ruleset after the other pre-defined outputs
+ 33: # - Expects the ruleset with name `fwd_extra` to be defined in a file in /etc/rsyslog.d/extra/ and rsyslog will fail to start if it is missing
+ 34: # - Will be affected by global output filters in /etc/rsyslog.d/output/filters/*
+ 35: # - Input filters will also apply
+ 36: # - Useful for testing template options. Other user read access is needed for the non-root behave process to read these files.
+ 37: ruleset(name="fwd_extra") {
+ 38:   action(
+ 39:     type="omfile"
+ 40:     template="RawMsg"
+ 41:     fileCreateMode="0644"
+ 42:     file="/var/log/remote/all_raw.log"
+ 43:   )
+ 44:   action(
+ 45:     type="omfile"
+ 46:     template="RawMsgEndMetaShort"
+ 47:     fileCreateMode="0644"
+ 48:     file="/var/log/remote/all_raw_end_meta.log"
+ 49:   )
+ 50: }
+ 51: 
+ 52: # Integrated extra input
+ 53: # - To plug input into pre-defined outputs of /etc/rsyslog.d/output/, must set ruleset="central"
+ 54: # - Then, global input filters from /etc/rsyslog.d/input/filters/* will apply
+ 55: # - And, global output filters from /etc/rsyslog.d/output/filters/* will apply
+ 56: module(load="imfile")
+ 57: input(
+ 58:   type="imfile"
+ 59:   File="/tmp/test_imfile"
+ 60:   PersistStateInterval="60"
+ 61:   freshStartTail="on"
+ 62:   Tag="test_imfile:"
+ 63:   Severity="info"
+ 64:   Facility="local7"
+ 65:   ruleset="central"
+ 66: )
 ##> end of expand directive: $IncludeConfig /etc/rsyslog.d/extra/*.conf

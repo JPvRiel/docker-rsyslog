@@ -23,7 +23,7 @@ Feature: Accept syslog messages in various formats
       | /var/log/remote/test_syslog_client_ubuntu1804 | Ubuntu 18\.04.* was running rsyslogd.* |
 
 
-  # - Positive testing well formed message samples
+  # Positive testing well formed message samples
 
   @slow
   Scenario Outline: Well formed messages mapped into JSON fields
@@ -94,7 +94,7 @@ Feature: Accept syslog messages in various formats
       | <38>Sep 19 23:43:29 Message forwarded from claimedhostname: procnamewithid[99]: AIX extraneous forwarded from message with process ID | .*?AIX extraneous forwarded from message with process ID.* | { "hostname": "claimedhostname", "app-name": "procnamewithid", "procid" : "99" } |
 
 
-  # - Negative testing with "malformed" message samples
+  # Negative testing with "malformed" message samples
 
   @slow
   Scenario Outline: Malformed messages do not create bogus field values
@@ -135,3 +135,17 @@ Feature: Accept syslog messages in various formats
       | message | regex | path  | value |
       | <14>Sep 19 23:43:29 behave test[3]: 3 Well formed RFC3164 which is not a JSON message | .*?3 Well formed RFC3164 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |
       | <14>1 2017-09-19T23:43:29+00:00 behave test 5 - - 5 Well formed RFC5424 which is not a JSON message | .*?5 Well formed RFC5424 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |
+
+# Extended templating option tests
+
+  @slow @wip
+  Scenario Outline: Extended metadata options can be used with extra plaintext outputs
+    Given a file "<file>" exists
+    When sending the syslog message "Testing extended metadata" in "RFC3164" format
+      And waiting "1" seconds
+      And searching lines for the pattern "<regex>" over "60" seconds
+    Then the pattern should be found
+
+    Examples:
+      | file | regex |
+      | /var/log/remote/all_raw_end_meta.log | @meta:\[fromhost=\"[^\"]*\", fromhost-ip=\"[^\"]+\"\]$ |
