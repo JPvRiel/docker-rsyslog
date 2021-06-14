@@ -6,11 +6,11 @@ An rsyslog container intended to transfer syslog input into kafka with a JSON fo
 
 Why not the official image?
 
-This project was started in 2017. About a year later, an upstream [official rsyslog impages](https://hub.docker.com/u/rsyslog/) project started which will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (Oct 2020):
+This project was started in 2017. About a year later, an upstream [official rsyslog impages](https://hub.docker.com/u/rsyslog/) project started which will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (June 2021):
 
-- [rsyslog/syslog_appliance_alpine
-](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
+- [rsyslog/syslog_appliance_alpine](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
 - [Using Rsyslog Docker Containers](https://www.rsyslog.com/doc/master/installation/rsyslog_docker.html) still has the development warning notice.
+- [github: rsyslog / rsyslog-docker](https://github.com/rsyslog/rsyslog-docker) warns "a playground for rsyslog docker tasks - nothing production yet".
 - The [alpine: add kafka module](https://github.com/rsyslog/rsyslog-docker/issues/6) issue was still open.
 - [rsyslog.conf.d](https://github.com/rsyslog/rsyslog-docker/tree/master/appliance/alpine/rsyslog.conf.d) only provided limited bundled config use-cases such as logging to file or a cloud logging provider (sematext), but not Kafka.
 
@@ -70,7 +70,7 @@ Legacy formats/templates can easily be set via [pre-defined rsyslog template nam
   - `TmplRFC5424` (same as `rsyslog_SyslogProtocol23Format`).
   - `TmplRFC5424Meta` which appends a extra structured data element fields with more info about how the message was received in a `syslog-relay` structured element.
 - JSON output templates:
-  - `TmplrsyslogJSON` is the full native rsyslog message object (might duplicate fields, but also useful to debug with).
+  - `TmplRSyslogJSON` is the full native rsyslog message object (might duplicate fields, but also useful to debug with).
   - `TmplJSON` is a JSON output option for a subset of common syslog fields and the parsed msg portion (the message after the syslog header pieces)
   - `TmplJSONRawMsg` includes the full raw message including original syslog headers - potentially useful as provenance / evidence on exactly how the message was transferred from a source
   - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`.
@@ -79,6 +79,9 @@ Legacy formats/templates can easily be set via [pre-defined rsyslog template nam
 - A raw template `RawMsg` can be useful to bypass most rsyslog parsing and simply relay that data as is.
   - One might also then skip parsing with `parser="rsyslog.pmnull"` for a given ruleset.
   - Note that some network devices and Solaris don't provide syslog header names so the original log source identity can end up being lost).
+- An extended raw message template `RawMsgEndMeta` can append metadata to the end of the message.
+  - This might help in cases where you relay syslog events to a SIEM that has parsers which expect the original log source format but might tolerate adding the metadata at the end.
+  - A shorter version, `rawMsgEndMetaShort`, includes just the `fromhost` and `fromhost-ip` properties to limit the amount of metadata tagged on the end, and is especially suited to UDP forwarding where the MTU might be limited to ~1500 bytes or less.
 - Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
 
 See the `ENV` instructions with `rsyslog_` environment name prefixes in the `Dockerfile` to review default settings and options further.
@@ -91,7 +94,7 @@ The container also supports advanced debug scenarios.
 
 #### YOLO
 
-The 'yolo' way
+The 'yolo' way:
 
 ```bash
 docker container run --cap-add sys_nice --rm -it --name syslog jpvriel/rsyslog:latest
@@ -425,13 +428,16 @@ By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options
 
 The table shows compatible template and options.
 
-| Templates         | Use                                                | rsyslog_support_metadata_formats      | rsyslog_mmpstrucdata                                   |
-|-------------------|----------------------------------------------------|---------------------------------------|--------------------------------------------------------|
-| `TmplRFC5424`     | RFC5424 (same as `rsyslog_SyslogProtocol23Format`) | NA, omitted                           | NA, not a JSON format                                  |
-| `TmplRFC5424Meta` | RFC5424 with extra structured meta-data element    | Yes, prepended to SD-Elements         | NA, not a JSON format                                  |
-| `TmplrsyslogJSON` | rsyslog's internal JSON representation             | Yes, appears in `$!` root object      | Yes, adds `rfc5424-sd` to `$!`                         |
-| `TmplJSON`        | Simplified smaller JSON message                    | No, omits fields for meta-data        | Yes                                                    |
-| `TmplJSONRawMsg`  | More complete well structured JSON message         | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
+| Templates            | Use                                                | rsyslog_support_metadata_formats      | rsyslog_mmpstrucdata                                   |
+|----------------------|----------------------------------------------------|---------------------------------------|--------------------------------------------------------|
+| `RawMsg`             | Raw message as received from source                | NA, omitted                           | NA, not a JSON format                                  |
+| `RawMsgEndMeta`      | Raw message with meta-data appended at the end     | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
+| `RawMsgEndMetaShort` | Raw message with limited meta-data appended        | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
+| `TmplRFC5424`        | RFC5424 (same as `rsyslog_SyslogProtocol23Format`) | NA, omitted                           | NA, not a JSON format                                  |
+| `TmplRFC5424Meta`    | RFC5424 with extra structured meta-data element    | Yes, prepended to SD-Elements         | NA, not a JSON format                                  |
+| `TmplRSyslogJSON`    | rsyslog's internal JSON representation             | Yes, appears in `$!` root object      | Yes, adds `rfc5424-sd` to `$!`                         |
+| `TmplJSON`           | Simplified smaller JSON message                    | No, omits fields for meta-data        | Yes                                                    |
+| `TmplJSONRawMsg`     | More complete well structured JSON message         | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
 
 `rsyslog_support_metadata_formats` is also needed add logic that builds in some extra validation steps in order to output the meta-data with more accurate information about the origin of the message. rsyslog readily parses almost any valid text as a hostname with RFC3164, even when the message looks like it's ignoring the conventions and it's unlikely a valid hostname - as per this issue: [pmrfc3164 blindly swallows the first word of an invalid syslog header as the hostname](https://github.com/rsyslog/rsyslog/issues/1789).
 
@@ -563,7 +569,7 @@ This is what the dynamic stat looks like when output as JSON:
   "origin": "dynstats.bucket",
   "values": {
     "docker-rsyslog_test_syslog_client_centos7_1.docker-rsyslog_default": 3,
-    "docker-rsyslog_test_syslog_client_ubuntu1604_1.docker-rsyslog_default": 3,
+    "docker-rsyslog_test_syslog_client_ubuntu1804_1.docker-rsyslog_default": 3,
     "docker-rsyslog_sut_run_1.docker-rsyslog_default": 39
   }
 }
@@ -662,6 +668,23 @@ Note, there is a runtime `rsyslog_global_ca_file` env var to set the CA for rsys
 However, should you need to embed a CA for other reasons (e.g. building via a corporate TLS intercepting proxy), you embed your own CA at build time by placing your own CA certificates in `etc/pki/ca-trust/source/anchors`.
 
 ## Testing
+
+### Security considerations
+
+#### Why root is required for the container when UDP spoof is enabled
+
+While newer versions of docker allow building and running containers without root privileges, use of the `omudpspoof` output module requires root access on the host.
+
+TODO: Clarify container security requirements for using omudpspoof which likely needs host user namespace, host network and root plus some capabilities like net admin?
+TODO: Validate if and how UDP spoof testing can work without host root (unlikely?) and/or create a build and test option that skips this feature to have an option to build without root.
+
+#### Docker user namespace remapping
+
+If user namespace re-mapping is done, as per [Isolate containers with a user namespace](https://docs.docker.com/engine/security/userns-remap/), then some of the bind mounts run by the test suite may have access errors. To fix this, inspect `grep dockremap /etc/sub{u,g}id` to understand the id range mappings.
+
+In a default `dockremap` scenario, the namespace is mapped to a subuid and subgid for the `dockremap` account. Using `setfacl`, assigne access to your own current user, and the chown the bind mount source dir with re-mapped docker root uid.  E.g. for the test suit the `test` dir has to be owned by the remapped uid.
+
+This is a fairly complex process, so see the `docker-userns-remap-acls` script as an example to help with this.
 
 ### System under test (SUT)
 
@@ -1098,6 +1121,8 @@ rsyslogd: imrelp[7514]: error 'TLS handshake failed [gnutls error -43: Error in 
 
 As per the official [CEE](http://cee.mitre.org/) site, CEE sponsorship was halted and not that many systems adopted CEE. rsyslog accepts JSON formatted messages is they are preceded with an `@cee` cookie, but in testing, this doesn't appear to work well if the message also has RFC5424 structured data preceding the cookie.
 
+TODO: issue now closed? Templates can be simplified and JSON int type used?
+
 As per issue [#2827](https://github.com/rsyslog/rsyslog/issues/2827), rsyslog didn't have a simple way to set or manage non-string based JSON types such as booleans, numbers or null, which adds to the complexity of 'hand-crafted' output templates.
 
 ### Legacy formats
@@ -1170,7 +1195,7 @@ Not yet done:
     - the central output ruleset might need more worker threads
   - Other docs
     - <https://rsyslog.readthedocs.io/en/stable/concepts/queues.html>
-  
+
       > By default, rulesets do not have their own queue.
 
       And
