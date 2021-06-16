@@ -22,6 +22,7 @@ services:
       - syslog_tls:/etc/pki/rsyslog
     stop_grace_period: 1m30s
     mem_limit: 16g
+    userns_mode: host
     cap_add:
       - SYS_NICE
 

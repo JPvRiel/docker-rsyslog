@@ -97,13 +97,14 @@ The container also supports advanced debug scenarios.
 The 'yolo' way:
 
 ```bash
-docker container run --cap-add sys_nice --rm -it --name syslog jpvriel/rsyslog:latest
+docker container run --rm -it --name syslog jpvriel/rsyslog:latest
 ```
 
 __NB!__:
 
 - _NOT for production!_ (volumes left dangling between container runs, data loss likely, and client problems validating self-signed certs)
 - Default self-signed cert's private key isn't private, it's PUBLIC, since it's checked into the code repo for testing purposes.
+- Without SYS_NICE capability and the host usernamespace, rsyslogd will lack permission to set UDP threading schedular priority with the `pthread_setschedparam()` system call.
 
 #### `TZ` should be set
 
@@ -111,6 +112,14 @@ __NB!__: when rsyslog starts, `TZ` should be set so it can efficiently deal with
 
 - The timezone within docker container is UTC, even if your host has this set otherwise.
 - Newer versions of rsyslog check if `TZ` is set within a container. See [rsyslog assumes UTC if TZ env var is not set and misses using the actual system's localtime](https://github.com/rsyslog/rsyslog/issues/2054) is closed as of v8.33.
+
+#### SYS_NICE capability and the host usernamespace are required for rsyslogd to set UDP input scheduling priority
+
+Note, the `SYS_NICE` capability is needed to set a FIFO IO priority for the UDP input threads. In addition, if docker is setup with userns-remap enabled, then it's also necessary to add `--userns host`, otherwise the following warning occurs:
+
+> rsyslogd: imudp: pthread_setschedparam() failed - ignoring: Operation not permitted
+
+It's possible to ingore the above error message and run rsyslogd with docker user namespace remapping in place. The rsyslogd container's UDP input should still be functional, as well as more secure, but the performance implications and required container networking fine tuning needed has not been investigated to determine the full performance and UDP reliability impact.
 
 #### Minimally sane
 
@@ -134,6 +143,7 @@ Run docker mounting volumes and ensuring `TZ` is set/passed
 
 ```bash
 docker container run --rm -it \
+ --userns host \
  --cap-add sys_nice \
  -v syslog_log:/var/log/remote \
  -v syslog_work:/var/lib/rsyslog \
@@ -142,7 +152,7 @@ docker container run --rm -it \
  --name syslog jpvriel/rsyslog:latest
 ```
 
-Note, the `SYS_NICE` capability is needed to set a FIFO IO priority for the UDP input threads.
+Omit `--userns host` and `--cap-add SYS_NICE` if you prefer the security benifits of docker usernamespace remapping, which will imply rsyslogd runs with default UDP thread priority scheduling instead of being able to set it.
 
 #### docker-compose
 
@@ -155,6 +165,7 @@ Note:
 - Assumes `TZ` is set and passes this along (see above).
 - Assumes or creates named volumes (`syslog_log`, `syslog_metrics`, `syslog_work`, `syslog_tls`).
 - The `syslog_metrics` volume will only be used if `rsyslog_impstats_log_file_enabled` env var is set to `on`.
+- Again, the host usernamespace and `SYS_NICE` capability are set to allow control of UDP input scheduling priority, but can be commented out.
 
 The volume name is forced (doesn't use the directory prefix). E.g. if run from a directory `docker-rsyslog`, then:
 
