@@ -593,8 +593,7 @@ This is what the dynamic stat looks like when output as JSON:
 
 Due to syslog impstats being sent via the syslog engine itself, the `$rawmsg` property lacks the standard syslogheaders, if  `rsyslog_support_metadata_formats=on`, then `"format": "NA_internal_rsyslogd-pstats"` is and `"pri-valid": false` and `header-valid": false` are set because there is no RFC spec header to inspect ude to it being internal to the syslog engine.
 
-As per [formats
-Tutorial: Sending impstats Metrics to Elasticsearch Using Rulesets and Queues](https://www.rsyslog.com/tutorial-sending-impstats-metrics-to-elasticsearch-using-rulesets-and-queues/), it can be useful to track how many messages rsyslog processes. Also:
+As per [Tutorial: Sending impstats Metrics to Elasticsearch Using Rulesets and Queues](https://www.rsyslog.com/tutorial-sending-impstats-metrics-to-elasticsearch-using-rulesets-and-queues/), it can be useful to track how many messages rsyslog processes. Also:
 
 - [details of impstats module fields made in elasticsearch](https://github.com/rsyslog/rsyslog/issues/1796) helps ask for clarification about various stats produced.
 - [rsyslog statistic counter](https://www.rsyslog.com/doc/master/configuration/rsyslog_statistic_counter.html) details some meaning for stats and which modules support stats.
@@ -606,6 +605,17 @@ By default, in `Dockerfile`, various stats env vars set the following:
 - `rsyslog_module_impstats_resetCounters='on'` resets many counters, but at the cost of some accuracy (see doc for `impstats`)
 - `rsyslog_module_impstats_format='cee'` is the format set (instead of the legacy key value pair format used)
 - `rsyslog_impstats_ruleset='syslog_stats'` sets the ruleset to send the stats output to, whereby stats are sent via normal syslog and the call to `output` will cause stats to be output/forwarded to all configured output modules. This can be changed to a single select 'pre-bundled' output ruleset if it was already enabled (e.g. `out_file`, `fwd_kafka`, `fwd_syslog` or `fwd_json`), or otherwise, a custom independent output can be defined via the extra config mechanism.
+
+#### More reliable stats processing
+
+Even with the attempt to split and run impstats in it's own queue, it might be more reliable to configure impstats to log to a file in a volume:
+
+- By setting `rsyslog_impstats_log_file_enabled=on`, stats events will be logged at `/var/log/impstats/metrics.log`.
+  - See the `Dockerfile` if you prefer modifying the destination and volume for this.
+- In theory, it should be more reliable to avoid the syslog engine and simply log to file.
+- There are more sophisticated options such as [Monitoring rsyslog’s Performance with impstats and Elasticsearch](https://sematext.com/blog/monitoring-rsyslogs-performance-with-impstats-and-elasticsearch/), which can directly indexes events from it's own ruleset.
+  - But this also relies on the internal syslog engine and omelasticsearch output for delivery, so it may be less failsafe compared to a local file.
+- Arguably, a more failsafe, but convoluted process would be to log rsyslog stats into the file, then use filebeat with a bit of parsing from logstash to index the data into elastic, which decouples the dependany on the syslog engine and can better tolerate downtime or network issues communicating with elasticsearch.
 
 ## Version
 
