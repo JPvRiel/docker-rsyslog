@@ -271,6 +271,7 @@ ENV rsyslog_output_filtering_enabled='on' \
 
 # Volumes required
 VOLUME /var/log/remote \
+  /var/log/impstats \
   /var/lib/rsyslog \
   /etc/pki/rsyslog
 
