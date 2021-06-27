@@ -106,11 +106,11 @@
  56: # - now that JSON types are formally supported, be more explicit with data types
  57: template(name="TmplJSON" type="list") {
  58:   constant(value="{ ")
- 59:   property(name="syslogfacility" format="jsonf")
+ 59:   property(name="syslogfacility" format="jsonf" datatype="number")
  60:   constant(value=", ")
  61:   property(name="syslogfacility-text" format="jsonf")
  62:   constant(value=", ")
- 63:   property(name="syslogseverity" format="jsonf")
+ 63:   property(name="syslogseverity" format="jsonf" datatype="number")
  64:   constant(value=", ")
  65:   property(name="syslogseverity-text" format="jsonf")
  66:   constant(value=", ")
@@ -156,11 +156,11 @@
 106: 
 107: template(name="TmplJSONRawMsg" type="list") {
 108:   constant(value="{ ")
-109:   property(name="syslogfacility" format="jsonf")
+109:   property(name="syslogfacility" format="jsonf" datatype="number")
 110:   constant(value=", ")
 111:   property(name="syslogfacility-text" format="jsonf")
 112:   constant(value=", ")
-113:   property(name="syslogseverity" format="jsonf")
+113:   property(name="syslogseverity" format="jsonf" datatype="number")
 114:   constant(value=", ")
 115:   property(name="syslogseverity-text" format="jsonf")
 116:   constant(value=", ")
@@ -206,11 +206,11 @@
 156: 
 157: template(name="TmplJSONMsgAndRawMsg" type="list") {
 158:   constant(value="{ ")
-159:   property(name="syslogfacility" format="jsonf")
+159:   property(name="syslogfacility" format="jsonf" datatype="number")
 160:   constant(value=", ")
 161:   property(name="syslogfacility-text" format="jsonf")
 162:   constant(value=", ")
-163:   property(name="syslogseverity" format="jsonf")
+163:   property(name="syslogseverity" format="jsonf" datatype="number")
 164:   constant(value=", ")
 165:   property(name="syslogseverity-text" format="jsonf")
 166:   constant(value=", ")
@@ -313,7 +313,7 @@
  51:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_udp_pre_filter", $fromhost);
  52:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
  53:   if ($.inc_status != 0) then { 
- 54:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 54:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
  55:   }
  56:   set $.syslog-relay!tls = "false";
  57:   set $.syslog-relay!authenticated-client = "false";
@@ -330,7 +330,7 @@
  64:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_pre_filter", $fromhost);
  65:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
  66:   if ($.inc_status != 0) then { 
- 67:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 67:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
  68:   }
  69:   set $.syslog-relay!tls = "false";
  70:   set $.syslog-relay!authenticated-client = "false";
@@ -347,7 +347,7 @@
  77:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_tcp_secure_pre_filter", $fromhost);
  78:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
  79:   if ($.inc_status != 0) then { 
- 80:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 80:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
  81:   }
  82:   set $.syslog-relay!tls = "true";
  83:   set $.syslog-relay!authenticated-client = "false";
@@ -364,7 +364,7 @@
  90:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_pre_filter", $fromhost);
  91:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
  92:   if ($.inc_status != 0) then { 
- 93:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 93:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
  94:   }
  95:   set $.syslog-relay!tls = "false";
  96:   set $.syslog-relay!authenticated-client = "false";
@@ -382,7 +382,7 @@
 104:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_pre_filter", $fromhost);
 105:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
 106:   if ($.inc_status != 0) then { 
-107:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+107:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
 108:   }
 109:   set $.syslog-relay!tls = "true";
 110:   set $.syslog-relay!authenticated-client = "false";
@@ -399,7 +399,7 @@
 117:   set $.inc_status = dyn_inc("msg_per_fromhost_remote_in_relp_secure_client_auth_pre_filter", $fromhost);
 118:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
 119:   if ($.inc_status != 0) then { 
-120:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+120:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
 121:   }
 122:   set $.syslog-relay!tls = "true";
 123:   set $.syslog-relay!authenticated-client = "true";
@@ -430,7 +430,7 @@
 144:   set $.inc_status = dyn_inc("msg_per_fromhost", $fromhost);
 145:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
 146:   if ($.inc_status != 0) then { 
-147:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+147:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
 148:   }
 149: 
 150:   # Add metadata about how the message was received and compensate for malformed messages
@@ -732,7 +732,7 @@
  17:   set $.inc_status = dyn_inc("msg_per_fromhost_out_file_post_filter", $fromhost);
  18:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
  19:   if ($.inc_status != 0) then { 
- 20:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
+ 20:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
  21:   }
  22: 
  23:   # In the simple case, we use the hostname as the filename and place all logs in that file
@@ -770,43 +770,42 @@
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_kafka/*.conf
  12: 
  13:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_kafka_post_filter", $fromhost);
- 14:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 15:   if ($.inc_status != 0) then {
- 16:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 17:   }
- 18: 
- 19:   action(
- 20:     name="fwd_kafka_topic_test_syslog"
- 21:     type="omkafka"
- 22:     broker=["test_kafka:9092"]
- 23:     confParam=["batch.num.messages=1", "queue.buffering.max.ms=100", "sasl.mechanisms=PLAIN", "sasl.username=test", "sasl.password=test-secret", "security.protocol=sasl_ssl", "ssl.ca.location=/usr/local/etc/pki/test/test_ca.cert.pem", "ssl.key.location=/usr/local/etc/pki/test/test_syslog_server.key.pem", "ssl.certificate.location=/usr/local/etc/pki/test/test_syslog_server.cert.pem"]
- 24:     topic="test_syslog"
- 25:     dynatopic="off"
- 26:     partitions.auto="on"
- 27:     
- 28:     resubmitOnFailure="on"
- 29:     keepFailedMessages="on"
- 30:     failedMsgFile="/var/lib/rsyslog/kafka_failed.msg"
- 31:     template="TmplJSON"
- 32:     action.resumeRetryCount = "-1"
- 33:     # queue config
- 34:     queue.type="LinkedList"
- 35:     queue.filename="fwd_kafka"
- 36:     # queue peristance and size limit
- 37:     queue.maxDiskSpace="1073741824"
- 38:     queue.size="1048576"
- 39:     queue.discardMark="838860"
- 40:     queue.discardSeverity="6"
- 41:     queue.checkpointInterval="8192"
- 42:     queue.saveOnShutdown="on"
- 43:     # queue threads and batching
- 44:     queue.dequeueBatchSize="1024"
- 45:     queue.minDequeueBatchSize="128"
- 46:     queue.minDequeueBatchSize.timeout="500"
- 47:     queue.workerThreads="4"
- 48:     queue.workerThreadMinimumMessages="8192"
- 49:   )
- 50: }
+ 14:   if ($.inc_status != 0) then {
+ 15:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
+ 16:   }
+ 17: 
+ 18:   action(
+ 19:     name="fwd_kafka_topic_test_syslog"
+ 20:     type="omkafka"
+ 21:     broker=["test_kafka:9092"]
+ 22:     confParam=["batch.num.messages=1", "queue.buffering.max.ms=100", "sasl.mechanisms=PLAIN", "sasl.username=test", "sasl.password=test-secret", "security.protocol=sasl_ssl", "ssl.ca.location=/usr/local/etc/pki/test/test_ca.cert.pem", "ssl.key.location=/usr/local/etc/pki/test/test_syslog_server.key.pem", "ssl.certificate.location=/usr/local/etc/pki/test/test_syslog_server.cert.pem"]
+ 23:     topic="test_syslog"
+ 24:     dynatopic="off"
+ 25:     partitions.auto="on"
+ 26:     
+ 27:     resubmitOnFailure="on"
+ 28:     keepFailedMessages="on"
+ 29:     failedMsgFile="/var/lib/rsyslog/kafka_failed.msg"
+ 30:     template="TmplJSON"
+ 31:     action.resumeRetryCount = "-1"
+ 32:     # queue config
+ 33:     queue.type="LinkedList"
+ 34:     queue.filename="fwd_kafka"
+ 35:     # queue peristance and size limit
+ 36:     queue.maxDiskSpace="1073741824"
+ 37:     queue.size="1048576"
+ 38:     queue.discardMark="838860"
+ 39:     queue.discardSeverity="6"
+ 40:     queue.checkpointInterval="8192"
+ 41:     queue.saveOnShutdown="on"
+ 42:     # queue threads and batching
+ 43:     queue.dequeueBatchSize="1024"
+ 44:     queue.minDequeueBatchSize="128"
+ 45:     queue.minDequeueBatchSize.timeout="500"
+ 46:     queue.workerThreads="4"
+ 47:     queue.workerThreadMinimumMessages="8192"
+ 48:   )
+ 49: }
 ##^ expanding file: /etc/rsyslog.d/output/82-fwd_syslog.conf
   1: # Syslog forwarding output (if enabled, else blank)
   2: 
@@ -830,37 +829,36 @@
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
  13: 
  14:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_syslog_post_filter", $fromhost);
- 15:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 16:   if ($.inc_status != 0) then { 
- 17:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
- 18:   }
- 19: 
- 20:   action(
- 21:     name="fwd_syslog_target_test_syslog_relay"
- 22:     type="omfwd"
- 23:     Target="test_syslog_relay"
- 24:     Port="10514"
- 25:     Protocol="tcp"
- 26:     template="TmplRFC5424Meta"
- 27:     action.resumeRetryCount = "-1"
- 28:     # queue config 
- 29:     queue.type="LinkedList"
- 30:     queue.filename="fwd_syslog"
- 31:     # queue peristance and size limit
- 32:     queue.maxDiskSpace="1073741824"
- 33:     queue.size="1048576"
- 34:     queue.discardMark="838860"
- 35:     queue.discardSeverity="6"
- 36:     queue.checkpointInterval="8192"
- 37:     queue.saveOnShutdown="on"
- 38:     # queue threads and batching
- 39:     queue.dequeueBatchSize="1024"
- 40:     queue.minDequeueBatchSize="128"
- 41:     queue.minDequeueBatchSize.timeout="500"
- 42:     queue.workerThreads="4"
- 43:     queue.workerThreadMinimumMessages="8192"
- 44:   )
- 45: }
+ 15:   if ($.inc_status != 0) then { 
+ 16:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
+ 17:   }
+ 18: 
+ 19:   action(
+ 20:     name="fwd_syslog_target_test_syslog_relay"
+ 21:     type="omfwd"
+ 22:     Target="test_syslog_relay"
+ 23:     Port="10514"
+ 24:     Protocol="tcp"
+ 25:     template="TmplRFC5424Meta"
+ 26:     action.resumeRetryCount = "-1"
+ 27:     # queue config 
+ 28:     queue.type="LinkedList"
+ 29:     queue.filename="fwd_syslog"
+ 30:     # queue peristance and size limit
+ 31:     queue.maxDiskSpace="1073741824"
+ 32:     queue.size="1048576"
+ 33:     queue.discardMark="838860"
+ 34:     queue.discardSeverity="6"
+ 35:     queue.checkpointInterval="8192"
+ 36:     queue.saveOnShutdown="on"
+ 37:     # queue threads and batching
+ 38:     queue.dequeueBatchSize="1024"
+ 39:     queue.minDequeueBatchSize="128"
+ 40:     queue.minDequeueBatchSize.timeout="500"
+ 41:     queue.workerThreads="4"
+ 42:     queue.workerThreadMinimumMessages="8192"
+ 43:   )
+ 44: }
 ##^ expanding file: /etc/rsyslog.d/output/83-fwd_syslog_udp_spoof.conf
   1: 
   2: # Special UDP syslog forwarding output relayed with the origin log source IP address spoofed (if enabled, else blank)
@@ -888,36 +886,35 @@
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_syslog/*.conf
  17: 
  18:   set $.inc_status = dyn_inc("msg_per_fromhost_omudpspoof_syslog_post_filter", $fromhost);
- 19:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 20:   if ($.inc_status != 0) then {
- 21:     action(name="dyn_stat_inc_error" type="omfile" file="/dev/null" template="Empty")
- 22:   }
- 23: 
- 24:   action(
- 25:     name="fwd_syslog_target_test_syslog_relay_udp_spoof"
- 26:     type="omudpspoof"
- 27:     Target="test_syslog_relay_udp_spoof"
- 28:     Port="10514"
- 29:     template="TmplRFC5424Meta"
- 30:     action.resumeRetryCount = "-1"
- 31:     # queue config 
- 32:     queue.type="LinkedList"
- 33:     queue.filename="fwd_syslog_omudpspoof"
- 34:     # queue peristance and size limit
- 35:     queue.maxDiskSpace="1073741824"
- 36:     queue.size="1048576"
- 37:     queue.discardMark="838860"
- 38:     queue.discardSeverity="6"
- 39:     queue.checkpointInterval="8192"
- 40:     queue.saveOnShutdown="on"
- 41:     # queue threads and batching
- 42:     queue.dequeueBatchSize="1024"
- 43:     queue.minDequeueBatchSize="128"
- 44:     queue.minDequeueBatchSize.timeout="500"
- 45:     queue.workerThreads="4"
- 46:     queue.workerThreadMinimumMessages="8192"
- 47:   )
- 48: }
+ 19:   if ($.inc_status != 0) then {
+ 20:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
+ 21:   }
+ 22: 
+ 23:   action(
+ 24:     name="fwd_syslog_target_test_syslog_relay_udp_spoof"
+ 25:     type="omudpspoof"
+ 26:     Target="test_syslog_relay_udp_spoof"
+ 27:     Port="10514"
+ 28:     template="TmplRFC5424Meta"
+ 29:     action.resumeRetryCount = "-1"
+ 30:     # queue config 
+ 31:     queue.type="LinkedList"
+ 32:     queue.filename="fwd_syslog_omudpspoof"
+ 33:     # queue peristance and size limit
+ 34:     queue.maxDiskSpace="1073741824"
+ 35:     queue.size="1048576"
+ 36:     queue.discardMark="838860"
+ 37:     queue.discardSeverity="6"
+ 38:     queue.checkpointInterval="8192"
+ 39:     queue.saveOnShutdown="on"
+ 40:     # queue threads and batching
+ 41:     queue.dequeueBatchSize="1024"
+ 42:     queue.minDequeueBatchSize="128"
+ 43:     queue.minDequeueBatchSize.timeout="500"
+ 44:     queue.workerThreads="4"
+ 45:     queue.workerThreadMinimumMessages="8192"
+ 46:   )
+ 47: }
 ##^ expanding file: /etc/rsyslog.d/output/84-fwd_json.conf
   1: # JSON output (if enabled, else blank)
   2: 
@@ -934,39 +931,38 @@
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/fwd_json/*.conf
  12: 
  13:   set $.inc_status = dyn_inc("msg_per_fromhost_fwd_json_post_filter", $fromhost);
- 14:   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
- 15:   if ($.inc_status != 0) then { 
- 16:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log " template="DynStatsError")
- 17:   }
- 18: 
- 19:   action(
- 20:     name="fwd_json_target_test_json_relay"
- 21:     type="omfwd"
- 22:     Target="test_json_relay"
- 23:     Port="15000"
- 24:     Protocol="tcp"
- 25:     template="TmplJSONRawMsg"
- 26:     action.resumeRetryCount = "-1"
- 27:     # often last message is lost when a connection breaks
- 28:     resendLastMSGOnReconnect="on"
- 29:     # queue config
- 30:     queue.type = "LinkedList"
- 31:     queue.filename="fwd_json"
- 32:     # queue peristance and size limit
- 33:     queue.maxDiskSpace="1073741824"
- 34:     queue.size="1048576"
- 35:     queue.discardMark="838860"
- 36:     queue.discardSeverity="6"
- 37:     queue.checkpointInterval="8192"
- 38:     queue.saveOnShutdown="on"
- 39:     # queue threads and batching
- 40:     queue.dequeueBatchSize="1024"
- 41:     queue.minDequeueBatchSize="128"
- 42:     queue.minDequeueBatchSize.timeout="500"
- 43:     queue.workerThreads="4"
- 44:     queue.workerThreadMinimumMessages="8192"
- 45:   )
- 46: }
+ 14:   if ($.inc_status != 0) then {
+ 15:     action(name="dyn_stat_inc_error" type="omfile" file="/var/log/impstats/dyn_stats_inc_error.log" template="DynStatsError")
+ 16:   }
+ 17: 
+ 18:   action(
+ 19:     name="fwd_json_target_test_json_relay"
+ 20:     type="omfwd"
+ 21:     Target="test_json_relay"
+ 22:     Port="15000"
+ 23:     Protocol="tcp"
+ 24:     template="TmplJSONRawMsg"
+ 25:     action.resumeRetryCount = "-1"
+ 26:     # often last message is lost when a connection breaks
+ 27:     resendLastMSGOnReconnect="on"
+ 28:     # queue config
+ 29:     queue.type = "LinkedList"
+ 30:     queue.filename="fwd_json"
+ 31:     # queue peristance and size limit
+ 32:     queue.maxDiskSpace="1073741824"
+ 33:     queue.size="1048576"
+ 34:     queue.discardMark="838860"
+ 35:     queue.discardSeverity="6"
+ 36:     queue.checkpointInterval="8192"
+ 37:     queue.saveOnShutdown="on"
+ 38:     # queue threads and batching
+ 39:     queue.dequeueBatchSize="1024"
+ 40:     queue.minDequeueBatchSize="128"
+ 41:     queue.minDequeueBatchSize.timeout="500"
+ 42:     queue.workerThreads="4"
+ 43:     queue.workerThreadMinimumMessages="8192"
+ 44:   )
+ 45: }
 ##> end of expand directive: $IncludeConfig /etc/rsyslog.d/output/*.conf
  15: 
  16: # Optional extra custom config to inlcude from volume via /etc/rsyslog.d/extra
