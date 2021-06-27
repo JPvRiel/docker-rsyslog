@@ -617,11 +617,47 @@ Even with the attempt to split and run impstats in it's own queue, it might be m
   - But this also relies on the internal syslog engine and omelasticsearch output for delivery, so it may be less failsafe compared to a local file.
 - Arguably, a more failsafe, but convoluted process would be to log rsyslog stats into the file, then use filebeat with a bit of parsing from logstash to index the data into elastic, which decouples the dependany on the syslog engine and can better tolerate downtime or network issues communicating with elasticsearch.
 
+### Log file rotation
+
+By default, to provide simpler abstaction, and avoid needing to run multiple container services in unision, this container breaks "best-practice" an will run a log rotation process if any of the file-based logging or metric output is enabled.
+
+When log files are produced into volumes with the destination `/var/log/remote` or `/var/log/impstat`, either an external log rotate process is needed or `logrotate_enabled` should be set to 'on'. To rather manage this externally, explicitly set `logrotate_enabled=off` and externally rotate and signal the container to let it know rotation occurred, e.g. from within a bind mount on the host:
+
+```bash
+mv metrics.log metrics.log.1 && docker container kill --signal HUP rsyslog-stat-test
+```
+
+#### Logrotate in a container limitations
+
+An internal failure for cron and logrotate will be mostly silent and provide no error feedback, save for a limited healthcheck script hack to at least check that the crond process is running and that there are no logrotate errors seen within `/var/log/logrotate.err.log`.
+
+Indeed, secondary processes inside a container adds brittle complexity:
+
+- While there is integrated log rotation within the container, running multiple processes within a container is arguably poor microservices practise.
+- The entrypoint script prioritised looking after rsyslogd and waiting on rsyslogd to exit, and so it starts crond as a secondary process for lograte, but does not wait for nor provide error feedback if crond or logrotate has an issue.
+- It's common practise to use stdout and stderr for container logs, and this container follows that, but redirecting remote syslog events or impstats metrics may flood the container logging mechanisms, and are different use-cases. Hence the need to rotate something even if /var/log/remote file output is disabled.
+- It's unfortunate that older implimentations of cronie's crond only support reporting to either email or syslog, but not stdout, even when in forground mode. 
+  - So there is no neat way to know what is happending in a container where `/dev/log` usually doesn't exist.
+  - A hack is to install and run a netcat unix syslog listener with the container at `/dev/log`, e.g. `netcat -lkU /dev/log` to test and see why crond may be having issues.
+
 ## Version
 
 The convention is `<rsyslogd version>-<docker image release build number>`.
 
 E.g. `8.29.0-3` means the output of `rsyslogd -v` shows `rsyslogd 8.29.0`, and it's the 3rd image released for that upstream version.
+
+## Development complexity and technical debt (Here be Dragons)
+
+This project suffers from a lot complexity due to trying to "containerise" applications with a design heritage from the classic unix area where none of the authors would have read [Twelve-Factor](https://12factor.net):
+
+- rsyslogd was forked from ksyslogd in 2003.
+- logrotate requires cron, and cron was intially created in ~1975.
+
+To quote a meme:
+
+> I don't always shave yaks, but whn I do, they trample all over me...
+
+Besides building, running and paying attention to env var options in the Docker files, or suppling extra conf files, users of the container hopefully won't need to extend much outside of that and the complexity is abstracted away well enough...
 
 ## Build
 
