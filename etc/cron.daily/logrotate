@@ -1,0 +1,10 @@
+#!/bin/sh
+
+/usr/sbin/logrotate -s /var/lib/logrotate/logrotate.status /etc/logrotate.conf
+exit_val=$?
+if [ $exit_val != 0 ]; then
+  err_msg="ERROR: logrotate exited abnormally with [$exit_val]"
+  echo "$err_msg" >&2
+  echo "$err_msg" > /var/log/logrotate.err.log
+fi
+exit $exit_val

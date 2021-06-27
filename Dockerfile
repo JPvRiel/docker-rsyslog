@@ -32,7 +32,8 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
   sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/epel.repo
 
-# Install Rsyslog. For http://rpms.adiscon.com/v8-stable/rsyslog.repo
+# Install RSyslog and logrotate
+# For http://rpms.adiscon.com/v8-stable/rsyslog.repo
 # - It has gpgcheck=0
 # - Adiscon doens't offer an HTTPS endpoint for the above file :-/
 # - The GPG key is at http://rpms.adiscon.com/RPM-GPG-KEY-Adiscon, so also not secure to download and trust directly
@@ -52,9 +53,14 @@ RUN yum --setopt=timeout=120 -y update && \
   rsyslog-mmjsonparse-${RSYSLOG_VERSION} \
   rsyslog-udpspoof-${RSYSLOG_VERSION} \
   lsof \
+  logrotate \
+  cronie-noanacron \
   && yum clean all
 RUN rm -rf /etc/rsyslog.d/ \
-  && rm -f /etc/rsyslog.conf
+  && rm -f /etc/rsyslog.conf \
+  && rm -f /etc/logrotate.conf \
+  && find /etc/logrotate.d/ -type f -delete \
+  && find /etc/cron.d/ ! -type d -delete
 
 # Install confd
 ARG CONFD_VER='0.16.0'
@@ -68,6 +74,15 @@ RUN chmod +x /usr/local/bin/confd && \
 
 # Copy rsyslog config templates (for confd)
 COPY etc/confd /etc/confd
+
+# Copy cron and logrotate config
+COPY etc/cron.d /etc/cron.d
+COPY etc/cron.daily /etc/cron.daily
+COPY etc/logrotate.conf /etc/logrotate.conf
+COPY usr/local/bin/rsyslog-rotate.sh /usr/local/bin/rsyslog-rotate.sh
+RUN chmod 0644 /etc/logrotate.conf && \
+  chmod 0744 /usr/local/bin/rsyslog-rotate.sh && \
+  find /etc/cron.daily -type f -exec chmod 0744 {} \;
 
 # Copy rsyslog config files and create folders for template config
 COPY etc/rsyslog.conf /etc/rsyslog.conf
@@ -269,6 +284,15 @@ ENV rsyslog_output_filtering_enabled='on' \
 #
 # rsyslog_call_fwd_extra_rule makes the config expect input the user to add a ruleset named fwd_extra somewhere in /etc/rsyslog.d/extra/*.conf
 
+# Built-in log rotation for /var/log/remote and /var/log/impstats
+# - This process could be managed externally by a host more aware of volume sizes and Constraints.
+# - If managed externally, the HUP signal needs to be sent to the container and the entrypoint script will handle passing it onto rsyslogd.
+ENV logrotate_enabled='on' \
+  logrotate_remote_period='daily' \
+  logrotate_remote_files='42' \
+  logrotate_impstats_period='daily' \
+  logrotate_impstats_files='42'
+
 # Volumes required
 VOLUME /var/log/remote \
   /var/log/impstats \
@@ -281,7 +305,13 @@ EXPOSE 514/udp 514/tcp 601/tcp 6514/tcp 2514/tcp 7514/tcp 8514/tcp
 
 #TODO: also, decide if we will accept the signal to reload config without restarting the container
 
-COPY usr/local/bin/entrypoint.sh usr/local/bin/rsyslog_healthcheck.sh usr/local/bin/rsyslog_healthcheck.sh usr/local/bin/rsyslog_config_expand.py /usr/local/bin/
+COPY usr/local/bin/entrypoint.sh \
+  usr/local/bin/rsyslog_healthcheck.sh \
+  usr/local/bin/rsyslog_config_expand.py \
+  /usr/local/bin/
+RUN chmod 0755 usr/local/bin/entrypoint.sh \
+  /usr/local/bin/rsyslog_healthcheck.sh \
+  /usr/local/bin/rsyslog_config_expand.py
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 

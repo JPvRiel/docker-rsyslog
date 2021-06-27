@@ -1,0 +1,8 @@
+# Run the daily, weekly, and monthly jobs if cronie-anacron is not installed
+SHELL=/bin/bash
+PATH=/sbin:/bin:/usr/sbin:/usr/bin
+
+# run-parts (intentionally exec at start of day so log files rotate on neat boundaries)
+0 0 * * * root [ ! -f /etc/cron.hourly/0anacron ] && run-parts /etc/cron.daily
+0 0 * * 1 root [ ! -f /etc/cron.hourly/0anacron ] && run-parts /etc/cron.weekly
+0 0 1 * * root [ ! -f /etc/cron.hourly/0anacron ] && run-parts /etc/cron.monthly

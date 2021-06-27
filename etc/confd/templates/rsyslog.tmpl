@@ -1,0 +1,37 @@
+{{ $logrotate_enabled := getenv "logrotate_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_omfile_enabled := getenv "rsyslog_omfile_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_impstats_log_file_enabled := getenv "rsyslog_impstats_log_file_enabled" | toLower | eq "on" "true" -}}
+{{ $rsyslog_dyn_stats_inc_error_reporting := getenv "rsyslog_dyn_stats_inc_error_reporting" | toLower | eq "on" "true" -}}
+{{ if and $logrotate_enabled ( or $rsyslog_omfile_enabled $rsyslog_impstats_log_file_enabled $rsyslog_dyn_stats_inc_error_reporting ) -}}
+# Rotation of remote system logs output to files. Filename templating may cause sub-directories to be used, hence cover both.
+/var/log/remote/*
+/var/log/remote/*/*
+{
+	rotate {{ getenv "logrotate_remote_files" }}
+	{{ getenv "logrotate_remote_period" }}
+	missingok
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		/usr/local/bin/rsyslog-rotate.sh
+	endscript
+}
+
+# Rotation of the rsyslogd impstats file outputs
+{{ getenv "rsyslog_impstats_log_file" }}
+{{ getenv "rsyslog_dyn_stats_inc_error_reporting_file" }}
+{
+	rotate {{ getenv "logrotate_impstats_files" }}
+	{{ getenv "logrotate_impstats_period" }}
+	missingok
+	compress
+	delaycompress
+	sharedscripts
+	postrotate
+		/usr/local/bin/rsyslog-rotate.sh
+	endscript
+}
+{{- else }}
+# logrotate was either explicitly disabled or not required.
+{{- end }}

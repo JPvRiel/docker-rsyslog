@@ -22,14 +22,17 @@ function report_error(){
 
 # Setup hanlder functions and traps to pass on signals to the rsyslog process
 function sigterm_handler() {
-  rsyslog_pid=$(cat "$rsyslog_pid_file")
+  if [ -e "$crond_pid_file" ]; then
+    report_info 'Terminating crond process (runs logrotate).'
+    kill -SIGTERM "$(cat "$crond_pid_file")"
+  fi
   report_info 'Terminating rsyslog process.'
-  kill -SIGTERM "$rsyslog_pid"
+  kill -SIGTERM "$(cat "$rsyslog_pid_file")"
 }
 
 function sighup_handler() {
   # This is typically only needed for log rotate
-  report_info 'HUP signal sento to rsyslog to close all open files and flush buffers'
+  report_info 'HUP signal sent to rsyslog to close all open files, flush buffers and open new files.'
   kill -SIGHUP "$(cat "$rsyslog_pid_file")"
 }
 
@@ -46,6 +49,10 @@ trap 'sigusr1_handler' SIGUSR1
 if [[ -z "$rsyslog_pid_file" ]]; then
   # Assume CentOS7 syslog 8 default
   rsyslog_pid_file='/var/run/syslogd.pid'
+fi
+if [[ -z "$crond_pid_file" ]]; then
+  # Assume CentOS7 syslog 8 default
+  crond_pid_file='/var/run/crond.pid'
 fi
 
 if [[ -n "${1}" ]]; then
@@ -132,14 +139,30 @@ if [[ -f "$rsyslog_pid_file" ]]; then
   rm -f "$rsyslog_pid_file"
 fi
 
+# As a dependency for built-in log rotate, run cron in the forground, redirect output to stdout and stderr, and then background it.
+# logrotate_enabled will normally be set by env calling the conainer.
+: "${logrotate_enabled:=on}"
+if [ "${logrotate_enabled,,}" = 'on' ] || [ "${logrotate_enabled,,}" = 'true' ]; then
+  # Use of docker userns-remap while forcing the container to run in the host namespace may cause cron files to be owned by a UID other than 0 and cause crond root checks to fail.
+  chown -R root:root /etc/logrotate.conf /etc/crontab /etc/cron.* /usr/local/bin/rsyslog-rotate.sh
+  chmod -R 0644 /etc/logrotate.conf /etc/crontab /etc/cron.d/*
+  chmod 0744 /usr/local/bin/rsyslog-rotate.sh
+  # FIXME: crond on CentOS/RHEL7 does not have the `-L`, so cannot redirect to stdout of the container. `-s`, the syslog option, will silently drop cron logs given /dev/log does not normally exist in a container. crond doesn't outout to console.
+  crond -m off -n 1>> /dev/stdout 2>> /dev/stderr &
+  cron_pid=$!
+  report_info "Running crond for logrotate (PID $cron_pid)."
+fi
+
 # Run rsyslog in the background
 if [[ -n ${EXTRA_ARGS[*]} ]]; then
-  report_info "Running rsyslogd with extra arguments \"${EXTRA_ARGS[*]}\"."
-  rsyslogd -n "${EXTRA_ARGS[@]}" 1>> /dev/stdout 2>> /dev/stderr & pid=$!
-  #TODO: catch exit code case where incorrect argument passed
+  rsyslogd -n "${EXTRA_ARGS[@]}" 1>> /dev/stdout 2>> /dev/stderr &
+  pid=$!
+  report_info "Running rsyslogd with extra arguments \"${EXTRA_ARGS[*]}\" (PID $pid)."
+  #TODO: catch exit code case where incorrect argument passed? Tricky for a background job...
 else
-  report_info 'Running rsyslogd.'
-  rsyslogd -n 1>> /dev/stdout 2>> /dev/stderr & pid=$!
+  rsyslogd -n 1>> /dev/stdout 2>> /dev/stderr &
+  pid=$!
+  report_info "Running rsyslogd (PID $pid)."
 fi
 
 # Notes:
@@ -156,7 +179,12 @@ while [ -e /proc/$pid ]; do
 done
 set -e
 
-# Check the exit code
+# Check if logrotate had issues
+if [[ -e '/var/log/logrotate.err.log' ]]; then
+  report_error "logrotate may have failed. State kept in /var/lib/logrotate/logrotate.status may help understand when last files were tracked."
+  cat /var/log/logrotate.err.log
+fi
+# Check the exit code of rsyslog
 if [[ -n $rsyslog_exit_status ]]; then
   # 128+15 = 143 (143 indicates processing was stoped via a SIGTERM signal)
   if [[ ! ($rsyslog_exit_status == 0 || $rsyslog_exit_status == 143) ]]; then
