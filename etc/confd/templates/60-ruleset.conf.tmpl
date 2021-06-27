@@ -74,7 +74,7 @@ ruleset(name="remote_in_udp" parser={{ getenv "rsyslog_parser" }}) {
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
@@ -95,7 +95,7 @@ ruleset(name="remote_in_tcp" parser={{ getenv "rsyslog_parser" }}) {
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
@@ -116,7 +116,7 @@ ruleset(name="remote_in_tcp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
@@ -137,7 +137,7 @@ ruleset(name="remote_in_relp" parser={{ getenv "rsyslog_parser" }}) {
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
@@ -159,7 +159,7 @@ ruleset(name="remote_in_relp_secure" parser={{ getenv "rsyslog_parser" }}) {
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
@@ -180,7 +180,7 @@ ruleset(name="remote_in_relp_secure_client_auth" parser={{ getenv "rsyslog_parse
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
@@ -215,7 +215,7 @@ ruleset(
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}

@@ -52,7 +52,7 @@ ruleset(name="out_file") {
   {{ if $rsyslog_dyn_stats_inc_error_reporting -}}
   # TODO - improve action when increment failed, e.g. cumbersome but would show up in impstats action counts at least to know there is an issue
   if ($.inc_status != 0) then { 
-    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file}} " template="DynStatsError")
+    action(name="dyn_stat_inc_error" type="omfile" file="{{ $rsyslog_dyn_stats_inc_error_reporting_file }}" template="DynStatsError")
   }
   {{- end }}
   {{- end }}
