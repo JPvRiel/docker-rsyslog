@@ -6,7 +6,7 @@ set -e
 
 # Get the base/root rempped UID and GID
 dockremap_root_uid=$(grep dockremap /etc/subuid | cut -d ':' -f 2)
-dockremap_root_gid=$(grep dockremap /etc/subuid | cut -d ':' -f 2)
+dockremap_root_gid=$(grep dockremap /etc/subgid | cut -d ':' -f 2)
 # Calculate the remapped standard normal user
 user_uid=1000
 user_gid=1000
