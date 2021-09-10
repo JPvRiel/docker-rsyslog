@@ -222,7 +222,7 @@ def step_impl(context, path, regex_within_json_field):
             )
         )
         raise e
-    assert_that(match, matches_regexp(regex_within_json_field))
+    assert_that(str(match), matches_regexp(regex_within_json_field))
 
 
 @then('all lines in a file "{file}" should load as valid JSON')
