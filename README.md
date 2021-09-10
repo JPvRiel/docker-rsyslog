@@ -1261,6 +1261,8 @@ Not yet done:
 
     - <https://rsyslog.readthedocs.io/en/stable/concepts/multi_ruleset.html>
 - Performance tunning hooks for the main queue and the other output action queues as per <https://www.rsyslog.com/performance-tuning-elasticsearch/> example.
+- Move off CentOS 7 base image and consider lighter alternatives from debian or alpine provided Kafka rsyslog modules are well supported.
+- Refactor TLS/SSL given rsyslog has improved TLS support and added openssl.
 
 Maybe someday:
 
