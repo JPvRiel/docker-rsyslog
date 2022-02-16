@@ -29,7 +29,7 @@ Feature: Process timestamps with or without timezone information
   # Note, this test fails if the example is not updated to use the current year
   Examples:
     | message | regex | json |
-    | <14>Jan 1 02:43:29 behave test[99999]: RFC3164 without timezone info | .*?RFC3164 without timezone info.* | { "timestamp": "2021-01-01T02:43:29+02:00" } |
+    | <14>Jan 1 02:43:29 behave test[99999]: RFC3164 without timezone info | .*?RFC3164 without timezone info.* | { "timestamp": "2022-01-01T02:43:29+02:00" } |
 
 
   @slow
@@ -47,8 +47,8 @@ Feature: Process timestamps with or without timezone information
 
   Examples:
     | message | regex | json |
-    | <14>1 2017-09-19T23:43:29.737941+02:00 behave test 99999 - RFC5424 with numeric timezone offset for SAST | .*?RFC5424 with numeric timezone offset for SAST.* | { "timestamp": "2017-09-19T23:43:29.737941+02:00" } |
-    | <14>1 2017-09-17T23:43:29.737941Z behave test 99999 - RFC5424 with UTC timezone | .*?RFC5424 with UTC timezone.* | { "timestamp": "2017-09-17T23:43:29.737941Z" } |
+    | <14>1 2021-09-19T23:43:29.737941+02:00 behave test 99999 - RFC5424 with numeric timezone offset for SAST | .*?RFC5424 with numeric timezone offset for SAST.* | { "timestamp": "2021-09-19T23:43:29.737941+02:00" } |
+    | <14>1 2021-09-17T23:43:29.737941Z behave test 99999 - RFC5424 with UTC timezone | .*?RFC5424 with UTC timezone.* | { "timestamp": "2021-09-17T23:43:29.737941Z" } |
 
 
   @slow

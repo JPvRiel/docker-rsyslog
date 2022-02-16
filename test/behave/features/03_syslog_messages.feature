@@ -43,9 +43,9 @@ Feature: Accept syslog messages in various formats
       | <14>Sep 19 23:43:29 behave test[99999]: Well formed RFC3164 with PID | .*?Well formed RFC3164 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
       | <14>Sep 19 23:43:29 behave test: Well formed RFC3164 without PID | .*?Well formed RFC3164 without PID.* | { "hostname": "behave", "app-name": "test", "procid" : "-" } |
       | <14>Sep 19 23:43:29 behave Well formed RFC3164 without application name  | .*?Well formed RFC3164 without application name.* | { "hostname": "behave", "app-name": "-" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - - Well formed RFC5424 with PID | .*Well formed RFC5424 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
-      | <14>1 2017-09-21T23:43:29.402+02:00 behave hub.docker.com/proj/image:0.1.0/container_name/4b6045272e31 - - - test tag "{{.ImageName}}/{{.Name}}/{{.ID}}" docker engine example | .*test tag.*docker engine example.* | { "app-name": "hub.docker.com/proj/image:0.1.0/container_name/4b6045272e31" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 99999 - [test@16543 key1="value1" key2="value2"] Well formed RFC5424 with structured data | .*Well formed RFC5424 with structured data.* | { "rfc5424-sd": { "test@16543": { "key1": "value1", "key2": "value2" } } } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 99999 - - Well formed RFC5424 with PID | .*Well formed RFC5424 with PID.* | { "hostname": "behave", "app-name": "test", "procid" : "99999" } |
+      | <14>1 2021-09-21T23:43:29.402+02:00 behave hub.docker.com/proj/image:0.1.0/container_name/4b6045272e31 - - - test tag "{{.ImageName}}/{{.Name}}/{{.ID}}" docker engine example | .*test tag.*docker engine example.* | { "app-name": "hub.docker.com/proj/image:0.1.0/container_name/4b6045272e31" } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 99999 - [test@16543 key1="value1" key2="value2"] Well formed RFC5424 with structured data | .*Well formed RFC5424 with structured data.* | { "rfc5424-sd": { "test@16543": { "key1": "value1", "key2": "value2" } } } |
 
 
   @slow
@@ -66,12 +66,12 @@ Feature: Accept syslog messages in various formats
       | @cee: { "json": "1 JSON with cee cookie and no syslog header"} | .*?@cee:.*?1 JSON with cee cookie and no syslog header.* | { "json": "1 JSON with cee cookie and no syslog header" } |
       | { "json": "2 plain JSON with no syslog header" } | .*?2 plain JSON with no syslog header.* | { "json": "2 plain JSON with no syslog header" } |
       | <14>Sep 19 23:43:29 behave test[4]: @cee: { "json": "4 Well formed RFC3164 which is a JSON message" } | .*?@cee:.*?4 Well formed RFC3164 which is a JSON message.* | { "json": "4 Well formed RFC3164 which is a JSON message" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 6 - - @cee: { "json": "6 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie" } | .*?@cee:.*?6 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie.* | { "json": "6 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 7 - - { "json": "7 Well formed RFC5424 without structured data followed by a JSON message without a cee cookie" } | .*?7 Well formed RFC5424 without structured data followed by a JSON message without a cee cookie.* | { "json": "7 Well formed RFC5424 without structured data followed by a JSON message without a cee cookie" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 8 - - { "json": { "nested": "8 Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie" } } | .*?8 Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie.* | { "json": { "nested": "8 Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie" } } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave @cee 9 - - { "json": "9 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name" } | .*?@cee.*?9 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name.* | { "json": "9 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 10 - [test@16543 random="some value"] @cee: { "json": "10 Well formed RFC5424 with structured data followed by a JSON message with cee cookie" } | .*?@cee:.*?10 Well formed RFC5424 with structured data followed by a JSON message with cee cookie.* | { "json": "10 Well formed RFC5424 with structured data followed by a JSON message with cee cookie" } |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 11 - [test@16543 random="some other value"] { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } | .*?11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie.* | { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 6 - - @cee: { "json": "6 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie" } | .*?@cee:.*?6 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie.* | { "json": "6 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie" } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 7 - - { "json": "7 Well formed RFC5424 without structured data followed by a JSON message without a cee cookie" } | .*?7 Well formed RFC5424 without structured data followed by a JSON message without a cee cookie.* | { "json": "7 Well formed RFC5424 without structured data followed by a JSON message without a cee cookie" } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 8 - - { "json": { "nested": "8 Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie" } } | .*?8 Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie.* | { "json": { "nested": "8 Well formed RFC5424 without structured data followed by a nested JSON message without a cee cookie" } } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave @cee 9 - - { "json": "9 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name" } | .*?@cee.*?9 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name.* | { "json": "9 Well formed RFC5424 without structured data followed by a JSON message with a cee cookie as the process name" } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 10 - [test@16543 random="some value"] @cee: { "json": "10 Well formed RFC5424 with structured data followed by a JSON message with cee cookie" } | .*?@cee:.*?10 Well formed RFC5424 with structured data followed by a JSON message with cee cookie.* | { "json": "10 Well formed RFC5424 with structured data followed by a JSON message with cee cookie" } |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 11 - [test@16543 random="some other value"] { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } | .*?11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie.* | { "json": "11 Well formed RFC5424 with structured data followed by a JSON message without cee cookie" } |
 
 
   @slow
@@ -114,8 +114,8 @@ Feature: Accept syslog messages in various formats
     | Sep 19 23:43:29 lies Poor form RFC3164 with no priority | .*?RFC3164 with no priority.* | hostname | lies |
     | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | false |
     | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | false |
-    | <14>1 2017-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space | .*incorrect non-IS08601 timestamp with extra space.* | "syslog-relay"."header-valid" | false |
-    | <14>1 2017-09-21T23:43:29.402+02:00 behave test 99999 - [bogus structured-data element] misc text after incorrect structured data element | .*bogus structured-data element.* | "rfc5424-sd" | null |
+    | <14>1 2021-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space | .*incorrect non-IS08601 timestamp with extra space.* | "syslog-relay"."header-valid" | false |
+    | <14>1 2021-09-21T23:43:29.402+02:00 behave test 99999 - [bogus structured-data element] misc text after incorrect structured data element | .*bogus structured-data element.* | "rfc5424-sd" | null |
 
 
   @slow
@@ -134,7 +134,7 @@ Feature: Accept syslog messages in various formats
     Examples:
       | message | regex | path  | value |
       | <14>Sep 19 23:43:29 behave test[3]: 3 Well formed RFC3164 which is not a JSON message | .*?3 Well formed RFC3164 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |
-      | <14>1 2017-09-19T23:43:29+00:00 behave test 5 - - 5 Well formed RFC5424 which is not a JSON message | .*?5 Well formed RFC5424 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |
+      | <14>1 2021-09-19T23:43:29+00:00 behave test 5 - - 5 Well formed RFC5424 which is not a JSON message | .*?5 Well formed RFC5424 which is not a JSON message.* | "syslog-relay"."json-msg-parsed" | false |
 
 # Extended templating option tests
 
