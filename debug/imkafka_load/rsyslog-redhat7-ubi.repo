@@ -1,0 +1,7 @@
+[rsyslog_v8]
+name=Adiscon CentOS-$releasever - local packages for $basearch
+baseurl=http://rpms.adiscon.com/v8-stable/epel-7/$basearch
+enabled=1
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
+protect=1
