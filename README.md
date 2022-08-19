@@ -711,8 +711,8 @@ sudo -E docker build --build-arg DISABLE_YUM_MIRROR=true --build-arg http_proxy=
 
 Note, a pre-bundled self-signed cert and ca is used for test purposes. It is expected in the following places:
 
-- key: `/usr/local/etc/pki/test/test_syslog_server.key.pem`
-- cert: `/usr/local/etc/pki/test/test_syslog_server.cert.pem`
+- key: `/usr/local/etc/pki/test/test-syslog-server.key.pem`
+- cert: `/usr/local/etc/pki/test/test-syslog-server.cert.pem`
 
 The default certs are generated via `./util/certs.sh` to work for the `sut` test suite.
 
@@ -1084,13 +1084,13 @@ docker logs -f docker-rsyslog_test_kafka_1
 Assuming a topic has already been setup, run console producer on the insecure port
 
 ```bash
-docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-producer.sh --broker-list test_kafka:9091 --batch-size 1 --topic test_syslog
+docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-producer.sh --broker-list test-kafka:9091 --batch-size 1 --topic test_syslog
 ```
 
 Run console consumer on the insecure port
 
 ```bash
-docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test_kafka:9091 --topic test_syslog --from-beginning
+docker run -it --rm --net=docker-rsyslog_default wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test-kafka:9091 --topic test_syslog --from-beginning
 ```
 
 And then type messages in the producer checking if they are echoed in the consumer.
@@ -1100,7 +1100,7 @@ And then type messages in the producer checking if they are echoed in the consum
 TLS and SASL config needs to be provided to the container. This can be done by bind mounting files with the correct properties/config, e.g.in the properties file:
 
 ```text
-ssl.truststore.location=/tmp/test_ca.jks
+ssl.truststore.location=/tmp/test-ca.jks
 ssl.truststore.password=changeit
 security.protocol=SASL_SSL
 sasl.mechanism=PLAIN
@@ -1110,7 +1110,7 @@ sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule require
 Alternatively, specify the settings via `--consumer-property`, e.g.:
 
 ```bash
-docker run -it --rm --net=docker-rsyslog_default -v "$PWD/test/tls_x509/certs/test_ca.jks":/tmp/test_ca.jks:ro wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test_kafka:9091 --consumer-property ssl.truststore.location=/tmp/test_ca.jks ssl.truststore.password=changeit security.protocol=SASL_SSL sasl.mechanism=PLAIN sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="test" password="test-secret"';' --topic test --from-beginning
+docker run -it --rm --net=docker-rsyslog_default -v "$PWD/test/tls_x509/certs/test-ca.jks":/tmp/test-ca.jks:ro wurstmeister/kafka /opt/kafka/bin/kafka-console-consumer.sh --bootstrap-server test-kafka:9091 --consumer-property ssl.truststore.location=/tmp/test-ca.jks ssl.truststore.password=changeit security.protocol=SASL_SSL sasl.mechanism=PLAIN sasl.jaas.config=org.apache.kafka.common.security.plain.PlainLoginModule required username="test" password="test-secret"';' --topic test --from-beginning
 ```
 
 And as before, checking if messages are echoed in the consumer.

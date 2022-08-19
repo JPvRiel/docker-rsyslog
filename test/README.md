@@ -26,7 +26,7 @@ sudo docker image rm debug/behave
 
 ## Syslog test clients
 
-The Ubuntu and CentOS Docker test images essentially run rsyslog with client config and use to send messages via the logger command to /dev/log and the rsyslog client listens to /dev/log via the imuxsock input, thereafter forwarding messages to 'test_syslog_server'.
+The Ubuntu and CentOS Docker test images essentially run rsyslog with client config and use to send messages via the logger command to /dev/log and the rsyslog client listens to /dev/log via the imuxsock input, thereafter forwarding messages to test-syslog-server hostname (test_syslog_server docker compose service).
 
 CentsOS 7 client send via RELP without TLS
 
