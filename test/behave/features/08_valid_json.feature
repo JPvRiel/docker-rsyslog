@@ -2,7 +2,7 @@ Feature: JSON templates produce valid JSON objects
 
   Background: Syslog service is available
     Given a valid rsyslog configuration
-      And a server "test_syslog_server"
+      And a server "test-syslog-server"
       And an environment variable file "test_syslog_server.env"
 
   @slow

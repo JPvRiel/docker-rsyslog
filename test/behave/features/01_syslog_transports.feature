@@ -6,7 +6,7 @@ Feature: Accept syslog network connections for various syslog transports
 
   Background: Syslog service is available
     Given a valid rsyslog configuration
-      And a server "test_syslog_server"
+      And a server "test-syslog-server"
 
   # Positive testing
 
@@ -24,7 +24,7 @@ Feature: Accept syslog network connections for various syslog transports
 
   Scenario Outline: Establish TLS sessions without client authentication
     Given a protocol "<transport protocol>" and port "<port>"
-      And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
+      And a "tls_x509/certs/test-ca.cert.pem" certificate authority file
     When connecting with TLS
     Then a TLS session should be complete
 
@@ -38,7 +38,7 @@ Feature: Accept syslog network connections for various syslog transports
 
   Scenario Outline: Establish TLS sessions with client authentication
     Given a protocol "<transport protocol>" and port "<port>"
-      And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
+      And a "tls_x509/certs/test-ca.cert.pem" certificate authority file
       And a "tls_x509/certs/behave.cert.pem" certificate file
       And a "tls_x509/private/behave.key.pem" private key file
     When connecting with TLS

@@ -7,7 +7,7 @@ Feature: rsyslog outputs message stats
 
   Background: Syslog service is available
     Given a valid rsyslog configuration
-      And a server "test_syslog_server"
+      And a server "test-syslog-server"
       And an environment variable file "test_syslog_server.env"
       # Implicit env var settings in default container config/Dockerfile
       #And "rsyslog_module_impstats_interval" environment variable is "60"

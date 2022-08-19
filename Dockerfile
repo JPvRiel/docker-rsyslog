@@ -25,12 +25,12 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
   sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/CentOS-Base.repo
 # Some rsyslog modules have dependancies in epel
-RUN yum --setopt=timeout=120 -y update && \
-  yum -y install --setopt=timeout=120 --setopt=tsflags=nodocs epel-release
-# Also switch to a base url for epel repo
-RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
-  sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
-  sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/epel.repo
+# RUN yum --setopt=timeout=120 -y update && \
+#   yum -y install --setopt=timeout=120 --setopt=tsflags=nodocs epel-release
+# # Also switch to a base url for epel repo
+# RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
+#   sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/epel.repo && \
+#   sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/epel.repo
 
 # Install RSyslog and logrotate
 # For http://rpms.adiscon.com/v8-stable/rsyslog.repo
@@ -46,7 +46,6 @@ RUN yum --setopt=timeout=120 -y update && \
   rsyslog-${RSYSLOG_VERSION} \
   rsyslog-gnutls-${RSYSLOG_VERSION} \
   rsyslog-openssl-${RSYSLOG_VERSION} \
-  adisconbuild-librdkafka1 \
   rsyslog-kafka-${RSYSLOG_VERSION} \
   rsyslog-relp-${RSYSLOG_VERSION} \
   rsyslog-pmciscoios-${RSYSLOG_VERSION} \
@@ -103,9 +102,9 @@ RUN mkdir -p \
 # - rsyslog.sh entrypoint script will symlink and use these defaults if not provided in a volume
 # - For production, avoid insecure default by providing an /etc/pki/rsyslog volume provisioned with your own keys and certficates
 RUN mkdir -p usr/local/etc/pki/test
-COPY usr/local/etc/pki/test/test_ca.cert.pem /usr/local/etc/pki/test
-COPY usr/local/etc/pki/test/test_syslog_server.key.pem /usr/local/etc/pki/test
-COPY usr/local/etc/pki/test/test_syslog_server.cert.pem /usr/local/etc/pki/test
+COPY usr/local/etc/pki/test/test-ca.cert.pem /usr/local/etc/pki/test
+COPY usr/local/etc/pki/test/test-syslog-server.key.pem /usr/local/etc/pki/test
+COPY usr/local/etc/pki/test/test-syslog-server.cert.pem /usr/local/etc/pki/test
 
 # Default ENV vars for rsyslog config tuned for high throughput by default and assumes a multi-core system that can handle several worker threads.
 # - See: https://www.rsyslog.com/doc/v8-stable/examples/high_performance.html.

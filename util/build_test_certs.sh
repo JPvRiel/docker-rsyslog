@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Check script is excuted from patent folder (TODO: not intuitive, script could be refactored...)
+# Script must be excuted from patent folder (TODO: not intuitive, script could be refactored...)
 RE_REL_PATH_NEEDED='(./)?util/build_test_certs.sh'
 if ! [[ "$0" =~ $RE_REL_PATH_NEEDED ]]; then
   echo "ERROR: run this script as ./util/build_test_certs.sh in the parent folder so it may populate certs into ./test and keep the CA in ./util/ca" >&2
@@ -39,8 +39,8 @@ extendedKeyUsage = serverAuth, clientAuth, timeStamping
 [ ca ]
 default_ca = minimal_ca
 [ minimal_ca ]
-private_key = util/ca/test_ca.key.pem
-certificate = util/ca/test_ca.cert.pem
+private_key = util/ca/test-ca.key.pem
+certificate = util/ca/test-ca.cert.pem
 serial = util/ca/index.txt
 database = util/ca/serial.txt
 new_certs_dir = util/ca/certs
@@ -94,49 +94,52 @@ mkdir -p \
 # Create test CA
 echo -n > 'util/ca/serial.txt'
 #echo -n > 'util/ca/index.txt'
-hostname=test_ca
+hostname=test-ca
 openssl req \
   -config <(local_openssl_config) \
   -newkey rsa:4096 -nodes \
-  -keyout util/ca/test_ca.key.pem  \
+  -keyout util/ca/test-ca.key.pem  \
   -sha256 \
-  -out util/ca/csr/test_ca.csr
+  -out util/ca/csr/test-ca.csr
 openssl ca \
   -config  <(local_openssl_config) \
   -batch \
-  -in util/ca/csr/test_ca.csr \
-  -keyfile util/ca/test_ca.key.pem \
+  -in util/ca/csr/test-ca.csr \
+  -keyfile util/ca/test-ca.key.pem \
   -selfsign \
   -create_serial \
   -days 7300 \
   -extensions ca_self_signed \
-  -out util/ca/test_ca.cert.pem
-openssl x509 -noout -text -in util/ca/test_ca.cert.pem
+  -out util/ca/test-ca.cert.pem
+openssl x509 -noout -text -in util/ca/test-ca.cert.pem
 
 # Rsyslog server
-ca_signed_cert test_syslog_server usr/local/etc/pki/test usr/local/etc/pki/test
+ca_signed_cert test-syslog-server usr/local/etc/pki/test usr/local/etc/pki/test
 
 # Behave sut
 ca_signed_cert behave test/tls_x509/private test/tls_x509/certs
 
 # Rsyslog CentOS client
-ca_signed_cert test_syslog_client_centos7 test/tls_x509/private test/tls_x509/certs
+ca_signed_cert test-syslog-client-centos7 test/tls_x509/private test/tls_x509/certs
 
 # Rsyslog Ubuntu client
-ca_signed_cert test_syslog_client_ubuntu1804 test/tls_x509/private test/tls_x509/certs
+ca_signed_cert test-syslog-client-ubuntu1804 test/tls_x509/private test/tls_x509/certs
 
 # Kafka server
-ca_signed_cert test_kafka test/tls_x509/private test/tls_x509/certs
+ca_signed_cert test-kafka test/tls_x509/private test/tls_x509/certs
 
-cp util/ca/test_ca.cert.pem usr/local/etc/pki/test/
+cp util/ca/test-ca.cert.pem usr/local/etc/pki/test/
 # Copy (don't symlink) as docker build context for a test suites blocks access outside context
-cp util/ca/test_ca.cert.pem test/tls_x509/certs/
+cp util/ca/test-ca.cert.pem test/tls_x509/certs/
 
 # kafka needs java
-openssl pkcs12 -export -inkey 'test/tls_x509/private/test_kafka.key.pem' -in 'test/tls_x509/certs/test_kafka.cert.pem' -CAfile 'util/ca/test_ca.cert.pem' -chain -passout 'pass:changeit' -out 'test/tls_x509/private/test_kafka.pfx'
+openssl pkcs12 -export -inkey 'test/tls_x509/private/test-kafka.key.pem' -in 'test/tls_x509/certs/test-kafka.cert.pem' -CAfile 'util/ca/test-ca.cert.pem' -chain -passout 'pass:changeit' -out 'test/tls_x509/private/test-kafka.pfx'
 keytool -trustcacerts \
-  -importcert -file util/ca/test_ca.cert.pem \
-  -alias 'test_ca' \
+  -importcert -file util/ca/test-ca.cert.pem \
+  -alias 'test-ca' \
   -storetype JKS \
-  -keystore 'test/tls_x509/certs/test_ca.jks' \
+  -keystore 'test/tls_x509/certs/test-ca.jks' \
   -storepass 'changeit' -noprompt
+
+# Fix permissions issues
+./docker-userns-remap-acls.sh

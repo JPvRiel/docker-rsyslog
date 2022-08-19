@@ -9,14 +9,14 @@ Feature: Accommodate extra custom configuration
 
   Background: Syslog service is available
     Given a valid rsyslog configuration
-      And a server "test_syslog_server"
+      And a server "test-syslog-server"
       And an environment variable file "test_syslog_server.env"
-      And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
+      And a "tls_x509/certs/test-ca.cert.pem" certificate authority file
 
 
   @slow
   Scenario: Extra independent input and outputs can be added
-    When producing the kafka message "extra misc message input via kafka" to the topic "extra_syslog" at broker(s) "test_kafka:9092"
+    When producing the kafka message "extra misc message input via kafka" to the topic "extra_syslog" at broker(s) "test-kafka:9092"
       And a file "/var/log/remote/extra_kafka_input.log" exists by "60" second timeout
       And searching lines for the pattern ".*extra misc message input via kafka.*" over "60" seconds
     Then the pattern should be found

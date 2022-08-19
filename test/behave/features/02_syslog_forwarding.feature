@@ -6,7 +6,7 @@ Feature: Foward syslog messages
 
   Background: Syslog service is available
     Given a valid rsyslog configuration
-      And a server "test_syslog_server"
+      And a server "test-syslog-server"
       And an environment variable file "test_syslog_server.env"
 
   @slow
@@ -15,7 +15,7 @@ Feature: Foward syslog messages
       And "rsyslog_omkafka_broker" environment variable is set
       And "rsyslog_omkafka_topic" environment variable is set
       And "rsyslog_omkafka_confParam" environment variable is set
-      And a "tls_x509/certs/test_ca.cert.pem" certificate authority file
+      And a "tls_x509/certs/test-ca.cert.pem" certificate authority file
       #And a "tls_x509/certs/behave.cert.pem" certificate file
       #And a "tls_x509/private/behave.key.pem" private key file
     When sending the syslog message "Testing Kafka forwarding" in "RFC3164" format

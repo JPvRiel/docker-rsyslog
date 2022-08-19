@@ -2,6 +2,7 @@ version: '2.2'
 services:
 
   sut:
+    hostname: behave
     image: jpvriel/behave
     build:
       context: test
@@ -11,7 +12,6 @@ services:
         - https_proxy
         - ftp_proxy
         - no_proxy
-    hostname: behave
     mem_limit: 512m
     stdin_open: true
     tty: true
@@ -42,6 +42,7 @@ services:
   # - allows for testing/checking how config was built from env vars and confd templates
   # TODO: not sure if there is a better way for sut to be able to see and check output
   test_syslog_server_config:
+    hostname: syslog-server-config
     image: jpvriel/rsyslog:${VERSION:-latest}
     build:
       context: .
@@ -79,6 +80,7 @@ services:
 
   # syslog clients to be tested
   test_syslog_client_centos7:
+    hostname: test-syslog-client-centos7
     image: jpvriel/syslog_client_centos7
     build:
       context: test
@@ -88,12 +90,12 @@ services:
         - https_proxy
         - ftp_proxy
         - no_proxy
-    hostname: test_syslog_client_centos7
     mem_limit: 256m
     depends_on:
       - test_syslog_server
 
   test_syslog_client_ubuntu1804:
+    hostname: test-syslog-client-ubuntu1804
     image: jpvriel/syslog_client_ubuntu1804
     build:
       context: test
@@ -103,30 +105,29 @@ services:
         - https_proxy
         - ftp_proxy
         - no_proxy
-    hostname: test_syslog_client_ubuntu1804
     mem_limit: 256m
     volumes:
-      - ./test/tls_x509/certs/test_ca.cert.pem:/usr/local/etc/ssl/test/test_ca.cert.pem
-      - ./test/tls_x509/private/test_syslog_client_ubuntu1804.key.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1804.key.pem
-      - ./test/tls_x509/certs/test_syslog_client_ubuntu1804.cert.pem:/usr/local/etc/ssl/test/test_syslog_client_ubuntu1804.cert.pem
+      - ./test/tls_x509/certs/test-ca.cert.pem:/usr/local/etc/ssl/test/test-ca.cert.pem
+      - ./test/tls_x509/private/test-syslog-client-ubuntu1804.key.pem:/usr/local/etc/ssl/test/test-syslog-client-ubuntu1804.key.pem
+      - ./test/tls_x509/certs/test-syslog-client-ubuntu1804.cert.pem:/usr/local/etc/ssl/test/test-syslog-client-ubuntu1804.cert.pem
 
   # remote outputs to be tested, e.g. kafka
   test_zookeeper:
+    hostname: test-zookeeper
     image: zookeeper
-    hostname: test_zookeeper
     mem_limit: 512m
 
   test_kafka:
+    hostname: test-kafka
     image: wurstmeister/kafka
-    hostname: test_kafka
     mem_limit: 512m
     depends_on:
       - test_zookeeper
     env_file:
       - ./test/test_kafka.env
     volumes:
-      - ./test/tls_x509/certs/test_ca.jks:/usr/local/etc/ssl/test/test_ca.jks
-      - ./test/tls_x509/private/test_kafka.pfx:/usr/local/etc/ssl/test/test_kafka.pfx
+      - ./test/tls_x509/certs/test-ca.jks:/usr/local/etc/ssl/test/test-ca.jks
+      - ./test/tls_x509/private/test-kafka.pfx:/usr/local/etc/ssl/test/test-kafka.pfx
       - ./test/kafka/config/kafka_server_jaas.conf:/opt/kafka/config/kafka_server_jaas.conf
 
   # To test syslog relay/forwarding
@@ -160,11 +161,11 @@ services:
 
   # To test forwarding as JSON output
   test_json_relay:
+    hostname: test-json-relay
     image: jpvriel/netcat
     build:
       context: test
       dockerfile: Dockerfile-netcat.test
-    hostname: json_relay
     mem_limit: 64m
     volumes:
       - json_relay:/tmp/json_relay
@@ -174,6 +175,7 @@ services:
 
   # Main syslog server (the test object / target)
   test_syslog_server:
+    hostname: test-syslog-server
     image: jpvriel/rsyslog:${VERSION:-latest}
     build:
       context: .
@@ -186,7 +188,6 @@ services:
         - ftp_proxy
         - no_proxy
         - DISABLE_YUM_MIRROR
-    hostname: test_syslog_server
     mem_limit: 16g
     cap_add:
       - SYS_NICE
