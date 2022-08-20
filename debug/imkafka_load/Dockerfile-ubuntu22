@@ -1,0 +1,17 @@
+
+FROM ubuntu:22.04
+ENV container=docker DEBIAN_FRONTEND=noninteractive
+ARG RSYSLOG_VERSION='8.2208.0'
+COPY repo/deb/rsyslog-ppa.gpg /usr/share/keyrings/rsyslog-ppa.gpg
+RUN apt update && \
+  apt -y install \
+    rsyslog \
+    rsyslog-kafka && \
+  apt -y clean && \
+  rm -rf /var/lib/apt/lists/*
+RUN rm -rf /etc/rsyslog.d/ \
+  && rm -f /etc/rsyslog.conf
+COPY rsyslog.conf /etc/rsyslog.conf
+EXPOSE 514/udp
+ENV RSYSLOG_DEBUG='Debug LogFuncFlow FileTrace=imkafka.c'
+CMD bash -c 'rsyslogd -n'

@@ -1,6 +1,6 @@
 FROM almalinux:8
 ENV container=docker
-COPY RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
+COPY repo/rhel/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 ADD http://rpms.adiscon.com/v8-stable/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
 ARG RSYSLOG_VERSION='8.2208.0'
 RUN dnf --setopt=tsflags=nodocs -y install \
