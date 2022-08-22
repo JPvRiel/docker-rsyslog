@@ -233,7 +233,7 @@ Some options are used to add or remove entire blocks of config, e.g. `rsyslog_om
 Other options are shared, e.g.
 
 - `rsyslog_tls_permittedPeer` is provided to both the TCP TLS and RELP TLS input modules
-- `rsyslog_om_action_queue_maxDiskSpace` is shared for all output action queues.
+- `rsyslog_om_action_queue_maxDiskSpace` with a default of ~1GB is applied to all network related output action queues (excludes omfile action). If kafka, syslog and JSON outputs are all enabled and all queues got filled at once, worst case, 3x `maxDiskSpace` storage could be required.
 
 #### Limited config via env vars
 
@@ -289,7 +289,56 @@ If enabling and using file output, a named volume is recommended for `/var/log/r
 
 The default traditional file output template applied is, but it can be modified to something better like `rsyslog_SyslogProtocol23Format` (RFC5424) or any other [built-in rsyslog templates](http://www.rsyslog.com/doc/v8-stable/configuration/templates.html#reserved-template-names) via the `rsyslog_omfile_template` env var.
 
-#### Optional config files
+### External outputs
+
+Pre-defined support for some common forwarding use cases:
+
+- Kafka: `rsyslog_omkafka_enabled=on` and other options to be set.
+  - JSON output, but template can be changed
+- syslog forwarding / relay: `rsyslog_omfwd_syslog_enabled=on` and other options to be set.
+  - RFC5424 output, but template can be changed
+- JSON forwarding / relay over TCP: `rsyslog_omfwd_json_enabled=on` and other options to be set.
+  - Useful for sending directly to logstash (no need for kafka)
+
+And obviously, file output can be disabled with `rsyslog_omfile_enabled=off`.
+
+#### Output action queue sizes and watermarks
+
+Actual potential storage use for network related output action queues is affected by the shared setting `rsyslog_om_action_queue_maxDiskSpace`(in bytes), defaults to ~1GB:
+
+$$
+< maxDiskSpace > * < outputs >
+$$
+
+When changing the queue storage space, the following env vars should also be suitably set and calculated based on expected average message size.
+
+- `rsyslog_om_action_queue_size`, defaulted to ~1M messages, limits how many messages are queued overall including in memory and on disk.
+  - Note, ~1GB storage could host ~1M messages of average size 1K.
+- `rsyslog_om_action_queue_discardMark`, defaulted to ~800K messages, should also be set.
+
+`rsyslog_om_action_queue_highWatermark` also applies to all network related output action queues. It defaults to 128K messages and will likely not use more than ~128MB of memory unless the average syslog message size exceeds 1K. Possible memory use can be roughly calculated by:
+
+$$
+< highWatermark > * <ave message size> * < outputs >
+$$
+
+Check the [`Dockerfile`](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
+
+#### Kafka output
+
+The Kafka output wraps the key config items for [omkafka](http://www.rsyslog.com/doc/master/configuration/modules/omkafka.html) so refer to rsyslog's documentation and look out for `rsyslog_omkafka_*` related `ENV` instructions in the [`Dockerfile`](Dockerfile) to get a sense of options that can be set.
+
+In terms of kafka security, only the `SASL/PLAIN` with the `SASL_SSL` security protocol has been tested. In theory, SASL with Kerberos might be possible, but requires the rsyslog container to have keytab files mounted, etc.
+
+#### Syslog Forwarding
+
+Check the [`Dockerfile`](Dockerfile) for various `rsyslog_omfwd_syslog_*` related env vars.
+
+#### JSON forwarding
+
+Check the [`Dockerfile`](Dockerfile) for various `rsyslog_omfwd_json_*` related env vars.
+
+### Optional config files and filtering
 
 For more advanced custom configuration, template config via env vars would be too tedious (given RainerScript and rsyslog options are so vast), so dedicated configuration file volumes can be used instead for custom filering or output in the folling sub-directories:
 
@@ -322,114 +371,6 @@ if (
 ```
 
 Including extra outputs is _Experimental (not tested)_
-
-### Additional outputs
-
-Pre-defined support for some common forwarding use cases:
-
-- Kafka: `rsyslog_omkafka_enabled=on` and other options to be set.
-  - JSON output, but template can be changed
-- syslog forwarding / relay: `rsyslog_omfwd_syslog_enabled=on` and other options to be set.
-  - RFC5424 output, but template can be changed
-- JSON forwarding / relay over TCP: `rsyslog_omfwd_json_enabled=on` and other options to be set.
-  - Useful for sending directly to logstash (no need for kafka)
-
-And obviously, file output can be disabled with `rsyslog_omfile_enabled=off`.
-
-Actual potential storage use for output action queues is affected by the shared setting `rsyslog_om_action_queue_maxDiskSpace`(in bytes):
-
-$$
-< maxDiskSpace > * < outputs >
-$$
-
-Check the [`Dockerfile`](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
-
-#### Kafka output
-
-The Kafka output wraps the key config items for [omkafka](http://www.rsyslog.com/doc/master/configuration/modules/omkafka.html) so refer to rsyslog's documentation and look out for `rsyslog_omkafka` related `ENV` instructions in the `Dockerfile` to get a sense of options that can be set.
-
-In terms of kafka security, only the `SASL/PLAIN` with the `SASL_SSL` security protocol has been tested. In theory, SASL with Kerberos might be possible, but requires the rsyslog container to have keytab files mounted, etc.
-
-#### Extra input and/or output
-
-_Beta:_ partially tested
-
-If an input or forwarding use case isn't covered as above, then:
-
-1. Use `/etc/rsyslog.d/extra/` with your own config files
-2. Add your own inputs and, if desired, intergrate them with pre-existing filters and output rulesets.
-   1. Incorporate `$IncludeConfig /etc/rsyslog.d/input/filters/*.conf` into your own input processing ruleset to apply "global" input filters.
-   2. Set your input module to use `ruleset="central"`, or if you first need to do your own custom adaptation (e.g. filters and enrichment) the use `call central` in your own own input processing ruleset. This approach will retain the pre-bundled outputs and output filters.
-3. Add your own outputs if desired. You can intergrate them with pre-existing inputs, input filters and global output filters, via the `rsyslog_call_fwd_extra_rule` option:
-   1. Set evn var `rsyslog_call_fwd_extra_rule=true` which enables `call fwd_extra` at the end of the master `output` ruleset grouping.
-   2. If you enable the env var, but fail to define a ruleset called `fwd_extra` in your extra config, the rsyslog config will become  invalid.
-
-More detail?
-
-- See `test/etc/rsyslog.d/extra/91_extra_test.conf` for examples of adding custom extra config.
-- See `50-ruleset.conf` template to understand more details about the pre-bundled rulesets that handle inputs and outpus.
-
-E.g. to have a standalone setup that goes from some kafka input to a mongodb output without touching or being touched by the other "pre-canned" rulesets:
-
-`/etc/rsyslog.d/extra/99_extra.conf`
-
-```rainerscript
-module(load="imkafka")
-module(load="ommongodb")
-
-input(
-  type="imkafka"
-  topic="mytopic"
-  broker=["host1:9092","host2:9092","host3:9092"]
-  consumergroup="default"
-  ruleset="extra"
-)
-
-ruleset(name="extra" parser="rsyslog.rfc3164") {
-  action(
-    server="mymonddb"
-    serverport=27017
-    ...
-  )
-}
-```
-
-E.g. to create an extra input and plug it into the pre-canned output, use `call central` within your own input ruleset to call the standard output (implies global output filters apply):
-
-`/etc/rsyslog.d/extra/49_input_extra.conf`
-
-```rainerscript
-module(load="imkafka")
-input(
-  type="imkafka"
-  topic="mytopic"
-  broker=["host1:9092","host2:9092","host3:9092"]
-  consumergroup="default"
-  ruleset="kafka_in_extra_topic"
-)
-
-# apply global input filters
-ruleset(name="kafka_in_extra_topic" parser="rsyslog.rfc3164") {
-  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
-  call central
-}
-```
-
-E.g. to create an extra output which intergates with the "pre-canned" pipeline that will already call `fwd_extra` at the end of the normal output ruleset (implies global output filters apply):
-
-`/etc/rsyslog.d/extra/89_fwd_extra.conf`
-
-```rainerscript
-module(load="ommongodb")
-ruleset(name="fwd_extra")
-{
-  action(
-    server="mymonddb"
-    serverport=27017
-    ...
-  )
-}
-```
 
 ### Template examples
 
@@ -642,6 +583,87 @@ Indeed, secondary processes inside a container adds brittle complexity:
 - It's unfortunate that older implimentations of cronie's crond only support reporting to either email or syslog, but not stdout, even when in forground mode.
   - So there is no neat way to know what is happending in a container where `/dev/log` usually doesn't exist.
   - A hack is to install and run a netcat unix syslog listener with the container at `/dev/log`, e.g. `netcat -lkU /dev/log` to test and see why crond may be having issues.
+
+### Extra input and/or output
+
+_Beta:_ partially tested
+
+If an input or forwarding use case isn't covered as above, then:
+
+1. Use `/etc/rsyslog.d/extra/` with your own config files
+2. Add your own inputs and, if desired, intergrate them with pre-existing filters and output rulesets.
+   1. Incorporate `$IncludeConfig /etc/rsyslog.d/input/filters/*.conf` into your own input processing ruleset to apply "global" input filters.
+   2. Set your input module to use `ruleset="central"`, or if you first need to do your own custom adaptation (e.g. filters and enrichment) the use `call central` in your own own input processing ruleset. This approach will retain the pre-bundled outputs and output filters.
+3. Add your own outputs if desired. You can intergrate them with pre-existing inputs, input filters and global output filters, via the `rsyslog_call_fwd_extra_rule` option:
+   1. Set evn var `rsyslog_call_fwd_extra_rule=true` which enables `call fwd_extra` at the end of the master `output` ruleset grouping.
+   2. If you enable the env var, but fail to define a ruleset called `fwd_extra` in your extra config, the rsyslog config will become  invalid.
+
+More detail?
+
+- See `test/etc/rsyslog.d/extra/91_extra_test.conf` for examples of adding custom extra config.
+- See `50-ruleset.conf` template to understand more details about the pre-bundled rulesets that handle inputs and outpus.
+
+E.g. to have a standalone setup that goes from some kafka input to a mongodb output without touching or being touched by the other "pre-canned" rulesets:
+
+`/etc/rsyslog.d/extra/99_extra.conf`
+
+```rainerscript
+module(load="imkafka")
+module(load="ommongodb")
+
+input(
+  type="imkafka"
+  topic="mytopic"
+  broker=["host1:9092","host2:9092","host3:9092"]
+  consumergroup="default"
+  ruleset="extra"
+)
+
+ruleset(name="extra" parser="rsyslog.rfc3164") {
+  action(
+    server="mymonddb"
+    serverport=27017
+    ...
+  )
+}
+```
+
+E.g. to create an extra input and plug it into the pre-canned output, use `call central` within your own input ruleset to call the standard output (implies global output filters apply):
+
+`/etc/rsyslog.d/extra/49_input_extra.conf`
+
+```rainerscript
+module(load="imkafka")
+input(
+  type="imkafka"
+  topic="mytopic"
+  broker=["host1:9092","host2:9092","host3:9092"]
+  consumergroup="default"
+  ruleset="kafka_in_extra_topic"
+)
+
+# apply global input filters
+ruleset(name="kafka_in_extra_topic" parser="rsyslog.rfc3164") {
+  $IncludeConfig /etc/rsyslog.d/input/filters/*.conf
+  call central
+}
+```
+
+E.g. to create an extra output which intergates with the "pre-canned" pipeline that will already call `fwd_extra` at the end of the normal output ruleset (implies global output filters apply):
+
+`/etc/rsyslog.d/extra/89_fwd_extra.conf`
+
+```rainerscript
+module(load="ommongodb")
+ruleset(name="fwd_extra")
+{
+  action(
+    server="mymonddb"
+    serverport=27017
+    ...
+  )
+}
+```
 
 ## Version
 
