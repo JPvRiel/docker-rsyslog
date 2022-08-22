@@ -85,7 +85,7 @@ Legacy formats/templates can easily be set via [pre-defined rsyslog template nam
   - A shorter version, `rawMsgEndMetaShort`, includes just the `fromhost` and `fromhost-ip` properties to limit the amount of metadata tagged on the end, and is especially suited to UDP forwarding where the MTU might be limited to ~1500 bytes or less.
 - Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
 
-See the `ENV` instructions with `rsyslog_` environment name prefixes in the `Dockerfile` to review default settings and options further.
+See the `ENV` instructions with `rsyslog_` environment name prefixes in the [`Dockerfile`](Dockerfile) to review default settings and options further.
 
 The container also supports advanced debug scenarios.
 
@@ -197,7 +197,7 @@ If you see `ERROR: Ungraceful exit...`, then most likely, the rsyslogd process d
 
 [test/test_syslog_server.env](test/test_syslog_server.env) as an example will provide ideas on some env vars you can set.
 
-Reading the `ENV rsyslog_*` optons in the `Dockerfile` will provide a more exhaustive list about what rsyslog configuration options are supported via environment variables.
+Reading the `ENV rsyslog_*` optons in the [`Dockerfile`](Dockerfile) will provide a more exhaustive list about what rsyslog configuration options are supported via environment variables.
 
 #### How env vars get applied
 
@@ -342,7 +342,7 @@ $$
 < maxDiskSpace > * < outputs >
 $$
 
-Check the [Dockerfile](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
+Check the [`Dockerfile`](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
 
 #### Kafka output
 
@@ -433,7 +433,7 @@ ruleset(name="fwd_extra")
 
 ### Template examples
 
-For each pre-canned output, a template can be set. Some advanced templates have flags to enable/include them (i.e. `grep -E 'rsyslog_.*__template' Dockerfile` to get an idea of the options).
+For each pre-canned output, a template can be set. Some advanced templates have flags to enable/include them (i.e. `grep -E 'rsyslog_.*_template' Dockerfile` to get an idea of the options).
 
 By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options are off. They can help add meta-data and make structured data elements parsable as JSON. For JSON output, recommended combinations are:
 
@@ -602,7 +602,7 @@ As per [Tutorial: Sending impstats Metrics to Elasticsearch Using Rulesets and Q
 - [rsyslog statistic counter](https://www.rsyslog.com/doc/master/configuration/rsyslog_statistic_counter.html) details some meaning for stats and which modules support stats.
 - `omkafka` supports impstats since version 8.35.
 
-By default, in `Dockerfile`, various stats env vars set the following:
+By default, in the [`Dockerfile`](Dockerfile), various stats env vars set the following:
 
 - `rsyslog_module_impstats_interval='60'` causes stats to be produced ever minute
 - `rsyslog_module_impstats_resetCounters='on'` resets many counters, but at the cost of some accuracy (see doc for `impstats`)
@@ -614,7 +614,7 @@ By default, in `Dockerfile`, various stats env vars set the following:
 Even with the attempt to split and run impstats in it's own queue, it might be more reliable to configure impstats to log to a file in a volume:
 
 - By setting `rsyslog_impstats_log_file_enabled=on`, stats events will be logged at `/var/log/impstats/metrics.log`.
-  - See the `Dockerfile` if you prefer modifying the destination and volume for this.
+  - Search the [`Dockerfile`](Dockerfile) for more `rsyslog_impstats_*` options.
 - In theory, it should be more reliable to avoid the syslog engine and simply log to file.
 - There are more sophisticated options such as [Monitoring rsyslog’s Performance with impstats and Elasticsearch](https://sematext.com/blog/monitoring-rsyslogs-performance-with-impstats-and-elasticsearch/), which can directly indexes events from it's own ruleset.
   - But this also relies on the internal syslog engine and omelasticsearch output for delivery, so it may be less failsafe compared to a local file.
@@ -686,7 +686,7 @@ The build argument `DISABLE_YUM_MIRROR=true` can help if you have a caching prox
 
 Changes to `build.env` should invalidate the build cache. Docker build caching for a given version and release number.
 
-Note however, that `make build` focuses on the Dockerfile for the rsyslog server and doesn't trigger rebuilds of other test container dependencies (such as python behave, kafka, etc)
+Note however, that `make build` focuses on the [`Dockerfile`](Dockerfile) for the rsyslog server and doesn't trigger rebuilds of other test container dependencies (such as python behave, kafka, etc)
 
 To force a full rebuild using pull and no cache
 
