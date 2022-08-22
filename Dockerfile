@@ -247,12 +247,14 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
   rsyslog_om_action_queue_dequeueBatchSize=1024 \
-  rsyslog_om_action_queue_minDequeueBatchSize=128 \
+  rsyslog_om_action_queue_minDequeueBatchSize=64 \
   rsyslog_om_action_queue_minDequeueBatchSize_timeout=500 \
   rsyslog_om_action_queue_workerThreads=4 \
   rsyslog_om_action_queue_workerThreadMinimumMessages=8192 \
   rsyslog_om_action_queue_maxDiskSpace=1073741824 \
   rsyslog_om_action_queue_size=1048576 \
+  rsyslog_om_action_queue_highWatermark=131072 \
+  rsyslog_om_action_queue_lowWatermark=65536 \
   rsyslog_om_action_queue_discardMark=838860 \
   rsyslog_om_action_queue_discardSeverity=6 \
   rsyslog_om_action_queue_checkpointInterval=8192 \
@@ -263,17 +265,17 @@ ENV rsyslog_output_filtering_enabled='on' \
 # - TmplRFC5424
 # - TmplJSONRawMsg
 #
-# Notes for the pre-canned outputs (kafka, JSON, syslog)
-# - choose either 
-# - each pre-canned output can have it's own template applied, e.g.
-# - rsyslog_om_action_queue_* is set for all outputs (sort of a global)
-# - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G
-# - E.g. if three outputs have ~ 1G file limit for the queue, 3G overall is needed
-# - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardMark need to be adjusted in line with rsyslog_om_action_queue_maxDiskSpace
-# - E.g. Assuming 1024 byte messages (e.g. custom templates or JSON formats create bloat), then a 1G file can fit ~1 million messages, and start discarding at ~800K million messages
-# - E.g. Assuming worst case, all messages are 64K size, then only ~16K messages can be handled (without knowing what overhead rsyslog adds for each message in the queue)
-# - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: https://github.com/kelseyhightower/confd/issues/611
-# - rsyslog_om_action_queue_discardSeverity=6 implies info and debug messages get discarded
+# Brief notes for the pre-canned outputs (kafka, JSON, syslog):
+# - each pre-canned output can have it's own template applied.
+# - rsyslog_om_action_queue_* is set and shared for all output queues, so multiple enabled outputs multiplies the mem and storage resources needed to queue output!
+# - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G max storage space used, but you likely want more?
+# - E.g. with 3x enabled outputs 3x 1G file limit per queue, then 3G overall is needed.
+# - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardMark need to be adjusted in line with rsyslog_om_action_queue_maxDiskSpace such that discard is likely to occur before the size liumit is reached.
+# - E.g. Assuming 1024 byte messages (e.g. custom templates or JSON formats create bloat), then a 1G file can fit ~1 million messages, and start discarding at ~800K million messages.
+# - E.g. Assuming worst case, all messages are 64K size, then only ~16K messages can be handled (without knowing what overhead rsyslog adds for each message in the queue).
+# - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: <https://github.com/kelseyhightower/confd/issues/611>.
+# - rsyslog_om_action_queue_discardSeverity=6 implies info and debug messages get discarded.
+# - NB! RSyslog defaults for disk assisted queues are too large! See <https://github.com/rsyslog/rsyslog/issues/4968>. To avoid excessive memory use, highWatermark and lowWatermark were explicity defined and set.
 #
 # Additonal output config will probably be highly varied, so instead of trying to template/pre-can it, we allow for that config to be red in
 # As above, extra optional volumes with config that can be supplied at runtime

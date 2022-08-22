@@ -38,12 +38,14 @@ ruleset(name="fwd_syslog")
     Protocol="{{ getenv "rsyslog_omfwd_syslog_protocol" }}"
     template="{{ getenv "rsyslog_omfwd_syslog_template" }}"
     action.resumeRetryCount = "-1"
-    # queue config 
+    # queue config
     queue.type="LinkedList"
     queue.filename="fwd_syslog"
     # queue peristance and size limit
     queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
     queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.highWatermark="{{ getenv "rsyslog_om_action_queue_highWatermark" }}"
+    queue.lowWatermark="{{ getenv "rsyslog_om_action_queue_lowWatermark" }}"
     queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
     queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
     queue.checkpointInterval="{{ getenv "rsyslog_om_action_queue_checkpointInterval" }}"
