@@ -6,12 +6,13 @@ An rsyslog container intended to transfer syslog input into kafka with a JSON fo
 
 Why not the official image?
 
-This project was started in 2017. About a year later, an upstream [official rsyslog impages](https://hub.docker.com/u/rsyslog/) project started which will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (June 2021):
+This project was started in 2017. About a year later, an upstream [official rsyslog impages](https://hub.docker.com/u/rsyslog/) project started which will likely be better maintained and hopefully cover similar use cases. However, at the time of the last update to this readme (Aug 2022), the main issue is that rsyslog is targeting alpine as the base image but it lacked support for kafka:
 
+- [alpine: add kafka module](https://github.com/rsyslog/rsyslog-docker/issues/6) issue was still open.
+- [Update APKBUILD to enable support of kafka plugin.](https://github.com/rsyslog/rsyslog-pkg-alpine/pull/5/files) PR was not yet merged.
 - [rsyslog/syslog_appliance_alpine](https://hub.docker.com/r/rsyslog/syslog_appliance_alpine) states: "Note: currently this is in BETA state".
 - [Using Rsyslog Docker Containers](https://www.rsyslog.com/doc/master/installation/rsyslog_docker.html) still has the development warning notice.
 - [github: rsyslog / rsyslog-docker](https://github.com/rsyslog/rsyslog-docker) warns "a playground for rsyslog docker tasks - nothing production yet".
-- The [alpine: add kafka module](https://github.com/rsyslog/rsyslog-docker/issues/6) issue was still open.
 - [rsyslog.conf.d](https://github.com/rsyslog/rsyslog-docker/tree/master/appliance/alpine/rsyslog.conf.d) only provided limited bundled config use-cases such as logging to file or a cloud logging provider (sematext), but not Kafka.
 
 Besides the "beta" status, other differences compared to the official container are:
@@ -341,6 +342,8 @@ $$
 < maxDiskSpace > * < outputs >
 $$
 
+Check the [Dockerfile](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
+
 #### Kafka output
 
 The Kafka output wraps the key config items for [omkafka](http://www.rsyslog.com/doc/master/configuration/modules/omkafka.html) so refer to rsyslog's documentation and look out for `rsyslog_omkafka` related `ENV` instructions in the `Dockerfile` to get a sense of options that can be set.
@@ -636,7 +639,7 @@ Indeed, secondary processes inside a container adds brittle complexity:
 - While there is integrated log rotation within the container, running multiple processes within a container is arguably poor microservices practise.
 - The entrypoint script prioritised looking after rsyslogd and waiting on rsyslogd to exit, and so it starts crond as a secondary process for lograte, but does not wait for nor provide error feedback if crond or logrotate has an issue.
 - It's common practise to use stdout and stderr for container logs, and this container follows that, but redirecting remote syslog events or impstats metrics may flood the container logging mechanisms, and are different use-cases. Hence the need to rotate something even if /var/log/remote file output is disabled.
-- It's unfortunate that older implimentations of cronie's crond only support reporting to either email or syslog, but not stdout, even when in forground mode. 
+- It's unfortunate that older implimentations of cronie's crond only support reporting to either email or syslog, but not stdout, even when in forground mode.
   - So there is no neat way to know what is happending in a container where `/dev/log` usually doesn't exist.
   - A hack is to install and run a netcat unix syslog listener with the container at `/dev/log`, e.g. `netcat -lkU /dev/log` to test and see why crond may be having issues.
 
@@ -739,7 +742,7 @@ TODO: Validate if and how UDP spoof testing can work without host root (unlikely
 
 If user namespace re-mapping is done, as per [Isolate containers with a user namespace](https://docs.docker.com/engine/security/userns-remap/), then some of the bind mounts run by the test suite may have access errors. To fix this, inspect `grep dockremap /etc/sub{u,g}id` to understand the id range mappings.
 
-In a default `dockremap` scenario, the namespace is mapped to a subuid and subgid for the `dockremap` account. Using `setfacl`, assigne access to your own current user, and the chown the bind mount source dir with re-mapped docker root uid.  E.g. for the test suit the `test` dir has to be owned by the remapped uid.
+In a default `dockremap` scenario, the namespace is mapped to a subuid and subgid for the `dockremap` account. Using `setfacl`, assign access to your own current user, and the chown the bind mount source dir with re-mapped docker root uid.  E.g. for the test suit the `test` dir has to be owned by the remapped uid.
 
 This is a fairly complex process, so see the `docker-userns-remap-acls` script as an example to help with this.
 
@@ -774,7 +777,7 @@ xmllint --xpath '//failure' test/behave/reports/TESTS-*.xml  | highlight --out-f
 The default `make test` attempts to runs all tests continuing past failures to get full test results:
 
 - stdout, stderr and logging output are captured by behave (not displayed on the console).
-- Test results are output to [./test/behave/reports](./test/behave/reports) in JUnit format.
+- Test results are output to [test/behave/reports](test/behave/reports) in JUnit format.
 - The `sut` container exits once done.
 - If there were no failures, all other containers (test dependencies) will also exit.
 - With one or more errors the, the `sut` container will exit with a non-zero return code, but other test containers (syslog server, kafka, relays and clients) will be left in the running state.
@@ -1235,7 +1238,8 @@ Not yet done:
 
 - Refactor configuration templating:
   - Leverage new [config.enabled](https://www.rsyslog.com/doc/v8-stable/rainerscript/configuration_objects.html#config-enabled) config object feature instead of complicated script block inclusion or exclusion with confd?
-  - Leverage new [`include()`](https://www.rsyslog.com/doc/v8-stable/rainerscript/configuration_objects.html#include)? Note, PR [2426](https://github.com/rsyslog/rsyslog/pull/2426) provides more detail as the current documentation for it is very thin?
+  - Leverage new [`include()`](https://www.rsyslog.com/doc/v8-stable/rainerscript/configuration_objects.html#include)?
+    - [Include a file specified via an environment variable](https://www.rsyslog.com/doc/master/rainerscript/include.html#include-an-environment-variable-as-configuration) could provide a an alternate way to manage config.
   - Leverage new backtick string format to evaluate variable names directly. This could be a partial replacement for confd templating?
 - Use mmfields module to handle LEEF and CEF extraction to JSON?
 - Re-factor test suite
