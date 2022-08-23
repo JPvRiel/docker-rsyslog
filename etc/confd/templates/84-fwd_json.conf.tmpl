@@ -36,15 +36,17 @@ ruleset(name="fwd_json")
     Port="{{ getenv "rsyslog_omfwd_json_port" }}"
     Protocol="tcp"
     template="{{ getenv "rsyslog_omfwd_json_template" }}"
-    action.resumeRetryCount = "-1"
+    action.resumeRetryCount="-1"
     # often last message is lost when a connection breaks
     resendLastMSGOnReconnect="on"
     # queue config
-    queue.type = "LinkedList"
+    queue.type="{{ getenv "rsyslog_om_action_queue_type" }}"
     queue.filename="fwd_json"
     # queue peristance and size limit
     queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
     queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.maxFileSize="128m"
+    queue.lightDelayMark="0"
     queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
     queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
     queue.checkpointInterval="{{ getenv "rsyslog_om_action_queue_checkpointInterval" }}"

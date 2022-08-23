@@ -308,9 +308,9 @@ This applies to the Kafka, Syslog and JSON network related external output actio
 
 Memory use:
 
-- `rsyslog_om_action_queue_size`, defaulted to 500K messages, limits how many messages are queued in memory (messages sent to disk don't count).
-- For disk-assisted queues, the 90% high watermark default applies. E.g. at 450K/500K queue use, rsyslog will start queing messages with the disk in addition to memory.
-- `rsyslog_om_action_queue_discardMark`, defaulted to 475K messages (95% of 500K), also needs to be ideally set to something greater than the default 90% high watermark.
+- `rsyslog_om_action_queue_size`, e.g. 100K messages, limits how many messages are queued in memory (messages sent to disk don't count).
+- For disk-assisted queues, the 90% high watermark default applies. E.g. at 90K/100K queue use, rsyslog will start queing messages with the disk in addition to memory.
+- `rsyslog_om_action_queue_discardMark`, defaulted to 95K messages (95% of 100K), also needs to be ideally set to something greater than the default 90% high watermark.
   - Ideally this would have been defaulted to 95%, but confd has a limitation where [arithmetic functions unable to handle implicit / dynamic type conversion](https://github.com/kelseyhightower/confd/issues/611). So env vars act as strings.
   - Hence, if you change `rsyslog_om_action_queue_size`, remember to calculate and change `rsyslog_om_action_queue_discardMark` as well. 95% is recommended.
 
@@ -321,6 +321,8 @@ Storage use:
 Note, as outputs can be simultaneously enabled, resource usage stacks up for both memory and storage use. If Kafka, Syslog and JSON are all enabled, then shared options like `rsyslog_om_action_maxDiskSpace` multiply, e.g. 3 x 1GB = 3GB storage overall.
 
 Check the [`Dockerfile`](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
+
+Also see the "RSyslog action queues" section in [README_related.md](README_related.md) which compares the RSyslog defaults to what is applied as a "customised" default for use in a lightweight forwarding container assuming a modest amount of memory and 4 CPU cores.
 
 #### Kafka output
 
@@ -1269,9 +1271,7 @@ Not yet done:
 - expose enhancements in env config like
   - `imptcp` socket backlog setting! Default of 5 does not cope well with high load systems!
   - Confirm `impstats` counters for `omkafka`
-- Performance tuning as per <https://rsyslog.readthedocs.io/en/stable/examples/high_performance.html> started with input thread settings. However, ruleset and action output queues settings haven't been optimised or exposed with settings:
-  - `dequeueBatchSize`
-  - `workerThreads`
+- Performance tuning as per <https://rsyslog.readthedocs.io/en/stable/examples/high_performance.html> started with input thread settings.
   - multiple input rulesets all call a single ruleset that then calls multiple output rulesets
     - the central output ruleset might need more worker threads
   - Other docs

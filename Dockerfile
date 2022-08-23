@@ -194,15 +194,14 @@ ENV rsyslog_impstats='on' \
 # - Up to 8 worker threads will be running if the queue gets filled halfway (i.e. 64K messages, 8K messages per worker).
 # - FixedArray sacrifices RAM (consumes more static memory) for slightly less CPU overhead.
 ENV rsyslog_central_queue_type='FixedArray' \
-  rsyslog_central_queue_size=131072 \
-  rsyslog_central_queue_dequeueBatchSize=2048 \
-  rsyslog_central_queue_minDequeueBatchSize=256 \
-  rsyslog_central_queue_minDequeueBatchSize_timeout=500 \
-  rsyslog_central_queue_workerThreads=8 \
-  rsyslog_central_workerThreadMinimumMessages=8192
+  rsyslog_central_queue_size=100000 \
+  rsyslog_central_queue_dequeueBatchSize=5000 \
+  rsyslog_central_queue_minDequeueBatchSize=50 \
+  rsyslog_central_queue_minDequeueBatchSize_timeout=100 \
+  rsyslog_central_queue_workerThreads=4 \
+  rsyslog_central_workerThreadMinimumMessages=20000
 # Note - see /etc/confd/60-ruleset.conf.tmpl:
 # - Instead of using the default main queue, a 'central' explicitly defined queue is used between inputs and outputs
-# - If rsyslog_global_maxMessageSize needs to be excessivly large, consider changing the queue type from 'fixed array' to 'linked list'
 # - Each input is bound to it's own input ruleset (instead of the rsyslog main queue default)
 # - Each input ruleset applies generic or input specific filters
 # - Each input ruleset/queue is of type 'direct'
@@ -214,8 +213,8 @@ ENV rsyslog_central_queue_type='FixedArray' \
 # - Output specific rulesets, such as fwd_kafka, fwd_syslog, etc have 'disk-assisted' memory queues
 # - Output specific rulesets/queues are intended to persist data backlogs the most, and should perist when rsyslog is restarted
 # Note futher:
-# - The queue.workerThreadMinimumMessages setting defaults to queue.size/queue.workerthreads.
-# - The 'fixed array' queue type for the central queue trades off extra memory usage for lower CPU overhead 
+# - The queue.workerThreadMinimumMessages setting defaults to queue.size/queue.workerthreads. This tweaks that to add more threads a little bit earlier, ideally before discard threadholds are reached.
+# - The 'fixed array' queue type for the central queue trades off extra memory usage for lower CPU overhead.
 #   (See: https://www.rsyslog.com/doc/v8-stable/configuration/global/options/rsconf1_mainmsgqueuesize.html)
 
 # Outputs (action output queues are persistant/disk assisted)
@@ -246,16 +245,17 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
-  rsyslog_om_action_queue_dequeueBatchSize=1000 \
-  rsyslog_om_action_queue_minDequeueBatchSize=50 \
-  rsyslog_om_action_queue_minDequeueBatchSize_timeout=250 \
-  rsyslog_om_action_queue_workerThreads=8 \
-  rsyslog_om_action_queue_workerThreadMinimumMessages=5000 \
+  rsyslog_om_action_queue_type='LinkedList' \
   rsyslog_om_action_queue_maxDiskSpace=1073741824 \
-  rsyslog_om_action_queue_size=500000 \
-  rsyslog_om_action_queue_discardMark=475000 \
+  rsyslog_om_action_queue_size=100000 \
+  rsyslog_om_action_queue_discardMark=95000 \
   rsyslog_om_action_queue_discardSeverity=7 \
-  rsyslog_om_action_queue_checkpointInterval=5000 \
+  rsyslog_om_action_queue_checkpointInterval=10000 \
+  rsyslog_om_action_queue_dequeueBatchSize=5000 \
+  rsyslog_om_action_queue_minDequeueBatchSize=50 \
+  rsyslog_om_action_queue_minDequeueBatchSize_timeout=100 \
+  rsyslog_om_action_queue_workerThreads=4 \
+  rsyslog_om_action_queue_workerThreadMinimumMessages=20000 \
   rsyslog_call_fwd_extra_rule='off'
 # Several globals are defined via rsyslog_global_* inlcuding reporting stats
 #
@@ -266,16 +266,19 @@ ENV rsyslog_output_filtering_enabled='on' \
 # Brief notes for the pre-canned outputs (kafka, JSON, syslog):
 # - Each pre-canned output can have it's own template applied.
 # - Multiple outputs can be enabled at once.
+# - The rsyslog_om_action_queue_type should be either LinkedList or FixedArray.
 # - A disk-assisted (DA) queue is setup for the outputs (see: <https://www.rsyslog.com/doc/v8-stable/concepts/queues.html>).
 # - NB! The in-memory part is limited the the number of messaegs (rsyslog_om_action_queue_size) and the on-disk part is limited by the disk space usage limit (rsyslog_om_action_queue_maxDiskSpace).
 # - rsyslog_om_action_queue_* is set and shared for all output queues, so multiple enabled outputs multiplies the mem and storage resources needed to queue output!
-# - rsyslog_om_action_queue_size applies only to the in-memory part of each output queue. Assuming 512 bytes per message, a 500000 size limit implies ~244MB memory use (not counting for other rsyslog overhead).
-# - E.g. With 3x enabled outputs, 3x 512MB approx usage per queue, then ~732MB overall could be used, again, not accounting for any other overhead.
-# - Memory issues can still result. E.g. Assuming worst case, something loops and floods the queue with junk and the full 64K message size limit, then even with just one output, 500000 x 64K = 32GB RAM! Set rsyslog_global_maxMessageSize to a smaller value to mitigate this.
+# - rsyslog_om_action_queue_size applies only to the in-memory part of each output queue. Assuming 512 bytes per message, a 100000 size limit implies ~50MB memory use (not counting for other rsyslog overhead).
+# - E.g. With 3x enabled outputs, 3x 50MB approx usage per queue, then ~150MB overall could be used, again, not accounting for any other overhead.
+# - Memory issues can still result. E.g. Assuming worst case, something loops and floods the queue with junk and the full 64K message size limit, then even with just one output, 100000 x 64K = 6GB+ RAM! Set rsyslog_global_maxMessageSize to a smaller value to mitigate this.
 # - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G max storage space used, but you likely want more?
 # - E.g. again, if 3x enabled outputs, 3x 1G storage use limit per output, then 3G overall storage space is needed.
+# - NB! Some rsyslog queue parameters are left as deafult or have modified defaults, but are not exposed as env vars and hopefully make sense for DA output queues.
+#   - RSyslog's default for highWatermark is 90% vs 80% for discardMark, so discarding happens by default before using disk if discardSeverity is set.
+#   - RSyslog's default for lightDelayMark is 70% vs 90% for highWatermark, so it could push upstream inputs like TCP to stop sending with "backpressure" before begining to make use of disk-assited storage. Hence this container's default is to rather disable it and let disk-assited queing do the work.
 # - rsyslog_om_action_queue_discardMark is ideally 95% of queue.size, as rsyslog's high watermark for using disk in DA queues is 90% and you would likely not want messaegs discarded before at least attepmting to use disk.
-# - NB! rsyslog's default for highWatermark is 90% vs 80% for discardMark, so discarding happens by default before using disk if discardSeverity is set.
 # - rsyslog_om_action_queue_discardSeverity=7 implies debug messages get discarded.
 # - While arithmentic could be used to default rsyslog_om_action_queue_discardMark = 0.95 * rsyslog_om_action_queue_size, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: <https://github.com/kelseyhightower/confd/issues/611>.
 #

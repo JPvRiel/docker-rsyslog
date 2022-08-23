@@ -37,13 +37,15 @@ ruleset(name="fwd_syslog")
     Port="{{ getenv "rsyslog_omfwd_syslog_port" }}"
     Protocol="{{ getenv "rsyslog_omfwd_syslog_protocol" }}"
     template="{{ getenv "rsyslog_omfwd_syslog_template" }}"
-    action.resumeRetryCount = "-1"
+    action.resumeRetryCount="-1"
     # queue config
-    queue.type="LinkedList"
+    queue.type="{{ getenv "rsyslog_om_action_queue_type" }}"
     queue.filename="fwd_syslog"
     # queue peristance and size limit
     queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
+    queue.maxFileSize="128m"
     queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.lightDelayMark="0"
     queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
     queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
     queue.checkpointInterval="{{ getenv "rsyslog_om_action_queue_checkpointInterval" }}"

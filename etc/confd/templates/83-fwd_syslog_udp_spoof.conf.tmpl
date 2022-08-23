@@ -38,13 +38,15 @@ ruleset(name="fwd_syslog_udp_spoof")
     Target="{{ getenv "rsyslog_omudpspoof_syslog_host" }}"
     Port="{{ getenv "rsyslog_omudpspoof_syslog_port" }}"
     template="{{ getenv "rsyslog_omudpspoof_syslog_template" }}"
-    action.resumeRetryCount = "-1"
-    # queue config 
-    queue.type="LinkedList"
+    action.resumeRetryCount="-1"
+    # queue config
+    queue.type="{{ getenv "rsyslog_om_action_queue_type" }}"
     queue.filename="fwd_syslog_omudpspoof"
     # queue peristance and size limit
     queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
+    queue.maxFileSize="128m"
     queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
+    queue.lightDelayMark="0"
     queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
     queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
     queue.checkpointInterval="{{ getenv "rsyslog_om_action_queue_checkpointInterval" }}"

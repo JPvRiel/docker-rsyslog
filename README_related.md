@@ -4,6 +4,48 @@
 
 [RHEL-CentOS RSyslog RPMs](http://www.rsyslog.com/rhelcentos-rpms/)
 
+## RSyslog action queues
+
+RSyslog supports sophisticated queue options. At a minimum, read both of the following to comprehend them more fully:
+
+- <https://www.rsyslog.com/doc/master/rainerscript/queue_parameters.html>
+- <https://www.rsyslog.com/doc/v8-stable/concepts/queues.html>
+
+Also helpful: <https://rsyslog.readthedocs.io/en/latest/whitepapers/queues_analogy.html>
+
+A quick summary of queue parameters as they apply to actions (not rulesets):
+
+| Param                  | Action Q Default        | Custom default  | Disk-assisted in-memory Q   | In-memory Q           | Disk Q                     |
+|------------------------|-------------------------|-----------------|-----------------------------|-----------------------|----------------------------|
+| `queue.size`           | 1000                    | 100000          | in-memory message count     | overall message count | N/A                        |
+| `queue.maxFileSize`    | 1M                      |                 | on-disk file fragment size  | N/A                   | on-disk file fragment size |
+| `queue.maxDiskSpace`   | 0 (no limit)            | 1073741824 (1G) | on-disk message storage use | N/A                   | message storage use        |
+| `queue.highWaterMark`  | 90% of queue.size (900) |                 | in-memory message count     | N/A                   | N/A                        |
+| `queue.lowWaterMark`   | 70% of queue.size (700) |                 | in-memory message count     | N/A                   | N/A                        |
+| `queue.discardMark`    | 80% of queue.size (800) | 95000 (95%)     | in-memory message count     | overall message count | N/A?                       |
+| `queue.fullDelaymark`  | 97% of queue.size (970) |                 | in-memory message count     | overall message count | N/A?                       |
+| `queue.lightDelayMark` | 70% of queue.size (700) | 0 (disabled)    | in-memory message count     | overall message count | N/A?                       |
+
+Problems with defaults as they apply to disk assisted queue mode might be:
+
+- Light delay (70%) starts well before the queue uses disk buffering (90% highWaterMark) and source client systems (inputs) may not have large buffers and end up discarding messages client side
+- Messages begin to be discarded before the queue uses disk buffering if `queue.discardSeverity` is set to anything lower than the default of 8.
+
+Threading.
+
+| Param | RSyslog Default | Custom default |
+| - | - | - |
+| queue.workerThreads | 1 | 4 |
+| queue.workerThreadMinimumMessages | queue.size/queue.workerthreads | 0.8 * queue.size / queue.workerthreads (20000) |
+
+Batching.
+
+| Param                             | Ruleset Q | Action Q | Custom default |
+|-----------------------------------|-----------|----------|----------------|
+| queue.dequeueBatchSize            | 1024      | 128      | 5000           |
+| queue.minDequeueBatchSize         | 0         | 0        | 50             |
+| queue.minDequeueBatchSize.timeout | 1000      | 1000     | 100            |
+
 ## Forwarding formats and RSyslog templates
 
 When forwarding via syslog, RFC5424 is obviously the most sensible format to relay in. RFC3164 is not a proper standard and made poor choices with regard to the time-stamp convention. While "Mmm dd hh:mm:ss" is human readable, it lacks the year, sub-second accuracy and timezone info.
@@ -57,16 +99,16 @@ See "6.3.5\. Examples" in the standard as a good point to jump into it. Basicall
 
 Given no appropriate standard, a custom structured data element `rsyslog_relay@16543` can be pre-pended to include the following meta-data about how the log event was received:
 
-| rsyslog property | Splunk CIM | Use |
-| - | - | - |
-| `inputname` | `app` | rsyslog input module used, e.g. imudp, imptcp, imtcp, imrelp, etc |
-| `fromhost` | `src` | Source DNS or IP if reverse DNS lookup fails for the connected syslog client |
-| `fromhost-ip ` | `src_ip` | Source IP of the connected syslog client |
-| `$myhostname` | `dest` | Server instance processing the message |
-| `timegenerated` | message_received_time | When the message was received |
-| `protocol-version` | ?? | 1 if input conformed to RFC5424, or 0 if input was guessed to be RFC3164 |
-| custom variable: $!tls | ?? | true/false flag for SSL/TLS |
-| custom variable: $!authenticated_client | ?? | if client authentication was applied, i.e. the 'authMode' applied for SSL/TLS - limited to true/false |
+| rsyslog property                        | Splunk CIM            | Use                                                                                                   |
+|-----------------------------------------|-----------------------|-------------------------------------------------------------------------------------------------------|
+| `inputname`                             | `app`                 | rsyslog input module used, e.g. imudp, imptcp, imtcp, imrelp, etc                                     |
+| `fromhost`                              | `src`                 | Source DNS or IP if reverse DNS lookup fails for the connected syslog client                          |
+| `fromhost-ip `                          | `src_ip`              | Source IP of the connected syslog client                                                              |
+| `$myhostname`                           | `dest`                | Server instance processing the message                                                                |
+| `timegenerated`                         | message_received_time | When the message was received                                                                         |
+| `protocol-version`                      | ??                    | 1 if input conformed to RFC5424, or 0 if input was guessed to be RFC3164                              |
+| custom variable: $!tls                  | ??                    | true/false flag for SSL/TLS                                                                           |
+| custom variable: $!authenticated_client | ??                    | if client authentication was applied, i.e. the 'authMode' applied for SSL/TLS - limited to true/false |
 
 When rsyslog doesn't have a property available, we can generate it with our own custom variables.
 
@@ -104,7 +146,7 @@ Note further, templates are not affected by if-statements or config nesting.
 
 If the structured data element follows Splunk CIM field names, the template string would be as follows:
 
-```
+```text
 [received@16543 message_received_time=\"%timegenerated:::date-rfc3339%\" src=\"%fromhost%\" src_ip=\"%fromhost-ip%\" dest=\"%$myhostname%\" app=\"rsyslog_%inputname%\" ssl=\"%$!tls%\" authenticated_client=\"%$!authenticated_client%\"]
 ```
 
@@ -112,27 +154,27 @@ However, elsewhere within the message from the client, information about the eve
 
 If the structured data element follows rsyslogs default property names, the template string would be as follows:
 
-```
+```text
 [received@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" tls=\"%$!tls%\" authenticated_client=\"%$!authenticated_client%\"]
 ```
-
 
 #### RFC3164 (legacy) converted to RFC5424 with meta-data pre-pended to structured data
 
 RSyslog template string (see [Rsyslog examples](http://www.rsyslog.com/doc/rsyslog_conf_examples.html))
-```
+
+```text
 "<%PRI%>%TIMESTAMP% %HOSTNAME% %syslogtag%%msg%"
 ```
 
 Example source RFC3164 message (obviously without meta-data) via UDP
 
-```
+```text
 <177>Jul 14 12:52:12 05766jpvanriel-vm test: FINDME using UDP from 127.0.0.1 to 127.0.0.1:514
 ```
 
 After, with meta-data added
 
-```
+```text
 <177>1 2015-07-14T12:52:12 experience test - - - [received@16543 message_received_time="2017-07-18 12:52:13.116658983+02:00" src="experience.standardbank.co.za"
 src_ip="196.8.110.47" dest="plogcs1p.standardbank.co.za" app="rsyslog_imudp" syslog_version="0" ssl="false"] FINDME using UDP from 127.0.0.1 to 127.0.0.1:514
 ```
@@ -141,13 +183,13 @@ src_ip="196.8.110.47" dest="plogcs1p.standardbank.co.za" app="rsyslog_imudp" sys
 
 RFC5424 message with an existing structured data element, but no meta-data added yet
 
-```
+```text
 <177>1 2015-07-14T12:52:12.916345047+02:00 05766jpvanriel-vm test - - - [testsd@16543 test_msg="RELP client with TLS"] FINDME using RELP from 127.0.0.1 to 127.0.0.1:514
 ```
 
 After, RFC5424 message with meta-data prepended to the structured elements
 
-```
+```text
 <177>1 2015-07-14T12:52:12 test - - - [received@16543 message_received_time="2017-07-18 12:52:13.116658983+02:00" src="experience.standardbank.co.za"
 src_ip="196.8.110.47" dest="plogcs1p.standardbank.co.za" app="rsyslog_imrelp" syslog_version="0" ssl="true" authentication_client="true"][testsd@16543 test_msg="RELP client with TLS"] FINDME using RELP from 127.0.0.1 to 127.0.0.1:514
 ```
@@ -157,20 +199,15 @@ Other interesting pre-defined structure data elements (IDs) are 'timeQuality', b
 RSyslog allows for referencing properties. See [rsyslog Properties](http://www.rsyslog.com/doc/v8-stable/configuration/properties.html). Properties of interest are:
 
 - Protocol version (only applicable to RFC5424)
-
   - protocol-version 1 (no obvious splunk CIM fieldname)
-
 - Time when log was received
-
   - date-rfc3339
   - timegenerated (message_received_time)
-
 - Log source/sender:
-
   - fromhost (src)
   - fromhost-ip (src_ip)
 
-input module name
+Input module name:
 
 - inputname (app)
 
@@ -274,6 +311,6 @@ See [Re: set config values from env var](https://lists.gt.net/rsyslog/users/2112
 
 > no.
 >
-> there are ways to assign variables to be equal to environemnt variables with the set command, but those cannot be used for most config options.
+there are ways to assign variables to be equal to environment variables with the set command, but those cannot be used for most config options.
 
 In any even, something like confd has more flexibly for deployments that might use distributed config management and orchestration tools like etcd, zookeeper, etc.
