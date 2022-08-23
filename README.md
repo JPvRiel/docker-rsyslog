@@ -302,25 +302,23 @@ Pre-defined support for some common forwarding use cases:
 
 And obviously, file output can be disabled with `rsyslog_omfile_enabled=off`.
 
-#### Output action queue sizes and watermarks
+#### Output action queue sizes related to memory and storage use
 
-Actual potential storage use for network related output action queues is affected by the shared setting `rsyslog_om_action_queue_maxDiskSpace`(in bytes), defaults to ~1GB:
+This applies to the Kafka, Syslog and JSON network related external output action queues which are setup as the disk-assisted queue type.
 
-$$
-< maxDiskSpace > * < outputs >
-$$
+Memory use:
 
-When changing the queue storage space, the following env vars should also be suitably set and calculated based on expected average message size.
+- `rsyslog_om_action_queue_size`, defaulted to 500K messages, limits how many messages are queued in memory (messages sent to disk don't count).
+- For disk-assisted queues, the 90% high watermark default applies. E.g. at 450K/500K queue use, rsyslog will start queing messages with the disk in addition to memory.
+- `rsyslog_om_action_queue_discardMark`, defaulted to 475K messages (95% of 500K), also needs to be ideally set to something greater than the default 90% high watermark.
+  - Ideally this would have been defaulted to 95%, but confd has a limitation where [arithmetic functions unable to handle implicit / dynamic type conversion](https://github.com/kelseyhightower/confd/issues/611). So env vars act as strings.
+  - Hence, if you change `rsyslog_om_action_queue_size`, remember to calculate and change `rsyslog_om_action_queue_discardMark` as well. 95% is recommended.
 
-- `rsyslog_om_action_queue_size`, defaulted to ~1M messages, limits how many messages are queued overall including in memory and on disk.
-  - Note, ~1GB storage could host ~1M messages of average size 1K.
-- `rsyslog_om_action_queue_discardMark`, defaulted to ~800K messages, should also be set.
+Storage use:
 
-`rsyslog_om_action_queue_highWatermark` also applies to all network related output action queues. It defaults to 128K messages and will likely not use more than ~128MB of memory unless the average syslog message size exceeds 1K. Possible memory use can be roughly calculated by:
+- `rsyslog_om_action_queue_maxDiskSpace`(in bytes), defaults to ~1GB. You likely want more, but containers don't always have large specifically defined storage volumes, hence the conservative default.
 
-$$
-< highWatermark > * <ave message size> * < outputs >
-$$
+Note, as outputs can be simultaneously enabled, resource usage stacks up for both memory and storage use. If Kafka, Syslog and JSON are all enabled, then shared options like `rsyslog_om_action_maxDiskSpace` multiply, e.g. 3 x 1GB = 3GB storage overall.
 
 Check the [`Dockerfile`](Dockerfile) for various `rsyslog_om_*` related env vars that are general tunabes related to the output queues.
 

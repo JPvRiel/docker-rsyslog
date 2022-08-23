@@ -246,18 +246,16 @@ ENV rsyslog_output_filtering_enabled='on' \
   rsyslog_omfwd_json_host='' \
   rsyslog_omfwd_json_port=5000 \
   rsyslog_omfwd_json_template='TmplJSON' \
-  rsyslog_om_action_queue_dequeueBatchSize=1024 \
-  rsyslog_om_action_queue_minDequeueBatchSize=64 \
-  rsyslog_om_action_queue_minDequeueBatchSize_timeout=500 \
-  rsyslog_om_action_queue_workerThreads=4 \
-  rsyslog_om_action_queue_workerThreadMinimumMessages=8192 \
+  rsyslog_om_action_queue_dequeueBatchSize=1000 \
+  rsyslog_om_action_queue_minDequeueBatchSize=50 \
+  rsyslog_om_action_queue_minDequeueBatchSize_timeout=250 \
+  rsyslog_om_action_queue_workerThreads=8 \
+  rsyslog_om_action_queue_workerThreadMinimumMessages=5000 \
   rsyslog_om_action_queue_maxDiskSpace=1073741824 \
-  rsyslog_om_action_queue_size=1048576 \
-  rsyslog_om_action_queue_highWatermark=131072 \
-  rsyslog_om_action_queue_lowWatermark=65536 \
-  rsyslog_om_action_queue_discardMark=838860 \
-  rsyslog_om_action_queue_discardSeverity=6 \
-  rsyslog_om_action_queue_checkpointInterval=8192 \
+  rsyslog_om_action_queue_size=500000 \
+  rsyslog_om_action_queue_discardMark=475000 \
+  rsyslog_om_action_queue_discardSeverity=7 \
+  rsyslog_om_action_queue_checkpointInterval=5000 \
   rsyslog_call_fwd_extra_rule='off'
 # Several globals are defined via rsyslog_global_* inlcuding reporting stats
 #
@@ -266,16 +264,20 @@ ENV rsyslog_output_filtering_enabled='on' \
 # - TmplJSONRawMsg
 #
 # Brief notes for the pre-canned outputs (kafka, JSON, syslog):
-# - each pre-canned output can have it's own template applied.
+# - Each pre-canned output can have it's own template applied.
+# - Multiple outputs can be enabled at once.
+# - A disk-assisted (DA) queue is setup for the outputs (see: <https://www.rsyslog.com/doc/v8-stable/concepts/queues.html>).
+# - NB! The in-memory part is limited the the number of messaegs (rsyslog_om_action_queue_size) and the on-disk part is limited by the disk space usage limit (rsyslog_om_action_queue_maxDiskSpace).
 # - rsyslog_om_action_queue_* is set and shared for all output queues, so multiple enabled outputs multiplies the mem and storage resources needed to queue output!
+# - rsyslog_om_action_queue_size applies only to the in-memory part of each output queue. Assuming 512 bytes per message, a 500000 size limit implies ~244MB memory use (not counting for other rsyslog overhead).
+# - E.g. With 3x enabled outputs, 3x 512MB approx usage per queue, then ~732MB overall could be used, again, not accounting for any other overhead.
+# - Memory issues can still result. E.g. Assuming worst case, something loops and floods the queue with junk and the full 64K message size limit, then even with just one output, 500000 x 64K = 32GB RAM! Set rsyslog_global_maxMessageSize to a smaller value to mitigate this.
 # - rsyslog_om_action_queue_maxDiskSpace=1073741824 ~ 1G max storage space used, but you likely want more?
-# - E.g. with 3x enabled outputs 3x 1G file limit per queue, then 3G overall is needed.
-# - Most rsyslog limits work on number of messages in the queue, so rsyslog_om_action_queue_size and rsyslog_om_action_queue_discardMark need to be adjusted in line with rsyslog_om_action_queue_maxDiskSpace such that discard is likely to occur before the size liumit is reached.
-# - E.g. Assuming 1024 byte messages (e.g. custom templates or JSON formats create bloat), then a 1G file can fit ~1 million messages, and start discarding at ~800K million messages.
-# - E.g. Assuming worst case, all messages are 64K size, then only ~16K messages can be handled (without knowing what overhead rsyslog adds for each message in the queue).
-# - While arithmentic could be used to work backwards from max file sizes to message numbers, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: <https://github.com/kelseyhightower/confd/issues/611>.
-# - rsyslog_om_action_queue_discardSeverity=6 implies info and debug messages get discarded.
-# - NB! RSyslog defaults for disk assisted queues are too large! See <https://github.com/rsyslog/rsyslog/issues/4968>. To avoid excessive memory use, highWatermark and lowWatermark were explicity defined and set.
+# - E.g. again, if 3x enabled outputs, 3x 1G storage use limit per output, then 3G overall storage space is needed.
+# - rsyslog_om_action_queue_discardMark is ideally 95% of queue.size, as rsyslog's high watermark for using disk in DA queues is 90% and you would likely not want messaegs discarded before at least attepmting to use disk.
+# - NB! rsyslog's default for highWatermark is 90% vs 80% for discardMark, so discarding happens by default before using disk if discardSeverity is set.
+# - rsyslog_om_action_queue_discardSeverity=7 implies debug messages get discarded.
+# - While arithmentic could be used to default rsyslog_om_action_queue_discardMark = 0.95 * rsyslog_om_action_queue_size, unfortunatly confd's arithmetic golang text template functions don't handle dynamic type conversion. See: <https://github.com/kelseyhightower/confd/issues/611>.
 #
 # Additonal output config will probably be highly varied, so instead of trying to template/pre-can it, we allow for that config to be red in
 # As above, extra optional volumes with config that can be supplied at runtime

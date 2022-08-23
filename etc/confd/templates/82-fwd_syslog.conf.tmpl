@@ -44,8 +44,6 @@ ruleset(name="fwd_syslog")
     # queue peristance and size limit
     queue.maxDiskSpace="{{ getenv "rsyslog_om_action_queue_maxDiskSpace" }}"
     queue.size="{{ getenv "rsyslog_om_action_queue_size" }}"
-    queue.highWatermark="{{ getenv "rsyslog_om_action_queue_highWatermark" }}"
-    queue.lowWatermark="{{ getenv "rsyslog_om_action_queue_lowWatermark" }}"
     queue.discardMark="{{ getenv "rsyslog_om_action_queue_discardMark" }}"
     queue.discardSeverity="{{ getenv "rsyslog_om_action_queue_discardSeverity" }}"
     queue.checkpointInterval="{{ getenv "rsyslog_om_action_queue_checkpointInterval" }}"
