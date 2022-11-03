@@ -69,21 +69,27 @@ Legacy formats/templates can easily be set via [pre-defined rsyslog template nam
 
 - RFC5424:
   - `TmplRFC5424` (same as `rsyslog_SyslogProtocol23Format`).
-  - `TmplRFC5424Meta` which appends a extra structured data element fields with more info about how the message was received in a `syslog-relay` structured element.
+  - `TmplRFC5424Meta` which inserts extra structured data element fields with more info about how the message was received in a `syslog-relay` structured element.
+  - `TmplRFC5424EndMetaShort` which appends just the fromhost, fromhost-ip and timegenerated properties to an `@meta:[...]` cookie/tag item on the end.
+- RFC3164:
+  - `RSYSLOG_TraditionalForwardFormat` is the standard and default forward template applied that conforms to RFC3164.
+  - `TmplRFC3164EndMetaShort` is a special custom version that works well for Microsoft OMS where it adds short metadata on the end and enforces the syslog tag to end with a colon.
 - JSON output templates:
   - `TmplRSyslogJSON` is the full native rsyslog message object (might duplicate fields, but also useful to debug with).
   - `TmplJSON` is a JSON output option for a subset of common syslog fields and the parsed msg portion (the message after the syslog header pieces)
+- Raw original message templates
   - `TmplJSONRawMsg` includes the full raw message including original syslog headers - potentially useful as provenance / evidence on exactly how the message was transferred from a source
   - Optionally convert structured data in RFC5424 into a nested JSON object (or null if not present) with `rsyslog_mmpstrucdata=on`.
   - Optionally parse JSON message payloads with `rsyslog_mmjsonparse=on` (as a default, usually preceded by `@cee` cookie).
     - Use `rsyslog_mmjsonparse_without_cee=on` to try parse messages as JSON without the cookie.
-- A raw template `RawMsg` can be useful to bypass most rsyslog parsing and simply relay that data as is.
-  - One might also then skip parsing with `parser="rsyslog.pmnull"` for a given ruleset.
-  - Note that some network devices and Solaris don't provide syslog header names so the original log source identity can end up being lost).
-- An extended raw message template `RawMsgEndMeta` can append metadata to the end of the message.
-  - This might help in cases where you relay syslog events to a SIEM that has parsers which expect the original log source format but might tolerate adding the metadata at the end.
-  - A shorter version, `rawMsgEndMetaShort`, includes just the `fromhost` and `fromhost-ip` properties to limit the amount of metadata tagged on the end, and is especially suited to UDP forwarding where the MTU might be limited to ~1500 bytes or less.
-- Allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs)
+  - A raw template `RawMsg` can be useful to bypass most rsyslog parsing and simply relay that data as is.
+    - One might also then skip parsing with `parser="rsyslog.pmnull"` for a given ruleset.
+    - Note that some network devices and Solaris don't provide syslog header names so the original log source identity can end up being lost).
+  - An extended raw message template `RawMsgEndMeta` can append metadata to the end of the message.
+    - This might help in cases where you relay syslog events to a SIEM that has parsers which expect the original log source format but might tolerate adding the metadata at the end.
+    - A shorter version, `RawMsgEndMetaShort`, includes just the `fromhost` and `fromhost-ip` properties to limit the amount of metadata tagged on the end, and is especially suited to UDP forwarding where the MTU might be limited to ~1500 bytes or less.
+
+There is also the capability to allow logging rule-set extension via volume mounts with user provided configuration files (e.g. for custom filters and outputs).
 
 See the `ENV` instructions with `rsyslog_` environment name prefixes in the [`Dockerfile`](Dockerfile) to review default settings and options further.
 
@@ -376,23 +382,27 @@ Including extra outputs is _Experimental (not tested)_
 
 For each pre-canned output, a template can be set. Some advanced templates have flags to enable/include them (i.e. `grep -E 'rsyslog_.*_template' Dockerfile` to get an idea of the options).
 
-By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options are off. They can help add meta-data and make structured data elements parsable as JSON. For JSON output, recommended combinations are:
+By default `rsyslog_support_metadata_formats` and `rsyslog_mmpstrucdata` options are off. They can help add meta-data and make structured data elements parsable as JSON. For JSON output, recommended choices which can omit or add metdata via `rsyslog_support_metadata_formats=on` are:
 
-- `TmplJSON` and `rsyslog_support_metadata_formats=off`, or
-- `TmplJSONRawMsg` or `TmplRFC5424Meta` require `rsyslog_support_metadata_formats=on`, otherwise these templates won't work.
+- `TmplJSON`
+- `TmplJSONRawMsg`
+
+Other extended templates, `TmplRFC5424Meta`, `TmplRFC5424EndMetaShort`, `TmplRFC3164MetaEndShort`, `RawMsgEndMeta` and `RawMsgEndMetaShort` require `rsyslog_support_metadata_formats=on`, otherwise these templates are not included.
 
 The table shows compatible template and options.
 
-| Templates            | Use                                                | rsyslog_support_metadata_formats      | rsyslog_mmpstrucdata                                   |
-|----------------------|----------------------------------------------------|---------------------------------------|--------------------------------------------------------|
-| `RawMsg`             | Raw message as received from source                | NA, omitted                           | NA, not a JSON format                                  |
-| `RawMsgEndMeta`      | Raw message with meta-data appended at the end     | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
-| `RawMsgEndMetaShort` | Raw message with limited meta-data appended        | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
-| `TmplRFC5424`        | RFC5424 (same as `rsyslog_SyslogProtocol23Format`) | NA, omitted                           | NA, not a JSON format                                  |
-| `TmplRFC5424Meta`    | RFC5424 with extra structured meta-data element    | Yes, prepended to SD-Elements         | NA, not a JSON format                                  |
-| `TmplRSyslogJSON`    | rsyslog's internal JSON representation             | Yes, appears in `$!` root object      | Yes, adds `rfc5424-sd` to `$!`                         |
-| `TmplJSON`           | Simplified smaller JSON message                    | No, omits fields for meta-data        | Yes                                                    |
-| `TmplJSONRawMsg`     | More complete well structured JSON message         | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
+| Templates                 | Use                                                | rsyslog_support_metadata_formats      | rsyslog_mmpstrucdata                                   |
+|---------------------------|----------------------------------------------------|---------------------------------------|--------------------------------------------------------|
+| `RawMsg`                  | Raw message as received from source                | NA, omitted                           | NA, not a JSON format                                  |
+| `RawMsgEndMeta`           | Raw message with meta-data appended at the end     | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
+| `RawMsgEndMetaShort`      | Raw message with limited meta-data appended        | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
+| `TmplRFC5424`             | RFC5424 (same as `rsyslog_SyslogProtocol23Format`) | NA, omitted                           | NA, not a JSON format                                  |
+| `TmplRFC5424Meta`         | RFC5424 with extra structured meta-data element    | Yes, prepended to SD-Elements         | NA, not a JSON format                                  |
+| `TmplRFC5424EndMetaShort` | RFC5424 with limited meta-data appended            | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
+| `TmplRFC3164EndMetaShort` | RFC3164 with tag colon and meta-data appended      | Yes, appended using `@meta:` "cookie" | NA, not a JSON format                                  |
+| `TmplRSyslogJSON`         | RSyslog's internal JSON representation             | Yes, appears in `$!` root object      | Yes, adds `rfc5424-sd` to `$!`                         |
+| `TmplJSON`                | Simplified smaller JSON message                    | No, omits fields for meta-data        | Yes                                                    |
+| `TmplJSONRawMsg`          | More complete well structured JSON message         | Yes, appears in `syslog-relay` object | Yes, replaces `structured-data` field with JSON object |
 
 `rsyslog_support_metadata_formats` is also needed add logic that builds in some extra validation steps in order to output the meta-data with more accurate information about the origin of the message. rsyslog readily parses almost any valid text as a hostname with RFC3164, even when the message looks like it's ignoring the conventions and it's unlikely a valid hostname - as per this issue: [pmrfc3164 blindly swallows the first word of an invalid syslog header as the hostname](https://github.com/rsyslog/rsyslog/issues/1789).
 
@@ -1238,6 +1248,10 @@ Newer versions of rsyslog does support some env var handling. Note:
 - Backticks string constants to use shell commands (as of v8.33 with an enhanced `echo` in v8.37).
   - E.g. `` `echo $VARNAME` ``
   - See: [String Constants](https://www.rsyslog.com/doc/master/rainerscript/constant_strings.html#string-constants)
+
+### Kafka module support on RHEL
+
+See: [RHEL 8 OS family error creating kafka handle and thread](https://github.com/rsyslog/rsyslog/issues/4966). Unfortunately `8.2208.0` was the last version to run correctly on a RHEL 7 based distro and I've been unable to get kafka modules working on RHEL 8 based distros. In future, it's possibly better to switch to Ubuntu or Debian as a base.
 
 ## Status
 

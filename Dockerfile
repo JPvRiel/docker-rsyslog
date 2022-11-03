@@ -40,7 +40,7 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.2112.0'
+ARG RSYSLOG_VERSION='8.2208.0'
 RUN yum --setopt=timeout=120 -y update && \
   yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
@@ -54,6 +54,7 @@ RUN yum --setopt=timeout=120 -y update && \
   lsof \
   logrotate \
   cronie-noanacron \
+  python3 \
   && yum clean all
 RUN rm -rf /etc/rsyslog.d/ \
   && rm -f /etc/rsyslog.conf \

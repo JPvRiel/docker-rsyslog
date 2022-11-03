@@ -148,4 +148,4 @@ Feature: Accept syslog messages in various formats
 
     Examples:
       | file | regex |
-      | /var/log/remote/all_raw_end_meta.log | @meta:\[fromhost=\"[^\"]*\", fromhost-ip=\"[^\"]+\"\]$ |
+      | /var/log/remote/all_raw_end_meta.log | @meta:\[fromhost=\"[^\"]*\", fromhost-ip=\"[^\"]+\".*\]$ |
