@@ -776,7 +776,7 @@ If user namespace re-mapping is done, as per [Isolate containers with a user nam
 
 In a default `dockremap` scenario, the namespace is mapped to a subuid and subgid for the `dockremap` account. Using `setfacl`, assign access to your own current user, and the chown the bind mount source dir with re-mapped docker root uid.  E.g. for the test suit the `test` dir has to be owned by the remapped uid.
 
-This is a fairly complex process, so see the `docker-userns-remap-acls` script as an example to help with this.
+This is a fairly complex process, so see the `docker-userns-remap-acls.sh` script as an example to help with this.
 
 ### System under test (SUT)
 
