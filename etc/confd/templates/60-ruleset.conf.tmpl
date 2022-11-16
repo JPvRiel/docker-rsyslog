@@ -280,15 +280,23 @@ ruleset(
     #   - If the RFC3164 parser is unable to parse a timestamp, it will try parse the first part as a hostname instead.
     #       - Rather disregard the unstrustworthy assumptions about the best-effort parsing and use the fromhost property when this happens.
     #   - If the RFC3164 parser is then unable to parse a hostname, it will try parse the header as just the syslog tag and application name/process name.
-    #       - Discard this guess and rather set the app-name to none (`-`).
+    #       - Discard this guess and rather set the app-name to none (`-`) if it does not seem to a valid tag before the colon.
     #       - TODO: we may also need to sanitise the process name?
-    if (not re_match($rawmsg-after-pri, "^[A-Z][a-z]{2}") or $rawmsg-after-pri startswith $hostname or $rawmsg-after-pri startswith $syslogtag) then {
+    if (not re_match($rawmsg-after-pri, '^[A-Z][a-z]{2}') or $rawmsg-after-pri startswith $hostname or $rawmsg-after-pri startswith $syslogtag) then {
       # rsyslog assumed first word of malformed message was the hostname, so RFC3164 conventions for timestamp and hostname not followed
       set $.syslog-relay!format = "RFC3164_malformed";
       set $.syslog-relay!header-valid = "false";
       set $.hostname = $fromhost;
-      set $.app-name = "-";
-      # If we wanted to correct a misaligned $msg due to a bad header...
+      # Is the syslog tag and app-name vaguely valid?
+      # Expect the process name to start with alphanumeric characters, an underscore opening bracket and allow it to contain more alphanumerics and a few special characters commonly seen in use with process names.
+      # However, reject app-names that are only numbers
+      # Regex supplied via string constants requires double escaping for the rainerscript string constant and the regex escape. E.g. regex escaped backslash \\ is double escaped as \\\\ for rainerscript. See: https://www.rsyslog.com/rainerscript-constant-string-escaper/.
+      if (re_match($syslogtag, '^[A-Za-z0-9_(][A-Za-z0-9_()\\-\\./\\\\]{1,31}(\\[[0-9]+\\])?:$') and not re_match($app-name, '^[0-9]+$')) then {
+        set $.app-name = $app-name;
+      } else {
+        set $.app-name = "-";
+      }
+      # If we wanted to correct a misaligned $msg due to a bad header... Failing to do this may swallow part of the malformed message where the parsed values were untrusted and discarded.
       #set $.msg = $rawmsg-after-pri;
     } else {
       set $.syslog-relay!format = "RFC3164";

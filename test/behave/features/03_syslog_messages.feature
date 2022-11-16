@@ -109,14 +109,35 @@ Feature: Accept syslog messages in various formats
       And the pattern should be found
       And a JSON jmespath "<path>" field should be "<value>"
 
-  Examples:
-    | message | regex | path  | value |
-    | Sep 19 23:43:29 lies Poor form RFC3164 with no priority | .*?RFC3164 with no priority.* | hostname | lies |
-    | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | false |
-    | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | false |
-    | <14>1 2021-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space | .*incorrect non-IS08601 timestamp with extra space.* | "syslog-relay"."header-valid" | false |
-    | <14>1 2021-09-21T23:43:29.402+02:00 behave test 99999 - [bogus structured-data element] misc text after incorrect structured data element | .*bogus structured-data element.* | "rfc5424-sd" | null |
+    Examples:
+      | message | regex | path  | value |
+      | Sep 19 23:43:29 lies Poor form RFC3164 with no priority | .*?RFC3164 with no priority.* | hostname | lies |
+      | <17>Poor form RFC3164 with no syslog header - avoid bogus hostname  | .*?RFC3164 with no syslog header.* | "syslog-relay"."header-valid" | false |
+      | Poor form RFC3164 with no syslog header or priority - avoid bogus hostname  | .*?RFC3164 with no syslog header or priority.* | "syslog-relay"."pri-valid" | false |
+      | <14>1 2021-09-21 23:43:29 behave test 99999 - incorrect non-IS08601 timestamp with extra space | .*incorrect non-IS08601 timestamp with extra space.* | "syslog-relay"."header-valid" | false |
+      | <14>1 2021-09-21T23:43:29.402+02:00 behave test 99999 - [bogus structured-data element] misc text after incorrect structured data element | .*bogus structured-data element.* | "rfc5424-sd" | null |
 
+
+  @slow
+  Scenario Outline: Messages from vendors that do not conform to RFCs
+  Given a protocol "TCP" and port "514"
+    And "rsyslog_omfwd_json_template" environment variable is "TmplJSONRawMsg"
+    And a file "/tmp/json_relay/nc.out" exists
+  When connecting
+    And sending the raw message "<message>"
+    And waiting "1" seconds
+    And searching lines for the pattern "<regex>" over "60" seconds
+  Then a connection should be complete
+    And the pattern should be found
+    And a JSON entry should contain "<json>"
+
+  # When running regex on JSON output, quotes will be JSON escaped. And regex will need to double escape the backslash to match the single backslash escape for JSON quotes. E.g. " is \" in JSON and is \\" for regex.
+  Examples:
+    | message | regex | json |
+    | CEF:0\|Vendor\|Product\|Check Point\|Log\|LogType\|Catorgy\|format=CEF without syslog header | .*format=CEF without syslog header.* | { "app-name": "CEF", "procid" : "-" } |
+    | <190>612091: 612077: Nov 15 19:05:45: %COMP-6-ACT: Cisco's custom format starting with a syslog count and then sequence number | .*Cisco's custom format starting with a syslog count and then sequence number.* | { "app-name": "-", "procid" : "-" } |
+    | <188>2681: Nov 16 18:00:06.129 origindevid: %COMP-4-ACT: Cisco's custom format with a origin device identifier and only sequence number | .*Cisco's custom format with a origin device identifier and only sequence number.* | { "app-name": "-", "procid" : "-" } |
+    | <189>date=2022-11-15 time=12:58:59 devname="FORTIGATE" key="value" | .*devname=\\"FORTIGATE\\".* | { "app-name": "-", "procid" : "-" } |
 
   @slow
   Scenario Outline: Don't parse messages which are not JSON

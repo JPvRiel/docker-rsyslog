@@ -509,67 +509,75 @@
 204:     #   - If the RFC3164 parser is unable to parse a timestamp, it will try parse the first part as a hostname instead.
 205:     #       - Rather disregard the unstrustworthy assumptions about the best-effort parsing and use the fromhost property when this happens.
 206:     #   - If the RFC3164 parser is then unable to parse a hostname, it will try parse the header as just the syslog tag and application name/process name.
-207:     #       - Discard this guess and rather set the app-name to none (`-`).
+207:     #       - Discard this guess and rather set the app-name to none (`-`) if it does not seem to a valid tag before the colon.
 208:     #       - TODO: we may also need to sanitise the process name?
-209:     if (not re_match($rawmsg-after-pri, "^[A-Z][a-z]{2}") or $rawmsg-after-pri startswith $hostname or $rawmsg-after-pri startswith $syslogtag) then {
+209:     if (not re_match($rawmsg-after-pri, '^[A-Z][a-z]{2}') or $rawmsg-after-pri startswith $hostname or $rawmsg-after-pri startswith $syslogtag) then {
 210:       # rsyslog assumed first word of malformed message was the hostname, so RFC3164 conventions for timestamp and hostname not followed
 211:       set $.syslog-relay!format = "RFC3164_malformed";
 212:       set $.syslog-relay!header-valid = "false";
 213:       set $.hostname = $fromhost;
-214:       set $.app-name = "-";
-215:       # If we wanted to correct a misaligned $msg due to a bad header...
-216:       #set $.msg = $rawmsg-after-pri;
-217:     } else {
-218:       set $.syslog-relay!format = "RFC3164";
-219:       # above checks not 100% precise to avoid performance cost, so only reasonably confident a good header was found
-220:       set $.syslog-relay!header-valid = "true";
-221:       set $.hostname = $hostname;
-222:       set $.app-name = $app-name;
-223:       #set $.msg = $msg;
-224:     }
-225:     # TODO check for valid app-name and processs ID values?
-226:   }
-227: 
-228:   # Parse RFC5424 structured elements into JSON
-229:   if ($structured-data == "-") then {
-230:     # !rfc5424-sd won't be created if there's no structured data, but a template might expect it to exist. See https://github.com/rsyslog/rsyslog/issues/1891
-231:     # Note rsyslog json properties don't yet support setting a proper JSON null value, so use a string
-232:     set $!rfc5424-sd = "null";
-233:   } else {
-234:     # jsonRoot doesn't change the name of where fields are parsed to. It just moves where it is put. See https://github.com/rsyslog/rsyslog/issues/1262
-235:     #action(type="mmpstrucdata" name="output_mmpstrucdata" jsonRoot="$!structured-data")
-236:     action(type="mmpstrucdata" name="output_mmpstrucdata")
-237:     # Guard against $!rfc5424-sd not existing if there was a parse failure
-238:     # Note, rsyslog has not yet got an exits() function, so workaround is to check for a blank string: https://github.com/rsyslog/rsyslog/issues/970
-239:     if ($!rfc5424-sd == "") then {
-240:       set $!rfc5424-sd = "null";
-241:       set $.syslog-relay!format = "RFC5424_malformed";
-242:     }
-243:   }
-244: 
-245:   # Support trying to decode msg part as JSON (hopefully fails fast when not JSON)
-246:   # - nullify $!msg-json if there is a failure
-247:   # - null is represented as the literal string "null" and requires care with templates to output as a true JSON null datatype
-248:   # By default, require the @cee cookie
-249:   action(type="mmjsonparse" name="mmjsonparse_cee")
-250:   if $parsesuccess == "OK" then {
-251:     set $.syslog-relay!json-msg-parsed = "true";
-252:     continue
-253:   } else {
-254:     # Also try parsing message as JSON without the @cee cookie
-255:     # - mmjsonparse will fail to decode messages that have both structured data elements and JSON without a @cee cookie
-256:     action(type="mmjsonparse" name="mmjsonparse_without_cee" cookie="")
-257:     if $parsesuccess == "OK" then {
-258:       set $.syslog-relay!json-msg-parsed = "true";
-259:     } else {
-260:       # remove duplicated $!msg field (will use $msg in templates instead)
-261:       unset $!msg;
-262:       set $.syslog-relay!json-msg-parsed = "false";
-263:     }
-264:   }
-265: 
-266:   # global output filter
-267:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
+214:       # Is the syslog tag and app-name vaguely valid?
+215:       # Expect the process name to start with alphanumeric characters, an underscore opening bracket and allow it to contain more alphanumerics and a few special characters commonly seen in use with process names.
+216:       # However, reject app-names that are only numbers
+217:       # Regex supplied via string constants requires double escaping for the rainerscript string constant and the regex escape. E.g. regex escaped backslash \\ is double escaped as \\\\ for rainerscript. See: https://www.rsyslog.com/rainerscript-constant-string-escaper/.
+218:       if (re_match($syslogtag, '^[A-Za-z0-9_(][A-Za-z0-9_()\\-\\./\\\\]{1,31}(\\[[0-9]+\\])?:$') and not re_match($app-name, '^[0-9]+$')) then {
+219:         set $.app-name = $app-name;
+220:       } else {
+221:         set $.app-name = "-";
+222:       }
+223:       # If we wanted to correct a misaligned $msg due to a bad header... Failing to do this may swallow part of the malformed message where the parsed values were untrusted and discarded.
+224:       #set $.msg = $rawmsg-after-pri;
+225:     } else {
+226:       set $.syslog-relay!format = "RFC3164";
+227:       # above checks not 100% precise to avoid performance cost, so only reasonably confident a good header was found
+228:       set $.syslog-relay!header-valid = "true";
+229:       set $.hostname = $hostname;
+230:       set $.app-name = $app-name;
+231:       #set $.msg = $msg;
+232:     }
+233:     # TODO check for valid app-name and processs ID values?
+234:   }
+235: 
+236:   # Parse RFC5424 structured elements into JSON
+237:   if ($structured-data == "-") then {
+238:     # !rfc5424-sd won't be created if there's no structured data, but a template might expect it to exist. See https://github.com/rsyslog/rsyslog/issues/1891
+239:     # Note rsyslog json properties don't yet support setting a proper JSON null value, so use a string
+240:     set $!rfc5424-sd = "null";
+241:   } else {
+242:     # jsonRoot doesn't change the name of where fields are parsed to. It just moves where it is put. See https://github.com/rsyslog/rsyslog/issues/1262
+243:     #action(type="mmpstrucdata" name="output_mmpstrucdata" jsonRoot="$!structured-data")
+244:     action(type="mmpstrucdata" name="output_mmpstrucdata")
+245:     # Guard against $!rfc5424-sd not existing if there was a parse failure
+246:     # Note, rsyslog has not yet got an exits() function, so workaround is to check for a blank string: https://github.com/rsyslog/rsyslog/issues/970
+247:     if ($!rfc5424-sd == "") then {
+248:       set $!rfc5424-sd = "null";
+249:       set $.syslog-relay!format = "RFC5424_malformed";
+250:     }
+251:   }
+252: 
+253:   # Support trying to decode msg part as JSON (hopefully fails fast when not JSON)
+254:   # - nullify $!msg-json if there is a failure
+255:   # - null is represented as the literal string "null" and requires care with templates to output as a true JSON null datatype
+256:   # By default, require the @cee cookie
+257:   action(type="mmjsonparse" name="mmjsonparse_cee")
+258:   if $parsesuccess == "OK" then {
+259:     set $.syslog-relay!json-msg-parsed = "true";
+260:     continue
+261:   } else {
+262:     # Also try parsing message as JSON without the @cee cookie
+263:     # - mmjsonparse will fail to decode messages that have both structured data elements and JSON without a @cee cookie
+264:     action(type="mmjsonparse" name="mmjsonparse_without_cee" cookie="")
+265:     if $parsesuccess == "OK" then {
+266:       set $.syslog-relay!json-msg-parsed = "true";
+267:     } else {
+268:       # remove duplicated $!msg field (will use $msg in templates instead)
+269:       unset $!msg;
+270:       set $.syslog-relay!json-msg-parsed = "false";
+271:     }
+272:   }
+273: 
+274:   # global output filter
+275:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
 ##< start of include directive:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
 ##^ expanding file: /etc/rsyslog.d/output/filters/exclude_debug.conf
   1: # don't permit debug level logging
@@ -578,18 +586,18 @@
   1: # tests white-list approach where this regex matches everything
   2: if (not re_match($msg, '.*')) then { stop }
 ##> end of expand directive:   $IncludeConfig /etc/rsyslog.d/output/filters/*.conf
-268: 
-269:   # Standard outputs "pre-bundled
-270:   call out_file
-271:   call fwd_kafka
-272:   call fwd_syslog
-273:   call fwd_syslog_udp_spoof
-274:   call fwd_json
-275: 
-276:   # Add extra output ruleset call for extra conf
-277:   call fwd_extra
-278: 
-279: }
+276: 
+277:   # Standard outputs "pre-bundled
+278:   call out_file
+279:   call fwd_kafka
+280:   call fwd_syslog
+281:   call fwd_syslog_udp_spoof
+282:   call fwd_json
+283: 
+284:   # Add extra output ruleset call for extra conf
+285:   call fwd_extra
+286: 
+287: }
 ##> end of expand directive: include(file="/etc/rsyslog.d/*.conf" mode="optional")
  13: include(file="/etc/rsyslog.d/input/*.conf" mode="optional")
 ##< start of include directive: include(file="/etc/rsyslog.d/input/*.conf" mode="optional")
