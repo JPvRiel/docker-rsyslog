@@ -1,7 +1,7 @@
 
 FROM ubuntu:22.04
 ENV container=docker DEBIAN_FRONTEND=noninteractive
-ARG RSYSLOG_VERSION='8.2208.0'
+ARG RSYSLOG_VERSION='8.2212.0'
 COPY repo/deb/rsyslog-ppa.gpg /usr/share/keyrings/rsyslog-ppa.gpg
 RUN apt update && \
   apt -y install \

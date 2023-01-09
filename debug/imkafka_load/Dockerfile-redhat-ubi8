@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi8/ubi-minimal
 ENV container=docker
 COPY repo/rhel/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 ADD http://rpms.adiscon.com/v8-stable/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.2208.0'
+ARG RSYSLOG_VERSION='8.2212.0'
 RUN microdnf --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
   rsyslog-kafka-${RSYSLOG_VERSION}
