@@ -1,4 +1,4 @@
-FROM almalinux:8-minimal
+FROM centos:7
 ARG VERSION
 LABEL org.label-schema.schema-version=1.0.0-rc1 \
   org.label-schema.name="rsyslog" \
@@ -19,14 +19,11 @@ RUN update-ca-trust
 # Setup repos, etc
 # Disable fast mirror plugin to better leverage upstream proxy caching (or use specific repos)
 # Switch yum config to use a consitant base url (useful if not caching docker build, but relying on an upstream proxy)
-# Note YUM_MIRROR_BASE_URL ends up needing double escaping of backslashes as both bash and sed have `/` and `\` as special chars used for escapes.
 ARG DISABLE_YUM_MIRROR=false
-ARG YUM_MIRROR_BASE_URL='http://alma.mirror.ac.za'
-RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi; \
-  for f in /etc/yum.repos.d/*.repo; do \
-    sed 's/^mirrorlist/# mirrorlist/g' -i "$f" && \
-    sed "s/^# baseurl=https:\\/\\/repo.almalinux.org\\/almalinux/baseurl=${YUM_MIRROR_BASE_URL//\//\\/}/g" -i "$f"; \
-  done
+RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi && \
+  sed 's/enabled=1/enabled=0/g' -i /etc/yum/pluginconf.d/fastestmirror.conf && \
+  sed 's/^mirrorlist/#mirrorlist/g' -i /etc/yum.repos.d/CentOS-Base.repo && \
+  sed 's/^#baseurl/baseurl/g' -i /etc/yum.repos.d/CentOS-Base.repo
 # Some rsyslog modules have dependancies in epel
 # RUN yum --setopt=timeout=120 -y update && \
 #   yum -y install --setopt=timeout=120 --setopt=tsflags=nodocs epel-release
@@ -43,24 +40,22 @@ RUN if [ "$DISABLE_YUM_MIRROR" != true ]; then exit; fi; \
 # Therefore, prebundle our own local copy of the repo and GPG file
 COPY etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon /etc/pki/rpm-gpg/RPM-GPG-KEY-Adiscon
 COPY etc/yum.repos.d/rsyslog.repo /etc/yum.repos.d/rsyslog.repo
-ARG RSYSLOG_VERSION='8.2210.0'
-RUN microdnf -y update && \
-  microdnf --setopt=tsflags=nodocs -y install \
+ARG RSYSLOG_VERSION='8.2212.0'
+RUN yum --setopt=timeout=120 -y update && \
+  yum --setopt=timeout=120 --setopt=tsflags=nodocs -y install \
   rsyslog-${RSYSLOG_VERSION} \
   rsyslog-gnutls-${RSYSLOG_VERSION} \
   rsyslog-openssl-${RSYSLOG_VERSION} \
-#  adisconbuild-librdkafka1 \
   rsyslog-kafka-${RSYSLOG_VERSION} \
   rsyslog-relp-${RSYSLOG_VERSION} \
   rsyslog-pmciscoios-${RSYSLOG_VERSION} \
   rsyslog-mmjsonparse-${RSYSLOG_VERSION} \
   rsyslog-udpspoof-${RSYSLOG_VERSION} \
+  lsof \
   logrotate \
   cronie-noanacron \
-  findutils \
-  lsof \
-  python39 \
-  && microdnf clean all
+  python3 \
+  && yum clean all
 RUN rm -rf /etc/rsyslog.d/ \
   && rm -f /etc/rsyslog.conf \
   && rm -f /etc/logrotate.conf \

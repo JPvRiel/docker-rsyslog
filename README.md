@@ -679,7 +679,7 @@ ruleset(name="fwd_extra")
 
 The convention is `<rsyslogd version>-<docker image release build number>`.
 
-E.g. `8.29.0-3` means the output of `rsyslogd -v` shows `rsyslogd 8.29.0`, and it's the 3rd image released for that upstream version.
+E.g. `8.2212.0-3` means the output of `rsyslogd -v` shows `rsyslogd 8.2212.0`, and it's the 3rd image released for that upstream version.
 
 ## Development complexity and technical debt (Here be Dragons)
 
@@ -715,6 +715,8 @@ sudo -E make build
 Where `-E` helps pass on `http_proxy` env vars, etc.
 
 The build argument `DISABLE_YUM_MIRROR=true` can help if you have a caching proxy (e.g. squid) and don't want the mirror selection process in yum to break proxy caching. However, if default mirrors are down, then build fails.
+
+Note, the docker build file hardcoded the Alma Linux repo alma.mirror.ac.za and should be changed to a use a mirror closer to you. Use the docker build arg to set `YUM_MIRROR_BASE_URL` or modify it in the `build.env' file.
 
 Changes to `build.env` should invalidate the build cache. Docker build caching for a given version and release number.
 
