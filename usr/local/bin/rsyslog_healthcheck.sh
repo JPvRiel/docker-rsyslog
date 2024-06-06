@@ -2,10 +2,25 @@
 set -e
 
 # Check that expected TCP ports are open
-for p in 514 2514 6514 8514; do
-  if ! lsof -i tcp:${p} -F c | grep rsyslogd; then
-    exit 1;
-  fi
+for p in u:514 t:601 t:2514 t:6514 t:8514; do
+  proto=${p%%:*}
+  port=${p#*:}
+  # switch statment for u (UDP) or t (TCP)
+  case $proto in
+    u)
+      if ! ss --listening --processes --numeric --udp "sport = $port"| grep --quiet --fixed-strings rsyslogd; then
+        exit 1;
+      fi
+      ;;
+    t)
+      if ! ss --listening --processes --numeric --tcp "sport = $port" | grep --quiet --fixed-strings rsyslogd; then
+        exit 1;
+      fi
+      ;;
+    *)
+      exit 1;
+      ;;
+  esac
 done
 # Check that crond process is running to support logrotate
 if [ -z "$crond_pid_file" ]; then
