@@ -74,25 +74,25 @@
  24: # See http://www.rsyslog.com/doc/v8-stable/configuration/nomatch.html
  25: template(
  26:   name="TmplRFC5424Meta" type="string"
- 27:   string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %$.app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$.syslog-relay!format%\" pri-valid=\"%$.syslog-relay!pri-valid%\" header-valid=\"%$.syslog-relay!header-valid%\" json-msg-parsed=\"%$.syslog-relay!json-msg-parsed%\" tls=\"%$.syslog-relay!tls%\" authenticated-client=\"%$.syslog-relay!authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg%\n"
+ 27:   string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %$.app-name% %procid% %msgid% [syslog-relay@16543 timegenerated=\"%timegenerated:::date-rfc3339%\" fromhost=\"%fromhost%\" fromhost-ip=\"%fromhost-ip%\" myhostname=\"%$myhostname%\" inputname=\"%inputname%\" format=\"%$.syslog-relay!format%\" pri-valid=\"%$.syslog-relay!pri-valid%\" header-valid=\"%$.syslog-relay!header-valid%\" json-msg-parsed=\"%$.syslog-relay!json-msg-parsed%\" tls=\"%$.syslog-relay!tls%\" authenticated-client=\"%$.syslog-relay!authenticated-client%\"]%structured-data:R,ERE,0,BLANK:[[].*--end% %msg:::drop-last-lf%\n"
  28: )
  29: template(
  30:     name="TmplRFC5424EndMetaShort" type="string"
- 31:     string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %$.app-name% %procid% %msgid% %structured-data% %msg:::drop-last-lf% @meta:[fromhost=\"%fromhost%\", fromhost-ip=\"%fromhost-ip%\", timegenerated=\"%timegenerated:::date-rfc3339%\"]\n"
+ 31:     string="<%pri%>1 %timestamp:::date-rfc3339% %$.hostname% %$.app-name% %procid% %msgid% %structured-data% %msg:::drop-last-lf% @fromhost=%fromhost% @fromhost-ip=%fromhost-ip% @timegenerated=%timegenerated:::date-rfc3339%\n"
  32: )
  33: # RFC3164 template enforcing a colon ending the syslog tag since some agents like Microsoft OMS don't gracefully accommodate all variations of the RFC
  34: template(
  35:     name="TmplRFC3164EndMetaShort" type="string"
- 36:     string="<%pri%>%timestamp:::date-rfc3164% %$.hostname% %syslogtag:F,58,1:1,32%:%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf% @meta:[fromhost=\"%fromhost%\", fromhost-ip=\"%fromhost-ip%\", timegenerated=\"%timegenerated:::date-rfc3339%\"]"
+ 36:     string="<%pri%>%timestamp:::date-rfc3164% %$.hostname% %syslogtag:F,58,1:1,32%:%msg:::sp-if-no-1st-sp%%msg:::drop-last-lf% @fromhost=%fromhost% @fromhost-ip=%fromhost-ip% @timegenerated=%timegenerated:::date-rfc3339%\n"
  37: )
  38: # Raw, forward as-is with metadata at the end
  39: template(
  40:   name="RawMsgEndMeta" type="string"
- 41:   string="%rawmsg% @meta:[timegenerated=\"%timegenerated:::date-rfc3339%\", fromhost=\"%fromhost%\", fromhost-ip=\"%fromhost-ip%\", myhostname=\"%$myhostname%\", inputname=\"%inputname%\", format=\"%$.syslog-relay!format%\", pri-valid=\"%$.syslog-relay!pri-valid%\", header-valid=\"%$.syslog-relay!header-valid%\", json-msg-parsed=\"%$.syslog-relay!json-msg-parsed%\", tls=\"%$.syslog-relay!tls%\", authenticated-client=\"%$.syslog-relay!authenticated-client%\"]\n"
+ 41:   string="%rawmsg:::drop-last-lf% @timegenerated=%timegenerated:::date-rfc3339% @fromhost=%fromhost% @fromhost-ip=%fromhost-ip% @myhostname=%$myhostname% @inputname=%inputname% @format=%$.syslog-relay!format% @pri-valid=%$.syslog-relay!pri-valid% @header-valid=%$.syslog-relay!header-valid% @json-msg-parsed=%$.syslog-relay!json-msg-parsed% @tls=%$.syslog-relay!tls% @authenticated-client=%$.syslog-relay!authenticated-client%\n"
  42: )
  43: template(
  44:   name="RawMsgEndMetaShort" type="string"
- 45:   string="%rawmsg% @meta:[fromhost=\"%fromhost%\", fromhost-ip=\"%fromhost-ip%\", timegenerated=\"%timegenerated:::date-rfc3339%\"]\n"
+ 45:   string="%rawmsg:::drop-last-lf% @fromhost=%fromhost% @fromhost-ip=%fromhost-ip% @timegenerated=%timegenerated:::date-rfc3339%\n"
  46: )
  47: 
  48: # JSON templates
